@@ -1,0 +1,33 @@
+{
+  "name": "Prophétesse-Mycélium",
+  "short_name": "Mycélium",
+  "description": "Application liturgique de l'Ordre Mycélien. Rituels, confessions, jeux liturgiques, et la parole d'Olivia-aux-mille-racines.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4ecd2",
+  "theme_color": "#3a562f",
+  "lang": "fr",
+  "categories": ["lifestyle", "games", "education"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

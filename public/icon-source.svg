@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#496c39"/>
+      <stop offset="60%" stop-color="#293a22"/>
+      <stop offset="100%" stop-color="#13200f"/>
+    </radialGradient>
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e8c75d" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#c9a227" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="myc" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f1d56c"/>
+      <stop offset="100%" stop-color="#a07810"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fond -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <!-- Halo doré -->
+  <circle cx="512" cy="512" r="500" fill="url(#halo)"/>
+
+  <!-- Cercle bordure -->
+  <circle cx="512" cy="512" r="460" fill="none" stroke="#c9a227" stroke-width="6" stroke-opacity="0.5"/>
+
+  <!-- Mycélium stylisé : champignon central -->
+  <g transform="translate(512 512)">
+    <!-- Chapeau du champignon -->
+    <path d="M -180 -40 Q -180 -210 0 -210 Q 180 -210 180 -40 L 180 -30 Q 0 10 -180 -30 Z" fill="url(#myc)" stroke="#5a3e08" stroke-width="6"/>
+    <!-- Points sur le chapeau -->
+    <circle cx="-80" cy="-130" r="22" fill="#fff7e0" stroke="#5a3e08" stroke-width="3"/>
+    <circle cx="40" cy="-150" r="28" fill="#fff7e0" stroke="#5a3e08" stroke-width="3"/>
+    <circle cx="100" cy="-90" r="18" fill="#fff7e0" stroke="#5a3e08" stroke-width="3"/>
+    <circle cx="-50" cy="-70" r="14" fill="#fff7e0" stroke="#5a3e08" stroke-width="3"/>
+    <!-- Pied -->
+    <path d="M -60 -40 L -50 130 Q 0 150 50 130 L 60 -40 Z" fill="#f3e2b0" stroke="#5a3e08" stroke-width="6"/>
+    <!-- Lamelles -->
+    <line x1="-150" y1="-15" x2="150" y2="-15" stroke="#5a3e08" stroke-width="2" opacity="0.5"/>
+    <line x1="-130" y1="-5" x2="130" y2="-5" stroke="#5a3e08" stroke-width="2" opacity="0.5"/>
+
+    <!-- Filaments mycéliens depuis le bas du pied -->
+    <g stroke="#e8d486" stroke-width="3" fill="none" opacity="0.9">
+      <path d="M -40 140 Q -90 200 -160 230"/>
+      <path d="M -20 145 Q -60 220 -100 280"/>
+      <path d="M 0 150 Q 0 220 0 290"/>
+      <path d="M 20 145 Q 60 220 100 280"/>
+      <path d="M 40 140 Q 90 200 160 230"/>
+      <path d="M -55 130 Q -130 180 -210 195"/>
+      <path d="M 55 130 Q 130 180 210 195"/>
+    </g>
+    <!-- petits points en bout de filament -->
+    <g fill="#f1d56c">
+      <circle cx="-160" cy="230" r="6"/>
+      <circle cx="-100" cy="280" r="6"/>
+      <circle cx="0" cy="290" r="6"/>
+      <circle cx="100" cy="280" r="6"/>
+      <circle cx="160" cy="230" r="6"/>
+      <circle cx="-210" cy="195" r="6"/>
+      <circle cx="210" cy="195" r="6"/>
+    </g>
+
+    <!-- Petite silhouette Hérisson en bas droite -->
+    <g transform="translate(220 270) scale(1)">
+      <ellipse cx="0" cy="0" rx="48" ry="28" fill="#3a2410"/>
+      <!-- piquants -->
+      <g stroke="#1a0d04" stroke-width="2.5">
+        <line x1="-30" y1="-18" x2="-36" y2="-30"/>
+        <line x1="-15" y1="-24" x2="-15" y2="-38"/>
+        <line x1="0" y1="-26" x2="3" y2="-40"/>
+        <line x1="15" y1="-24" x2="18" y2="-38"/>
+        <line x1="30" y1="-18" x2="35" y2="-30"/>
+      </g>
+      <!-- nez -->
+      <circle cx="-46" cy="-2" r="4" fill="#1a0d04"/>
+      <!-- œil -->
+      <circle cx="-32" cy="-8" r="2" fill="#f1d56c"/>
+    </g>
+  </g>
+
+  <!-- Lettre Ω discrète en bas centre -->
+  <text x="512" y="970" text-anchor="middle" font-family="Georgia, serif" font-size="60" fill="#c9a227" opacity="0.55">Ω</text>
+</svg>
