@@ -6,6 +6,7 @@ node_modules/
 out/
 dist/
 next-env.d.ts
+tsconfig.tsbuildinfo
 
 # Production
 build/

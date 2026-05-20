@@ -407,18 +407,34 @@ function updateGhost(state: PacState, g: Ghost, dt: number, now: number) {
     return;
   }
 
-  // Mouvement effectif
-  const prevCellX = Math.round(g.cx);
-  const prevCellY = Math.round(g.cy);
+  // Mouvement effectif. On clampe au PROCHAIN centre de cellule atteint,
+  // sans jamais le dépasser : sinon le snap (g.cx = newCell) téléportait le
+  // fantôme en avant à chaque cellule → vitesse réelle ~1,85× la nominale.
+  const beforeX = g.cx;
+  const beforeY = g.cy;
   g.cx += g.dir.x * speed * dt;
   g.cy += g.dir.y * speed * dt;
 
-  // Détection de cell-crossing : si on vient d'entrer dans une nouvelle cellule, c'est le moment de re-décider.
-  const newCellX = Math.round(g.cx);
-  const newCellY = Math.round(g.cy);
-  if (newCellX !== prevCellX || newCellY !== prevCellY) {
-    g.cx = newCellX;
-    g.cy = newCellY;
+  let reachedCenter = false;
+  if (g.dir.x > 0) {
+    const c = Math.floor(beforeX) + 1;
+    if (g.cx >= c) { g.cx = c; reachedCenter = true; }
+  } else if (g.dir.x < 0) {
+    const c = Math.ceil(beforeX) - 1;
+    if (g.cx <= c) { g.cx = c; reachedCenter = true; }
+  } else if (g.dir.y > 0) {
+    const c = Math.floor(beforeY) + 1;
+    if (g.cy >= c) { g.cy = c; reachedCenter = true; }
+  } else if (g.dir.y < 0) {
+    const c = Math.ceil(beforeY) - 1;
+    if (g.cy <= c) { g.cy = c; reachedCenter = true; }
+  }
+
+  if (reachedCenter) {
+    // Aligne l'axe perpendiculaire pour rester centré dans le couloir,
+    // puis re-décide la direction depuis ce centre exact.
+    g.cx = Math.round(g.cx);
+    g.cy = Math.round(g.cy);
     pickGhostDirection(state, g);
   }
 

@@ -767,96 +767,114 @@ function drawOlivia(ctx: CanvasRenderingContext2D, state: PacState, time: number
     ctx.stroke();
   }
 
-  // Olivia sprite top-down (drawn for "down" then rotated for other dirs)
-  const baseAngle = Math.atan2(o.dir.y, o.dir.x) - Math.PI / 2; // facing direction
-  // default facing: down => angle = pi/2; baseAngle relative to "down":
-  ctx.rotate(baseAngle); // rotation applied
+  // Sprite vu de face, toujours debout (lisibilité à 22 px). Seul le
+  // filet pivote vers la direction de déplacement — le visage reste lisible.
+  const moving = o.dir.x !== 0 || o.dir.y !== 0;
+  const netAngle = moving ? Math.atan2(o.dir.y, o.dir.x) - Math.PI / 2 : 0;
+  const bob = Math.sin(time / 160) * (moving ? 1 : 0.4);
+  const swing = angry ? Math.sin(time / 90) * 0.5 : Math.sin(time / 240) * 0.22;
 
-  // T-shirt vert mousse
-  ctx.fillStyle = "#3b6a2c";
+  // Ombre portée au sol
   ctx.beginPath();
-  ctx.ellipse(0, 2, 5.5, 4.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 8, 6, 2.2, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
   ctx.fill();
 
-  // Short beige (lower part)
-  ctx.fillStyle = "#c79a64";
+  ctx.translate(0, bob);
+
+  // Filet à insectes (derrière le corps, pivote vers la direction)
+  ctx.save();
+  ctx.rotate(netAngle + swing);
+  const manche = 10.5 + (frame === 1 ? 0.7 : 0);
+  ctx.strokeStyle = "#7a4e1f";
+  ctx.lineWidth = 1.8;
+  ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.ellipse(0, 5.5, 4.5, 2.5, 0, 0, Math.PI * 2);
+  ctx.moveTo(0, 1);
+  ctx.lineTo(0, manche);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, manche + 2.4, 4.2, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(238,240,225,0.45)";
+  ctx.fill();
+  ctx.strokeStyle = "#eef0e1";
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+  ctx.restore();
+
+  // Corps (t-shirt vert mousse) avec contour sombre pour détacher du fond
+  ctx.beginPath();
+  ctx.ellipse(0, 3, 5.2, 5.6, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "#3f7330";
+  ctx.fill();
+  ctx.lineWidth = 1.4;
+  ctx.strokeStyle = "#16240f";
+  ctx.stroke();
+
+  // Cheveux blonds (derrière la tête) + mèches latérales
+  ctx.fillStyle = "#e7cf6f";
+  ctx.beginPath();
+  ctx.arc(0, -3.8, 5.4, 0, Math.PI * 2);
+  ctx.fill();
+  // mèches longues descendant sous la casquette, le long du buste
+  ctx.beginPath();
+  ctx.ellipse(-4.4, 1.4, 1.9, 5.6, 0.12, 0, Math.PI * 2);
+  ctx.ellipse(4.4, 1.4, 1.9, 5.6, -0.12, 0, Math.PI * 2);
+  ctx.fill();
+  // élastiques — cheveux attachés
+  ctx.fillStyle = "#b8893a";
+  ctx.beginPath();
+  ctx.ellipse(-4.5, -1.8, 1.6, 0.9, 0.12, 0, Math.PI * 2);
+  ctx.ellipse(4.5, -1.8, 1.6, 0.9, -0.12, 0, Math.PI * 2);
   ctx.fill();
 
-  // Cheveux blonds avec mèche
-  ctx.fillStyle = "#e8d486";
+  // Visage
   ctx.beginPath();
-  ctx.arc(0, -2, 5.2, 0, Math.PI * 2);
+  ctx.arc(0, -3.4, 4.3, 0, Math.PI * 2);
+  ctx.fillStyle = "#f3cd9e";
   ctx.fill();
-  // mèche qui dépasse à droite (de la casquette)
-  ctx.fillStyle = "#e8d486";
+  ctx.lineWidth = 1.1;
+  ctx.strokeStyle = "#c69b67";
+  ctx.stroke();
+
+  // Casquette rouge — élément le plus reconnaissable, fort contraste
   ctx.beginPath();
-  ctx.moveTo(3.4, -3);
-  ctx.lineTo(5.6, -1.2);
-  ctx.lineTo(4.6, 0);
+  ctx.arc(0, -4, 4.8, Math.PI * 1.03, Math.PI * 1.97, false);
   ctx.closePath();
+  ctx.fillStyle = "#e23b22";
   ctx.fill();
-
-  // Visage (skin)
-  ctx.fillStyle = "#f1c89a";
+  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = "#7c1d0e";
+  ctx.stroke();
+  // visière
   ctx.beginPath();
-  ctx.arc(0, -1.5, 3.8, 0, Math.PI * 2);
+  ctx.ellipse(0, -5.3, 4.7, 1.7, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "#bf3019";
   ctx.fill();
+  ctx.stroke();
 
-  // Yeux marron
+  // Sourcils déterminés
+  ctx.strokeStyle = "#9a7b3a";
+  ctx.lineWidth = 1;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-3, -4.6);
+  ctx.lineTo(-0.9, -4.1);
+  ctx.moveTo(3, -4.6);
+  ctx.lineTo(0.9, -4.1);
+  ctx.stroke();
+
+  // Yeux marron, perçants (blanc + iris bien dimensionnés)
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.ellipse(-1.8, -3, 1.3, 1.6, 0, 0, Math.PI * 2);
+  ctx.ellipse(1.8, -3, 1.3, 1.6, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.fillStyle = "#3a1f0b";
   ctx.beginPath();
-  ctx.arc(-1.4, -2.2, 0.7, 0, Math.PI * 2);
-  ctx.arc(1.4, -2.2, 0.7, 0, Math.PI * 2);
+  ctx.arc(-1.8, -2.7, 1, 0, Math.PI * 2);
+  ctx.arc(1.8, -2.7, 1, 0, Math.PI * 2);
   ctx.fill();
-
-  // Sourire léger
-  ctx.strokeStyle = "#7a3a16";
-  ctx.lineWidth = 0.5;
-  ctx.beginPath();
-  ctx.arc(0, -0.5, 1.3, 0.1 * Math.PI, 0.9 * Math.PI);
-  ctx.stroke();
-
-  // Casquette rouge sur le dessus (vue de dessus)
-  ctx.fillStyle = "#c0331c";
-  ctx.beginPath();
-  ctx.ellipse(0, -3.5, 4.6, 3.4, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // visière
-  ctx.fillStyle = "#8c2210";
-  ctx.beginPath();
-  ctx.ellipse(0, -6.6, 3.6, 1.4, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // dos casquette
-  ctx.fillStyle = "#f1c89a";
-  ctx.beginPath();
-  ctx.arc(0, -3.5, 0.9, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Filet à insectes — toujours dans la direction du mouvement (= devant le sprite)
-  // Le sprite a été tourné. "Devant" = -y dans le repère du sprite (vers le haut local quand on est tourné). Actually
-  // For top-down sprite when facing down (angle 0), forward is +y in canvas. Since we rotated by baseAngle, forward is +y in this sprite's local frame.
-  const swing = angry ? Math.sin(time / 90) * 1.2 : Math.sin(time / 220) * 0.4;
-  ctx.save();
-  // The forward of the sprite is +y (down). Make the net go forward.
-  // We use a bit of asymmetry: manche partant du buste et finissant devant et un peu sur le côté.
-  const manche = 11 + (frame === 0 ? 0 : 0.6);
-  ctx.strokeStyle = "#8a5a26";
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(1.8, 1.5);
-  ctx.lineTo(1.8 + swing, manche + 1);
-  ctx.stroke();
-  // boucle du filet (cercle blanc devant)
-  ctx.beginPath();
-  ctx.arc(2.3 + swing * 1.2, manche + 1.6, 3.2, 0, Math.PI * 2);
-  ctx.strokeStyle = "#cfd6c0";
-  ctx.lineWidth = 0.9;
-  ctx.stroke();
-  ctx.fillStyle = "rgba(244,236,210,0.32)";
-  ctx.fill();
-  ctx.restore();
 
   ctx.restore();
 }

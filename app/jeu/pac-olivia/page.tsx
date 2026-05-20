@@ -14,9 +14,9 @@ import { ChevronLeft } from "lucide-react";
 
 const TUTO_PAC: Etape[] = [
   {
-    titre: "1 · Tu incarnes une disciple",
+    titre: "1 · Tu incarnes la Prophétesse",
     texte:
-      "Blonde, casquette rouge, yeux marron, filet à insectes. Elle entre dans un cimetière d'Île-de-France pour recenser les pollinisateurs. Pas pour les attraper : pour les recenser. C'est plus saint.",
+      "Tu incarnes la Prophétesse — Celle-qui-marche-entre-les-tombes. Port altier, mâchoire sûre, une chevelure blonde sous la casquette rouge ; mais ce qu'on retient, ce sont ses yeux : marron, perçants, où couvent une intelligence aiguisée et une volonté que rien ne courbe. Sous ce calme, un feu. Filet à la main, elle s'avance entre les sépultures d'Île-de-France non pour capturer les pollinisateurs, mais pour les recenser, les nommer, les honorer. Recenser plutôt que prendre : c'est là toute sa grâce.",
   },
   {
     titre: "2 · Déplace-toi",
