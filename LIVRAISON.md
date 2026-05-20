@@ -445,7 +445,7 @@ npm run ios:open
 
 ─────────────────────────────
 **Charif Hachichi**
-[Charif.Hachichi@Egis-Group.com](mailto:Charif.Hachichi@Egis-Group.com)
+[Charif.Hachichi@icloud.com](mailto:Charif.Hachichi@icloud.com)
 ─────────────────────────────
 
 *Amen-Compost. Que la Sève soit avec toi. — V2 livrée.*

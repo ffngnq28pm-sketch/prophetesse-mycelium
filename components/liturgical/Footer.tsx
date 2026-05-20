@@ -14,10 +14,10 @@ export function Footer() {
           <div className="text-xs text-mousse-600 dark:text-parchemin-200/60">
             <p className="font-semibold">Charif Hachichi</p>
             <a
-              href="mailto:Charif.Hachichi@Egis-Group.com"
+              href="mailto:Charif.Hachichi@icloud.com"
               className="text-ocre-600 hover:underline dark:text-ocre-400"
             >
-              Charif.Hachichi@Egis-Group.com
+              Charif.Hachichi@icloud.com
             </a>
           </div>
         </div>

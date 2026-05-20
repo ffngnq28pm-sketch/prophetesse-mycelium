@@ -231,7 +231,7 @@ Si Apple change le minimum supporté (typiquement passé à iOS 16 puis 17 chaqu
 
 **Date de mise à jour** : [date]
 
-Cette application est éditée par Charif Hachichi (charif.hachichi@egis-group.com).
+Cette application est éditée par Charif Hachichi (Charif.Hachichi@icloud.com).
 
 **Aucune donnée personnelle n'est collectée, transmise, ni partagée.**
 
@@ -252,7 +252,7 @@ L'application ne se connecte à aucun serveur externe pour son fonctionnement no
 
 **Droits** : étant donné qu'aucune donnée n'est collectée par l'éditeur, le droit d'accès, de rectification, d'effacement, à la portabilité et d'opposition n'a pas d'objet ici. Pour effacer vos données locales : ouvrez l'application, allez dans « Paramètres », et choisissez « Réinitialiser ».
 
-**Contact** : pour toute question, écrivez à charif.hachichi@egis-group.com.
+**Contact** : pour toute question, écrivez à Charif.Hachichi@icloud.com.
 
 ---
 
