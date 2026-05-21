@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { totems } from "@/data/totems";
 import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Ornement } from "@/components/liturgical/Ornement";
 import { Hydrated } from "@/components/liturgical/Hydrated";
-import { Sun, Moon, RefreshCcw } from "lucide-react";
+import { Sun, Moon, RefreshCcw, Download, Upload } from "lucide-react";
 
 const SUGGESTIONS = ["Sœur Compost", "Frère Lichen", "Sœur Halicte", "Frère Hérisson", "Sœur Mycélium", "Frère Ver", "Sœur Pollen", "Frère Pollen"];
 
@@ -33,9 +33,48 @@ export default function ParametresPage() {
 }
 
 function Contenu() {
-  const { nomBaptismale, setNomBaptismale, totem, setTotem, theme, toggleTheme, reset } = useStore();
+  const { nomBaptismale, setNomBaptismale, totem, setTotem, theme, toggleTheme, reset, exportData, importData } =
+    useStore();
   const [nom, setNom] = useState(nomBaptismale);
   const [confirmReset, setConfirmReset] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingImport, setPendingImport] = useState<string | null>(null);
+  const [importMsg, setImportMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const handleExport = () => {
+    const blob = new Blob([exportData()], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `mycelium-sauvegarde-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permet de re-sélectionner le même fichier ensuite
+    if (!file) return;
+    setImportMsg(null);
+    const reader = new FileReader();
+    reader.onload = () => setPendingImport(typeof reader.result === "string" ? reader.result : null);
+    reader.onerror = () => setImportMsg({ ok: false, text: "Lecture du fichier impossible." });
+    reader.readAsText(file);
+  };
+
+  const confirmImport = () => {
+    if (!pendingImport) return;
+    const res = importData(pendingImport);
+    setPendingImport(null);
+    if (res.ok) {
+      setImportMsg({ ok: true, text: "Sauvegarde restaurée. Rechargement du sanctuaire…" });
+      setTimeout(() => window.location.reload(), 1100);
+    } else {
+      setImportMsg({ ok: false, text: res.error ?? "Échec de la restauration." });
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -124,6 +163,51 @@ function Contenu() {
             <Moon size={18} /> Vigile Nocturne
           </button>
         </div>
+      </Card>
+
+      <Card>
+        <CardSubtitle>Sauvegarde du Pèlerinage</CardSubtitle>
+        <CardTitle>Exporter ou restaurer ta progression</CardTitle>
+        <p className="mt-2 font-serif text-mousse-800 dark:text-parchemin-100">
+          Ta progression — graines, rituels, confessions, scores, chapitres — vit dans ce seul appareil.
+          Exporte un fichier de sauvegarde de temps en temps : un nettoyage du navigateur ou une mise à jour
+          du système peut tout effacer sans prévenir. Le mycélium n'oublie pas ; le cache, lui, oublie.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button onClick={handleExport}>
+            <Download size={14} /> Exporter ma sauvegarde
+          </Button>
+          <Button variant="ghost" onClick={() => fileInputRef.current?.click()}>
+            <Upload size={14} /> Restaurer une sauvegarde
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            onChange={handleFile}
+            className="hidden"
+          />
+        </div>
+        {pendingImport && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Badge variant="grace">Restaurer écrasera ta progression actuelle.</Badge>
+            <Button onClick={confirmImport}>Confirmer la restauration</Button>
+            <Button variant="ghost" onClick={() => setPendingImport(null)}>
+              Annuler
+            </Button>
+          </div>
+        )}
+        {importMsg && (
+          <p
+            className={`mt-3 font-serif text-sm ${
+              importMsg.ok
+                ? "text-mousse-700 dark:text-ocre-300"
+                : "text-terre-600 dark:text-terre-300"
+            }`}
+          >
+            {importMsg.text}
+          </p>
+        )}
       </Card>
 
       <Card className="border-terre-500/40">
