@@ -1,7 +1,28 @@
 "use client";
 
 import { CHAPITRES, Objectif, ObjectifId, Chapitre } from "@/data/voie";
-import { ProphetesseState } from "./store";
+import { ProphetesseData } from "./store";
+
+// Sous-ensemble exact de l'état dont dépend le calcul de progression.
+// Permet aux pages de ne s'abonner qu'à ces champs plutôt qu'à tout le store.
+export type ProgressState = Pick<
+  ProphetesseData,
+  | "nomBaptismale"
+  | "totem"
+  | "onboardingFait"
+  | "rituelsParJour"
+  | "livresChapitresLus"
+  | "confessions"
+  | "graines"
+  | "partiesTetris"
+  | "lignesCompostees"
+  | "niveauMaxPac"
+  | "pollinisateursRecenses"
+  | "sanctuairesVisites"
+  | "jardin"
+  | "fetesCelebrees"
+  | "chapitres"
+>;
 
 export interface ObjectifProgress {
   objectif: Objectif;
@@ -18,7 +39,7 @@ export interface ChapitreProgress {
   unlocked: boolean;
 }
 
-function avancement(id: ObjectifId, s: ProphetesseState): number {
+function avancement(id: ObjectifId, s: ProgressState): number {
   switch (id) {
     case "choisir-nom":
       return s.nomBaptismale.trim().length > 0 ? 1 : 0;
@@ -80,7 +101,7 @@ function avancement(id: ObjectifId, s: ProphetesseState): number {
   }
 }
 
-export function computeProgress(state: ProphetesseState): ChapitreProgress[] {
+export function computeProgress(state: ProgressState): ChapitreProgress[] {
   const result: ChapitreProgress[] = [];
   let previousComplete = true; // chapitre 1 toujours unlocked
   for (const chapitre of CHAPITRES) {

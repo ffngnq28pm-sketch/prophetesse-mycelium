@@ -5,18 +5,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useStore } from "@/lib/store";
+import { useShallow } from "zustand/react/shallow";
 import { getVersetDuJour } from "@/data/versets";
 import { getCitationDuJour } from "@/data/citations";
 import { getNiveauPour } from "@/data/niveaux";
 import { getProchainFete } from "@/data/calendrier";
 import { getTotem } from "@/data/totems";
 import { computeProgress, currentChapitreIndex } from "@/lib/voie-progress";
+import { computeStreak, streakJalon } from "@/lib/streak";
 import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Ornement } from "@/components/liturgical/Ornement";
 import { Hydrated } from "@/components/liturgical/Hydrated";
 import { HelpButton } from "@/components/liturgical/HelpButton";
-import { Sprout, Flame, BookOpen, ScrollText, Gamepad2, Trees, Map, ChevronRight } from "lucide-react";
+import { Sprout, Flame, BookOpen, ScrollText, Gamepad2, Trees, Map, Users, Leaf, Award, LineChart, ChevronRight } from "lucide-react";
 import { todayKey, formatDate } from "@/lib/utils";
 
 export default function Sanctuaire() {
@@ -46,7 +48,28 @@ function Decideur() {
 }
 
 function HomeContent() {
-  const state = useStore();
+  // Abonnement ciblé : seulement les champs réellement lus par le tableau de bord.
+  const state = useStore(
+    useShallow((s) => ({
+      nomBaptismale: s.nomBaptismale,
+      totem: s.totem,
+      onboardingFait: s.onboardingFait,
+      graines: s.graines,
+      dateEntreeOrdre: s.dateEntreeOrdre,
+      rituelsParJour: s.rituelsParJour,
+      livresChapitresLus: s.livresChapitresLus,
+      confessions: s.confessions,
+      partiesTetris: s.partiesTetris,
+      lignesCompostees: s.lignesCompostees,
+      niveauMaxPac: s.niveauMaxPac,
+      pollinisateursRecenses: s.pollinisateursRecenses,
+      sanctuairesVisites: s.sanctuairesVisites,
+      jardin: s.jardin,
+      fetesCelebrees: s.fetesCelebrees,
+      chapitres: s.chapitres,
+      visitesInsectesObservees: s.visitesInsectesObservees,
+    }))
+  );
   const progress = useMemo(() => computeProgress(state), [state]);
   const currentIdx = currentChapitreIndex(progress);
   const currentChap = progress[currentIdx];
@@ -63,6 +86,8 @@ function HomeContent() {
 
   const key = todayKey();
   const ritualsTodayDone = Object.values(state.rituelsParJour[key] ?? {}).filter(Boolean).length;
+  const streak = useMemo(() => computeStreak(state.rituelsParJour), [state.rituelsParJour]);
+  const jalonStreak = streakJalon(streak.actuel);
 
   return (
     <div className="space-y-5">
@@ -153,6 +178,12 @@ function HomeContent() {
                 ? "Sept offices. Sœur Compost danse."
                 : "En cours, sans précipitation."}
             </p>
+            {streak.actuel > 0 && (
+              <p className="mt-1 flex items-center gap-1 font-serif text-xs text-ocre-700 dark:text-ocre-400">
+                <Flame size={12} /> {streak.actuel} jour{streak.actuel > 1 ? "s" : ""} d'affilée
+                {jalonStreak ? ` · ${jalonStreak}` : ""}
+              </p>
+            )}
           </Card>
         </Link>
         {prochaineF && (
@@ -226,6 +257,10 @@ function HomeContent() {
           <QuickLink href="/confession" icon={<ScrollText size={20} />} label="Confessionnal" />
           <QuickLink href="/jeu" icon={<Gamepad2 size={20} />} label="Jeux liturgiques" />
           <QuickLink href="/sanctuaires" icon={<Map size={20} />} label="Sanctuaires" />
+          <QuickLink href="/hagiographie" icon={<Users size={20} />} label="Hagiographie" />
+          <QuickLink href="/almanach" icon={<Leaf size={20} />} label="Almanach" />
+          <QuickLink href="/reliques" icon={<Award size={20} />} label="Reliques" />
+          <QuickLink href="/annales" icon={<LineChart size={20} />} label="Annales" />
           <QuickLink href="/glossaire" icon={<BookOpen size={20} />} label="Glossaire" />
         </div>
       </section>
