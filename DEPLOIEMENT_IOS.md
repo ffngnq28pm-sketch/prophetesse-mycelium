@@ -1,267 +1,190 @@
 # 📱 Déploiement iOS — Prophétesse-Mycélium
 
-> Guide complet pour publier l'app sur l'App Store, avec étapes, pièges, et un draft de politique de confidentialité.
-
-## ✅ Ce qui est déjà fait dans cette V2
-
-- Next.js configuré en **static export** (`output: 'export'` dans `next.config.mjs`)
-- Toutes les routes dynamiques ont leur `generateStaticParams` → 56 pages statiques générées (Livre + Chapitres inclus)
-- **Capacitor 6** installé avec plateforme iOS scaffoldée (`ios/`)
-- `capacitor.config.ts` configuré avec :
-  - appId : `fr.ordremycelienne.app`
-  - appName : `Prophétesse-Mycélium`
-  - splash screen vert mousse 1500 ms
-- **Manifest PWA** (`public/manifest.webmanifest`) — installable sur écran d'accueil iPhone
-- **Icônes générées** par `npm run icons` (depuis `public/icon-source.svg`) :
-  - 192, 512, 1024 (PWA)
-  - 512 maskable
-  - 180×180 apple-touch-icon
-  - splash 1170×2532 (iPhone 14/15) + 1179×2556 (iPhone 15 Pro)
-- **Meta iOS** ajoutées dans `app/layout.tsx` : `apple-mobile-web-app-capable`, `status-bar-style: black-translucent`, `viewport-fit: cover`
-- **Safe-area CSS** : padding insets en mode standalone uniquement (pas de double-padding en navigateur)
-- Audio Pac-Olivia derrière geste utilisateur (initialisé au premier `touchstart`/clic d'activation)
-- localStorage utilisé partout (WKWebView OK)
-- Scripts npm : `ios:add`, `ios:sync`, `ios:open`, `preview`, `icons`
+> Guide pour publier l'app sur l'App Store. À jour pour la **V3** (trois jeux, navigation regroupée, Colophon, page de confidentialité).
+> Demain, on suit ce guide ensemble — les étapes Xcode et App Store Connect demandent ta main sur le Mac.
 
 ---
 
-## 🎯 Pré-requis utilisatrice
+## ✅ Ce qui est déjà en place
 
-Pour publier sur l'App Store, il te faut :
+- **Next.js en static export** (`output: "export"`) → 83 pages statiques générées dans `out/`.
+- **Capacitor 6** installé, plateforme iOS scaffoldée (`ios/`).
+- `capacitor.config.ts` configuré :
+  - `appId` : **`fr.ordremycelienne.app`**
+  - `appName` : **Prophétesse-Mycélium**
+  - splash screen vert mousse 1500 ms
+- **Compte Apple Developer déjà actif** — Team ID `8BDCCST69F`, compte de build/submit `Charif_Hachichi@hotmail.fr`, Paid Apps Agreement signé. Rien à payer, rien à attendre côté compte.
+- Icônes générées (`npm run icons` depuis `public/icon-source.svg`).
+- Meta iOS dans `app/layout.tsx`, safe-areas CSS, zoom et `reduced-motion` respectés.
+- 100 % local : `localStorage`, aucune permission native, polices embarquées dans le build (pas de requête réseau au lancement).
+- **Page de confidentialité publique** : route `/confidentialite` dans l'app — son URL servira de « Politique de confidentialité » exigée par Apple.
+- Scripts npm : `ios:add`, `ios:sync`, `ios:open`, `build:static`, `preview`, `icons`.
 
-1. **Un Mac** (impératif — Xcode n'existe que sur macOS).
-2. **Xcode 15+** (gratuit sur Mac App Store).
-3. **Un compte Apple Developer** payant : **99 USD/an** (https://developer.apple.com/programs/).
-4. **Un identifiant iCloud** déjà configuré dans Xcode (Preferences → Accounts).
-5. **Un iPhone** physique pour les tests réels (optionnel mais fortement conseillé — le simulateur ne capture pas tout, en particulier les gestes tactiles).
+---
 
-## 🏁 Étape 1 — Tester d'abord en PWA (5 minutes, sans Mac)
+## 🎯 Pré-requis
 
-C'est l'étape gratuite et instantanée. Recommandé avant tout le reste.
+1. **Un Mac** (impératif — Xcode n'existe que sur macOS). ✔️ tu en as un.
+2. **Xcode 15+** (gratuit sur le Mac App Store).
+3. **Compte Apple Developer** payant. ✔️ déjà actif (Team `8BDCCST69F`).
+4. Le compte Apple Developer ajouté dans Xcode → Réglages → Comptes.
+5. Un **iPhone physique** pour les tests réels (fortement conseillé : le simulateur ne capture pas tout, surtout le tactile des jeux).
 
-1. Sur ton Mac (ou PC), lance le build statique :
-   ```bash
-   npm run build:static
-   npm run preview   # sert /out via npx serve
-   ```
-2. Note l'URL locale (ex. `http://192.168.1.X:3000` — affichée par `serve`).
-3. Sur ton iPhone, **assure-toi qu'il est sur le même Wi-Fi**.
-4. Ouvre Safari (pas Chrome — uniquement Safari peut installer une PWA sur iOS).
-5. Va sur l'URL.
-6. Appuie sur le bouton **Partager** → **Sur l'écran d'accueil**.
-7. L'app s'installe avec ton icône dorée. Tu peux la lancer depuis l'accueil de l'iPhone : elle ouvre en plein écran, avec safe-areas respectées, et sans barre Safari.
+---
 
-Cela suffit pour un usage personnel. La suite n'est utile que si tu veux publier sur l'App Store et la rendre accessible à d'autres.
+## 🛠 Étape 1 — Build iOS via Capacitor
 
-## 🛠 Étape 2 — Build iOS natif via Capacitor
-
-Sur un Mac avec Xcode installé :
+Sur le Mac, à la racine du projet :
 
 ```bash
-# (Une seule fois) Installer les dépendances
-npm install
-
-# Régénérer les icônes si tu as modifié l'icône maîtresse
-npm run icons
-
-# Build statique + sync vers iOS
-npm run ios:sync
-
-# Ouvrir Xcode
-npm run ios:open
+npm install            # une seule fois
+npm run ios:sync       # build statique + copie de /out vers ios/App/App/public/
+npm run ios:open       # ouvre le projet dans Xcode
 ```
 
-> Si tu repars d'un clone propre sans dossier `ios/` :
-> ```bash
-> npm run ios:add    # crée le projet Xcode
-> npm run ios:sync   # copie /out dans ios/App/App/public/
-> ```
+> Toujours relancer `npm run ios:sync` après une modification du code web,
+> juste avant d'archiver — sinon l'app embarque une version périmée.
 
-## 🖥 Étape 3 — Configuration Xcode
+---
 
-1. Sélectionne le **target App** dans le panneau de gauche.
+## 🖥 Étape 2 — Configuration Xcode
+
+1. Sélectionne le target **App** dans le panneau de gauche.
 2. Onglet **Signing & Capabilities** :
-   - Coche **Automatically manage signing**
-   - Choisis ton **Team** (ton compte Apple Developer)
-   - Vérifie que le **Bundle Identifier** est `fr.ordremycelienne.app`
+   - coche **Automatically manage signing** ;
+   - choisis le **Team** `8BDCCST69F` ;
+   - vérifie le **Bundle Identifier** : `fr.ordremycelienne.app`.
 3. Onglet **General** :
-   - **Display Name** : Prophétesse-Mycélium
-   - **Minimum Deployments** : iOS 15.0 (ou plus récent — pas plus de 14, certains polyfills ne sont plus pris en charge)
-   - **Device Orientation** : Portrait uniquement (recommandé pour les jeux)
+   - **Display Name** : Prophétesse-Mycélium ;
+   - **Version** (CFBundleShortVersionString) : `1.0` pour la première soumission ;
+   - **Build** : `1` — à **incrémenter à chaque upload** vers App Store Connect ;
+   - **Minimum Deployments** : iOS 15.0 minimum ;
+   - **Device Orientation** : **Portrait uniquement**.
 4. Onglet **Info** :
-   - `App Transport Security Settings` → vérifie que `Allow Arbitrary Loads` est sur `NO` (sécurité)
-   - `Privacy - Camera Usage Description` etc. : pas besoin, l'app ne demande aucune permission native
+   - `App Transport Security` : `Allow Arbitrary Loads` = **NO** ;
+   - aucune clé de permission (`Camera`, `Location`…) n'est nécessaire — l'app n'en demande aucune.
 
-## 📲 Étape 4 — Test sur simulateur, puis device
+---
 
-**Simulateur** :
-- Dans la barre haute de Xcode, choisis un simulateur (ex. **iPhone 15 Pro**)
-- Bouton ▶ ou `Cmd+R`
-- L'app se lance, le splash screen vert mousse apparaît, puis le sanctuaire.
+## 📲 Étape 3 — Test simulateur, puis device
 
-**Device réel** :
-- Branche ton iPhone en USB
-- Autorise « Faire confiance à cet ordinateur » sur ton iPhone
-- Dans Xcode, choisis ton iPhone comme target
-- Bouton ▶
-- La première fois, sur l'iPhone : Réglages → Général → VPN et gestion appareils → fais confiance à ton certificat développeur
+**Simulateur** : choisis un iPhone récent dans la barre haute, `Cmd+R`.
 
-Vérifie en particulier :
-- ✅ Sanctuaire affiche correctement le verset du jour
-- ✅ Tu peux cocher un rituel et la graine est ajoutée
-- ✅ Tu peux confesser un péché
-- ✅ Le **Tetris du Compost** fonctionne en tactile (swipe + boutons)
-- ✅ **Pac-Olivia** : swipes 4 directions, tap = pause, audio toggle réactif
-- ✅ Pas de zone safe-area mangée (notch + home indicator visibles, contenu pas masqué)
-- ✅ Rotation portrait verrouillée
+**Device réel** : branche l'iPhone en USB, « Faire confiance », sélectionne-le comme cible, `Cmd+R`. Première fois sur l'iPhone : Réglages → Général → VPN et gestion d'appareils → fais confiance au certificat.
 
-## 🚀 Étape 5 — Archive et upload vers App Store Connect
+À vérifier :
+- ✅ Le Sanctuaire affiche le verset et la citation du jour, la série (streak).
+- ✅ Cocher un rituel ajoute une Graine ; confesser un péché fonctionne.
+- ✅ **La Chute du Compost** : tactile (pavé + swipe), ombre de chute visible.
+- ✅ **La Chasse aux Pollinisateurs** : pavé directionnel, audio réactif, canvas net.
+- ✅ **La Nuit des Empreintes** : grille de déduction, modes Sonder/Marquer.
+- ✅ Paramètres → export/import de sauvegarde (le `.json` se télécharge).
+- ✅ Safe-areas respectées (notch + indicateur home), rotation portrait verrouillée.
 
-1. Dans Xcode : **Product → Scheme → Edit Scheme** : choisis **Release** comme build configuration de l'Archive.
-2. Choisis « Any iOS Device » dans la barre haute (pas un simulateur).
-3. **Product → Archive** (cela peut prendre quelques minutes).
-4. Quand l'Archive est prête, la fenêtre **Organizer** s'ouvre.
-5. Clique **Distribute App** → **App Store Connect** → **Upload**.
-6. Suit les wizards. La build s'upload vers App Store Connect.
-7. Va sur https://appstoreconnect.apple.com → ton app apparaît dans **TestFlight** sous **iOS Builds** (statut « En cours de traitement » pendant 15-30 min).
+---
 
-## 📝 Étape 6 — Checklist App Store
+## 🚀 Étape 4 — Fiche App Store Connect, Archive, Upload
 
-### Avant la soumission, tu dois préparer :
+1. Sur [App Store Connect](https://appstoreconnect.apple.com) → **Apps** → **+** → **Nouvelle app**.
+   - Plateforme : iOS ; Nom : **Prophétesse-Mycélium** ;
+   - Bundle ID : `fr.ordremycelienne.app` (à enregistrer d'abord comme App ID dans le portail Developer si ce n'est pas fait) ;
+   - SKU : un identifiant libre, ex. `prophetesse-mycelium-001`.
+   - ⚠️ C'est une **app distincte** de ton app `Charif` — bundle différent, fiche différente.
+2. Dans Xcode : **Product → Scheme → Edit Scheme** → Archive en **Release**.
+3. Cible « **Any iOS Device** » (pas un simulateur).
+4. **Product → Archive**.
+5. Dans l'**Organizer** : **Distribute App → App Store Connect → Upload**.
+6. La build apparaît dans App Store Connect → **TestFlight** (statut « En cours de traitement », 15–30 min).
+
+---
+
+## 📝 Étape 5 — Métadonnées App Store (prêtes à copier)
+
+> 🚨 **Règle absolue : aucune marque déposée dans la fiche.** Ne jamais écrire « Tetris » ni « Pac » — ni dans le nom, le sous-titre, la description, les mots-clés, ou le texte d'une capture d'écran. Les jeux s'appellent **La Chute du Compost**, **La Chasse aux Pollinisateurs**, **La Nuit des Empreintes**. Apple rejette sous le guideline 5.2 (propriété intellectuelle), et les détenteurs de ces marques surveillent l'App Store.
 
 | Élément | Contenu |
 |---|---|
-| **Nom App Store** | « Prophétesse-Mycélium » (30 caractères max) |
-| **Sous-titre** | « Compagnon ludique d'écologie joyeuse » (30 caractères max) |
-| **Catégorie principale** | **Lifestyle** (recommandé, évite Reference et Health & Fitness) |
-| **Catégorie secondaire** | **Games** ou **Books** |
-| **Mots-clés** (100 char) | écologie,jeu,liturgie,satire,nature,jardin,humour,compost,biodiversité |
-| **Description** | Voir ci-dessous |
-| **Politique de confidentialité (URL)** | Voir draft ci-dessous |
-| **Captures d'écran** | Voir tailles requises ci-dessous |
-| **URL marketing** (optionnel) | Si tu en as une |
-| **Support URL** | Au pire, une mailto: ou page GitHub |
-| **Tranche d'âge** | 4+ (aucun contenu sensible) |
+| **Nom** | Prophétesse-Mycélium |
+| **Sous-titre** (≤ 30 car.) | Compagnon d'écologie joyeuse |
+| **Catégorie principale** | Lifestyle |
+| **Catégorie secondaire** | Jeux *(ou Divertissement)* |
+| **Mots-clés** (≤ 100 car.) | écologie,jeu,nature,jardin,humour,satire,compost,biodiversité,puzzle,déduction |
+| **Tranche d'âge** | 4+ |
+| **URL de confidentialité** | `https://<ton-domaine-vercel>/confidentialite` |
+| **URL de support** | un `mailto:Charif.Hachichi@icloud.com` ou une page simple |
 
-### Description App Store (proposition)
+### Description (proposition, sans marque)
 
 ```
-Prophétesse-Mycélium est un compagnon ludique et satirique pour écologistes joyeux. 
-Une application qui invite à observer les Lichens, à composter ses épluchures, à refuser 
-les dosettes d'aluminium, à compter les Hérissons des cimetières — et à le faire avec 
-sourire.
+Prophétesse-Mycélium est un compagnon ludique et satirique pour écologistes
+joyeux. Une application qui invite à observer les lichens, à composter ses
+épluchures, à refuser les dosettes d'aluminium, à compter les hérissons des
+cimetières — et à le faire avec le sourire.
 
-📖 Un livre sacré original (28 000 mots) avec notes de bas de page humoristiques
-✅ Sept rituels écologiques quotidiens à cocher  
-🔥 Confessionnal Mycélien avec 35 péchés écologiques et pénitences absurdes
-🌱 Échelle de progression en 9 paliers
-📅 Calendrier liturgique de 12 fêtes (Nuit des Chiroptères, Pèlerinage des Cimetières…)
-🗺 Carte des cimetières-sanctuaires d'Île-de-France
-🎮 Deux jeux liturgiques :
-   • Tetris du Compost : trie tes déchets
-   • Pac-Olivia : recense les insectes dans les cimetières en évitant les fantômes
+📖 Un livre sacré original avec notes de bas de page humoristiques
+✅ Sept rituels écologiques quotidiens, et une série de jours à entretenir
+🔥 Un confessionnal de 35 « péchés » écologiques aux pénitences absurdes
+🌱 Un parcours en neuf chapitres, un Jardin à faire pousser, un reliquaire
+📅 Un calendrier liturgique, une hagiographie, un almanach du vivant
 
-Application 100% locale : aucune collecte de données, aucun compte, aucune publicité. 
-Tes données restent dans ton téléphone.
+🎮 Trois jeux liturgiques :
+   • La Chute du Compost — empile et trie tes déchets
+   • La Chasse aux Pollinisateurs — recense les insectes, esquive les fantômes
+   • La Nuit des Empreintes — un puzzle de déduction nocturne au cimetière
 
-⚠️ Cette application est une œuvre satirique et ludique. L'« Ordre Mycélien » est 
-fictif. Les conseils écologiques cités s'inspirent des bonnes pratiques de la LPO, 
-du Muséum national d'Histoire naturelle, et du protocole Vigie-Flore — mais l'humour 
-prime sur la prescription.
+Application 100 % locale : aucune collecte de données, aucun compte, aucune
+publicité. Tes données restent dans ton téléphone.
+
+⚠️ Cette application est une œuvre satirique et ludique. L'« Ordre Mycélien »
+est fictif. Les conseils écologiques s'inspirent des bonnes pratiques de la
+LPO et du Muséum national d'Histoire naturelle — mais l'humour prime sur la
+prescription.
 
 Que la Sève soit avec toi. Amen-Compost.
 ```
 
-### Captures d'écran requises (Apple 2025)
+### Captures d'écran
 
-Les **tailles obligatoires** pour iPhone :
-- **6.9″ (iPhone 16 Pro Max)** : 1320×2868 pixels — **OBLIGATOIRE**
-- **6.5″ (iPhone 11 Pro Max)** : 1284×2778 — **OBLIGATOIRE**
-- **5.5″ (iPhone 8 Plus)** : 1242×2208 — **OBLIGATOIRE**
+Apple impose au moins la plus grande taille iPhone (**6,9″**, ex. 1320 × 2868 px) ; il décline les tailles inférieures automatiquement. App Store Connect affiche les tailles exactes attendues au moment du dépôt — elles évoluent, fie-toi à ce qu'il demande.
 
-Suggestion : 6 captures, dans cet ordre, pour bien vendre :
-1. **Sanctuaire** (verset + citation du jour + état du pèlerinage)
-2. **Livre d'Olivia** (chapitre avec lettrine et notes de bas de page visibles)
-3. **Rituels** (Sept Offices Verts)
-4. **Confessionnal** en cours (péché + pénitence)
-5. **Tetris du Compost** en pleine partie
-6. **Pac-Olivia** au cœur du Père-Lachaise, avec Sainte Colère active
+Six captures suggérées, dans cet ordre :
+1. Le **Sanctuaire** (verset, citation, série en cours).
+2. Le **Livre Sacré** (chapitre avec lettrine et notes).
+3. Les **Rituels** (Sept Offices Verts).
+4. **La Nuit des Empreintes** en pleine déduction.
+5. **La Chasse aux Pollinisateurs** en partie.
+6. Le **Jardin** reverdi.
 
-Pour les capturer : utiliser **Cmd+S** dans le simulateur iOS de la bonne taille.
+Capture via `Cmd+S` dans le simulateur iOS à la bonne taille.
 
-## 🚨 Pièges connus et tactiques de défense
+### App Privacy (questionnaire App Store Connect)
 
-### 1. **Refus App Store catégorie « religion »**
-
-Apple est strict avec les apps qui pourraient se présenter comme religieuses, prosélytes, ou divisives. L'« Ordre Mycélien » sonne comme une secte aux yeux d'un reviewer fatigué un lundi matin.
-
-**Tactique** :
-- **Ne PAS** mettre « religion » dans le nom, le sous-titre, ou les mots-clés.
-- **Préférer** « satirique », « ludique », « lifestyle » dans la description.
-- Insister dès le premier paragraphe sur le caractère **fictif et humoristique**.
-- Catégorie : **Lifestyle** (et pas **Reference**).
-- En cas de refus initial, le **3.1.5** ou **4.0** sont les rejets typiques — répondre dans App Store Connect avec un argumentaire bref : « Cette application est une œuvre satirique francophone dans la lignée de la tradition humoristique française (Pierre Desproges, etc.), n'a aucune visée prosélyte, et propose des conseils écologiques inspirés de pratiques scientifiques. »
-
-### 2. **Sans description claire de l'objet ludique → refus 4.0 "Design - Minimum Functionality"**
-
-L'app a deux jeux + du contenu + des rituels, donc on est largement au-dessus de la barre. Mais :
-- **Mentionne les jeux EN PREMIER** dans la première capture d'écran si tu vises catégorie Lifestyle/Games.
-
-### 3. **Identifiant unique de l'utilisateur**
-
-L'app utilise localStorage. **Pas de tracking, pas d'identifiant publicitaire, pas de cookie tiers.** Cocher « Données non collectées » dans App Privacy.
-
-### 4. **Apple Sign-in obligatoire ?**
-
-Non, l'app n'a aucun système de comptes. Pas concerné.
-
-### 5. **Mise à jour Capacitor / iOS deployment target**
-
-Si Apple change le minimum supporté (typiquement passé à iOS 16 puis 17 chaque automne), il faut :
-- Ouvrir Xcode → General → Minimum Deployments → bump
-- Refaire `npm run ios:sync` puis re-Archive
-
-## 🛡 Draft de politique de confidentialité
-
-À héberger sur une URL publique (un Gist GitHub fait l'affaire, ou un blog perso). Apple exige une URL.
+Coche **« Données non collectées »** — l'app ne collecte rien. Pas de tracking, pas d'identifiant publicitaire, pas de tiers.
 
 ---
 
-### Politique de confidentialité — Prophétesse-Mycélium
+## 🚨 Pièges connus
 
-**Date de mise à jour** : [date]
+1. **Marque déposée (guideline 5.2)** — le piège n°1, déjà traité ci-dessus : aucun « Tetris », aucun « Pac » dans la fiche. Les noms internes du code et l'URL `/jeu/compost` sont sans risque ; seule la fiche publique compte.
 
-Cette application est éditée par Charif Hachichi (Charif.Hachichi@icloud.com).
+2. **Catégorie « religion » (guideline 1.1)** — l'« Ordre Mycélien » peut faire tiquer un reviewer. Parade : ne jamais écrire « religion » ; insister dès la première phrase sur le caractère **fictif et satirique** ; rester en catégorie **Lifestyle**. En cas de refus, répondre dans App Store Connect : œuvre satirique francophone sans visée prosélyte, conseils écologiques inspirés de pratiques scientifiques réelles.
 
-**Aucune donnée personnelle n'est collectée, transmise, ni partagée.**
+3. **Fonctionnalité minimale (guideline 4.2)** — Apple écarte les simples « sites web emballés ». Ici l'app a trois jeux, un livre, des rituels, un jardin, et fonctionne **entièrement hors ligne** — largement au-dessus de la barre. Si la question revient, le souligner.
 
-L'application Prophétesse-Mycélium stocke localement, sur votre appareil :
-- vos préférences (nom de baptême choisi, animal totem, thème clair/sombre) ;
-- l'avancement de votre pèlerinage (Graines de Grâce, niveau atteint, rituels cochés) ;
-- l'historique de vos confessions (libellé du péché et pénitence choisie) ;
-- les scores de vos parties de Tetris du Compost et de Pac-Olivia.
+4. **Cible iOS** — chaque automne Apple relève le minimum supporté. Si besoin : Xcode → General → Minimum Deployments → relever, puis `npm run ios:sync` et ré-archiver.
 
-Ces données sont conservées uniquement dans le stockage local de votre appareil (technologie `localStorage`). Elles ne quittent jamais votre appareil. Elles sont effacées si vous désinstallez l'application, si vous videz les données du navigateur (en mode PWA), ou si vous utilisez la fonction « Réinitialiser » dans les paramètres de l'application.
-
-**Aucun compte n'est créé.** Aucune adresse mail n'est requise.
-**Aucune publicité n'est diffusée.** Aucun service publicitaire tiers n'est intégré.
-**Aucun traceur tiers** (Google Analytics, Facebook Pixel, etc.) n'est intégré.
-**Aucune permission native** (caméra, photo, micro, localisation, etc.) n'est demandée par l'application.
-
-L'application ne se connecte à aucun serveur externe pour son fonctionnement normal. Elle peut, le cas échéant, télécharger des polices Google Fonts (Cormorant Garamond et Inter) au premier chargement ; aucune information d'identification n'est transmise.
-
-**Droits** : étant donné qu'aucune donnée n'est collectée par l'éditeur, le droit d'accès, de rectification, d'effacement, à la portabilité et d'opposition n'a pas d'objet ici. Pour effacer vos données locales : ouvrez l'application, allez dans « Paramètres », et choisissez « Réinitialiser ».
-
-**Contact** : pour toute question, écrivez à Charif.Hachichi@icloud.com.
+5. **Numéro de build** — chaque upload vers App Store Connect doit avoir un **numéro de build supérieur** au précédent. Incrémente-le dans Xcode → General.
 
 ---
 
-Politique applicable au territoire de l'Union européenne, conforme au RGPD.
+## 🛡 Politique de confidentialité
+
+Elle est désormais une **page de l'application** : `/confidentialite`. Une fois l'app déployée sur le web, son URL publique (`https://<ton-domaine>/confidentialite`) est celle à renseigner dans App Store Connect — pas besoin de Gist ni de blog tiers.
 
 ---
 
 ## 🌿 Mot de la fin
 
-Que la Sève soit avec toi. Si l'App Store refuse, ne pleure pas : tu as déjà l'app installée en PWA sur ton iPhone, et 90% de tes pèlerins l'utiliseront comme ça. La publication sur l'App Store est un confort de distribution, pas une obligation spirituelle.
+L'essentiel du chemin est balisé : le compte est prêt, le projet iOS est scaffoldé, la fiche est rédigée sans marque. Il reste les gestes Xcode et les clics App Store Connect — on les fait ensemble demain.
 
 Amen-Compost. 🍄
