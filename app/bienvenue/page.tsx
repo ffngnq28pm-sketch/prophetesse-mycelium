@@ -33,6 +33,11 @@ const SLIDES = [
     corps:
       "Sept Offices Verts à cocher chaque jour : saluer le premier oiseau, boire l'eau du robinet en conscience, refuser une dosette, marcher dix minutes sans écran. Et un Confessionnal Mycélien pour avouer les écarts (35 péchés répertoriés, avec pénitences absurdes et bénédictions de pardon). Le tout sans culpabilité. Tu seras un disciple ordinaire avec des journées ordinaires, sublimées de temps en temps.",
   },
+  {
+    titre: "Les Annexes de l'Ordre",
+    corps:
+      "Au-delà du parcours, l'Ordre tient ses registres : une Hagiographie (qui furent les premiers disciples), un Almanach du vivant (le petit peuple que tu recenses), un Reliquaire (tes hauts faits) et des Annales (la mémoire chiffrée de tes parties). Rien d'urgent ne s'y trouve. Ils attendent simplement que la curiosité te prenne — depuis le menu Bibliothèque et le menu Progrès.",
+  },
 ];
 
 const SUGGESTIONS_NOMS = [
@@ -110,7 +115,7 @@ export default function BienvenuePage() {
                 transition={{ duration: 0.3 }}
               >
                 <Card>
-                  <CardSubtitle>Slide {step + 1} / 4</CardSubtitle>
+                  <CardSubtitle>Slide {step + 1} / {SLIDES.length}</CardSubtitle>
                   <CardTitle>{SLIDES[step].titre}</CardTitle>
                   <Ornement />
                   <p className="font-serif text-mousse-900 dark:text-parchemin-100 lettrine">
@@ -128,7 +133,7 @@ export default function BienvenuePage() {
                 transition={{ duration: 0.3 }}
               >
                 <Card>
-                  <CardSubtitle>Étape 5 / 6</CardSubtitle>
+                  <CardSubtitle>Étape {SLIDES.length + 1} / {total}</CardSubtitle>
                   <CardTitle>Choisis un nom de baptême</CardTitle>
                   <p className="mt-2 font-serif text-mousse-800 dark:text-parchemin-100">
                     Tradition mycélienne : « Sœur X » ou « Frère X », où X est un élément du vivant. Tu peux suivre la coutume, ou inventer. Ce nom n'apparaîtra qu'à toi. Tu peux le changer plus tard depuis les Paramètres.
@@ -168,7 +173,7 @@ export default function BienvenuePage() {
                 transition={{ duration: 0.3 }}
               >
                 <Card>
-                  <CardSubtitle>Étape 6 / 6</CardSubtitle>
+                  <CardSubtitle>Étape {total} / {total}</CardSubtitle>
                   <CardTitle>Choisis un animal totem</CardTitle>
                   <p className="mt-2 font-serif text-mousse-800 dark:text-parchemin-100">
                     Sept totems proposés. Aucun n'est meilleur. Le tien sera le bon parce que c'est le tien.
