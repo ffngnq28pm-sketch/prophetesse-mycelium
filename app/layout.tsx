@@ -4,6 +4,7 @@ import "./globals.css";
 import { Nav } from "@/components/liturgical/Nav";
 import { ThemeBootstrap } from "@/components/liturgical/ThemeBootstrap";
 import { Footer } from "@/components/liturgical/Footer";
+import { MotionProvider } from "@/components/liturgical/MotionProvider";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -44,8 +45,6 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
 };
 
@@ -58,9 +57,11 @@ export default function RootLayout({
     <html lang="fr" className={`${cormorant.variable} ${inter.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased">
         <ThemeBootstrap />
-        <Nav />
-        <main className="mx-auto max-w-5xl px-4 pb-24 pt-6 md:px-6">{children}</main>
-        <Footer />
+        <MotionProvider>
+          <Nav />
+          <main className="mx-auto max-w-5xl px-4 pb-24 pt-6 md:px-6">{children}</main>
+          <Footer />
+        </MotionProvider>
       </body>
     </html>
   );
