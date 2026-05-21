@@ -151,7 +151,7 @@ export function createInitialState(levelIndex: number, livesCarry?: number, scor
       spawnY: slot.y,
       ai: f.ai,
       data: f,
-      speed: olivia.speed * niveau.ghostSpeedFactor,
+      speed: olivia.speed * niveau.ghostSpeedFactor * 0.97, // -3% sur la vitesse des fantômes
       releaseAt: performance.now() + i * 3500,
       justExited: false,
     };
