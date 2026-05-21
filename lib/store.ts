@@ -23,7 +23,19 @@ export interface ChapitreState {
   claimed: boolean;
 }
 
-export interface ProphetesseState {
+export interface PartieTetris {
+  score: number;
+  lignes: number;
+  date: string;
+}
+
+export interface PartiePac {
+  score: number;
+  niveau: number;
+  date: string;
+}
+
+export interface ProphetesseData {
   // Identité
   nomBaptismale: string;
   totem: string;
@@ -64,9 +76,15 @@ export interface ProphetesseState {
   parabolesLues: number[];
   // V3 — Livres complets lus (chapitres finis)
   livresChapitresLus: Record<string, string[]>; // livre id → chapitre id[]
-  // Hydration
-  hasHydrated: boolean;
+  // Endgame — Veilles observées (clés de date AAAA-MM-JJ)
+  veillesObservees: string[];
+  // Annales — historique de scores et préférence audio
+  historiqueTetris: PartieTetris[];
+  historiquePac: PartiePac[];
+  audioActif: boolean;
+}
 
+export interface ProphetesseActions {
   setHasHydrated: (v: boolean) => void;
   setNomBaptismale: (n: string) => void;
   setTotem: (t: string) => void;
@@ -78,6 +96,7 @@ export interface ProphetesseState {
   ajouterConfession: (c: ConfessionEntry) => void;
   enregistrerScoreTetris: (score: number, lignes: number) => void;
   enregistrerScorePac: (score: number, niveauAtteint: number, fantomes: number, pollinisateurs: number) => void;
+  setAudioActif: (b: boolean) => void;
   // V3 actions
   setOnboardingFait: (b: boolean) => void;
   setTutoTetrisFait: (b: boolean) => void;
@@ -91,10 +110,15 @@ export interface ProphetesseState {
   visiterSanctuaire: (sanctId: string) => void;
   lireParabole: (paraboleId: number) => void;
   lireChapitreLivre: (livreId: string, chapitreId: string) => void;
+  observerVeille: (date: string) => boolean;
+  exportData: () => string;
+  importData: (raw: string) => { ok: boolean; error?: string };
   reset: () => void;
 }
 
-const initialState = {
+export type ProphetesseState = ProphetesseData & { hasHydrated: boolean } & ProphetesseActions;
+
+const initialState: ProphetesseData = {
   nomBaptismale: "",
   totem: "mycelium",
   theme: "aurore" as const,
@@ -121,7 +145,14 @@ const initialState = {
   sanctuairesVisites: [] as string[],
   parabolesLues: [] as number[],
   livresChapitresLus: {} as Record<string, string[]>,
+  veillesObservees: [] as string[],
+  historiqueTetris: [] as PartieTetris[],
+  historiquePac: [] as PartiePac[],
+  audioActif: false,
 };
+
+// Clés des données persistées — sert à l'export/import sans énumérer chaque champ.
+const DATA_KEYS = Object.keys(initialState) as (keyof ProphetesseData)[];
 
 export const useStore = create<ProphetesseState>()(
   persist(
@@ -164,6 +195,10 @@ export const useStore = create<ProphetesseState>()(
           meilleurScoreTetris: Math.max(s.meilleurScoreTetris, score),
           partiesTetris: s.partiesTetris + 1,
           lignesCompostees: s.lignesCompostees + lignes,
+          historiqueTetris: [
+            ...s.historiqueTetris,
+            { score, lignes, date: new Date().toISOString() },
+          ].slice(-60),
         })),
       enregistrerScorePac: (score, niveauAtteint, fantomes, pollinisateurs) =>
         set((s) => ({
@@ -172,7 +207,12 @@ export const useStore = create<ProphetesseState>()(
           niveauMaxPac: Math.max(s.niveauMaxPac, niveauAtteint),
           fantomesTabasses: s.fantomesTabasses + fantomes,
           pollinisateursRecenses: s.pollinisateursRecenses + pollinisateurs,
+          historiquePac: [
+            ...s.historiquePac,
+            { score, niveau: niveauAtteint, date: new Date().toISOString() },
+          ].slice(-60),
         })),
+      setAudioActif: (b) => set({ audioActif: b }),
       setOnboardingFait: (b) => set({ onboardingFait: b }),
       setTutoTetrisFait: (b) => set({ tutoTetrisFait: b }),
       setTutoPacFait: (b) => set({ tutoPacFait: b }),
@@ -225,6 +265,49 @@ export const useStore = create<ProphetesseState>()(
           if (ex.includes(chapitreId)) return {};
           return { livresChapitresLus: { ...s.livresChapitresLus, [livreId]: [...ex, chapitreId] } };
         }),
+      observerVeille: (date) => {
+        if (get().veillesObservees.includes(date)) return false;
+        set((s) => ({ veillesObservees: [...s.veillesObservees, date] }));
+        return true;
+      },
+      exportData: () => {
+        const s = get();
+        const data: Record<string, unknown> = {};
+        for (const k of DATA_KEYS) data[k] = s[k];
+        return JSON.stringify(
+          { app: "prophetesse-mycelium", version: 3, exportedAt: new Date().toISOString(), data },
+          null,
+          2
+        );
+      },
+      importData: (raw) => {
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          return { ok: false, error: "Fichier illisible : ce n'est pas du JSON valide." };
+        }
+        if (typeof parsed !== "object" || parsed === null) {
+          return { ok: false, error: "Fichier vide ou corrompu." };
+        }
+        const obj = parsed as { app?: unknown; data?: unknown };
+        if (obj.app !== "prophetesse-mycelium") {
+          return { ok: false, error: "Ce fichier n'est pas une sauvegarde Mycélium." };
+        }
+        if (typeof obj.data !== "object" || obj.data === null) {
+          return { ok: false, error: "Sauvegarde sans données exploitables." };
+        }
+        const incoming = obj.data as Record<string, unknown>;
+        const next: Record<string, unknown> = {};
+        for (const k of DATA_KEYS) {
+          if (k in incoming) next[k] = incoming[k];
+        }
+        if (Object.keys(next).length === 0) {
+          return { ok: false, error: "Sauvegarde sans aucun champ reconnu." };
+        }
+        set(next as Partial<ProphetesseState>);
+        return { ok: true };
+      },
       reset: () =>
         set({
           ...initialState,
