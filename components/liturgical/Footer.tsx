@@ -13,6 +13,9 @@ export function Footer() {
           <Link href="/colophon" className="text-xs italic text-ocre-700 hover:underline dark:text-ocre-400">
             Comment cet objet a été fait → le Colophon
           </Link>
+          <Link href="/confidentialite" className="text-xs italic text-ocre-700 hover:underline dark:text-ocre-400">
+            Politique de confidentialité
+          </Link>
           <div className="ornement" />
           <div className="text-xs text-mousse-600 dark:text-parchemin-200/60">
             <p className="font-semibold">Charif Hachichi</p>
