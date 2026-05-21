@@ -10,6 +10,9 @@ export function Footer() {
           <Link href="/glossaire" className="text-xs italic text-ocre-700 hover:underline dark:text-ocre-400">
             Tu ne comprends pas un mot ? Le mycélium s'explique →
           </Link>
+          <Link href="/colophon" className="text-xs italic text-ocre-700 hover:underline dark:text-ocre-400">
+            Comment cet objet a été fait → le Colophon
+          </Link>
           <div className="ornement" />
           <div className="text-xs text-mousse-600 dark:text-parchemin-200/60">
             <p className="font-semibold">Charif Hachichi</p>
