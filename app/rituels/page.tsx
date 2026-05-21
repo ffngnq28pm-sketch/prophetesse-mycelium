@@ -5,12 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { offices } from "@/data/rituels";
 import { useStore } from "@/lib/store";
 import { todayKey, formatDate } from "@/lib/utils";
+import { computeStreak, streakJalon } from "@/lib/streak";
 import { Card, CardSubtitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Ornement } from "@/components/liturgical/Ornement";
 import { Hydrated } from "@/components/liturgical/Hydrated";
-import { Sun, Sparkles } from "lucide-react";
+import { Sun, Sparkles, Flame } from "lucide-react";
 
 export default function RituelsPage() {
   return (
@@ -41,9 +42,12 @@ function RituelsContent() {
   const decocher = useStore((s) => s.decocherRituel);
   const retirerGraines = useStore((s) => s.retirerGraines);
   const jour = useStore((s) => s.rituelsParJour[key] ?? {});
+  const rituelsParJour = useStore((s) => s.rituelsParJour);
   const totalGraines = useStore((s) => s.graines);
   const [recentReward, setRecentReward] = useState<number | null>(null);
 
+  const streak = useMemo(() => computeStreak(rituelsParJour), [rituelsParJour]);
+  const jalon = streakJalon(streak.actuel);
   const accomplis = Object.values(jour).filter(Boolean).length;
   const totalDuJour = offices.reduce(
     (acc, o) => acc + (jour[o.id] ? o.graines : 0),
@@ -67,6 +71,24 @@ function RituelsContent() {
             {accomplis === 7 && (
               <p className="mt-1 font-serif text-xs italic text-ocre-700 dark:text-ocre-400">
                 Sept offices, sept bénédictions. Sœur Compost hoche la tête. Mère Mycorhize aussi, depuis quelque part dans le mycélium.
+              </p>
+            )}
+            <p className="mt-2 font-serif text-sm text-mousse-800 dark:text-parchemin-100">
+              <Flame size={14} className="mr-1 inline text-ocre-600 dark:text-ocre-400" />
+              Série en cours : <strong>{streak.actuel}</strong> jour{streak.actuel > 1 ? "s" : ""} d'affilée
+              {jalon && (
+                <>
+                  {" · "}
+                  <span className="text-ocre-700 dark:text-ocre-400">{jalon}</span>
+                </>
+              )}
+              {streak.record > streak.actuel && (
+                <span className="text-mousse-600 dark:text-parchemin-200/70"> · record : {streak.record}</span>
+              )}
+            </p>
+            {streak.actuel > 0 && !streak.aujourdhuiFait && (
+              <p className="mt-1 font-serif text-xs italic text-ocre-700 dark:text-ocre-400">
+                Accomplis au moins un office aujourd'hui pour ne pas rompre la série.
               </p>
             )}
           </div>
