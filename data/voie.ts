@@ -68,7 +68,7 @@ export const CHAPITRES: Chapitre[] = [
     objectifs: [
       { id: "confessions-3", label: "Confesser 3 péchés écologiques", description: "Aucune honte. Olivia-aux-mille-racines en a personnellement confessé 87 cette semaine, prétend-elle.", cible: 3 },
       { id: "graines-100", label: "Accumuler 100 Graines de Grâce", description: "Par les rituels, les jeux, ou simplement la patience.", cible: 100 },
-      { id: "tetris-une-partie", label: "Jouer une partie de Tetris du Compost", description: "Jusqu'au bout, même mal. Surtout mal, d'ailleurs : c'est plus formateur.", cible: 1 },
+      { id: "tetris-une-partie", label: "Jouer une partie de La Chute du Compost", description: "Jusqu'au bout, même mal. Surtout mal, d'ailleurs : c'est plus formateur.", cible: 1 },
     ],
     niveauDebloque: 3,
     recompenseLabel: "Tu deviens Initié·e du Lichen. + 40 graines.",
@@ -127,7 +127,7 @@ export const CHAPITRES: Chapitre[] = [
       "Le sixième chapitre exige un peu d'arithmétique. Les naturalistes savent que ce qu'on ne compte pas finit par disparaître, et que ce qu'on compte mal devient parfois ministre. Le disciple s'astreint donc, à ce stade, à mesurer son propre impact : combien de pollinisateurs recensés, combien de lignes compostées, combien de fêtes célébrées dans l'année. Frère Pollen, lui, recompte ses recensements trois fois par paranoïa statistique. C'est sain aussi.",
     objectifs: [
       { id: "pac-200-pollinisateurs", label: "Recenser 200 pollinisateurs (cumul)", description: "Toutes parties confondues de la Chasse. Le compteur monte.", cible: 200 },
-      { id: "tetris-50-lignes", label: "Composter 50 lignes (cumul Tetris)", description: "Tu progresses dans le compost cosmique.", cible: 50 },
+      { id: "tetris-50-lignes", label: "Composter 50 lignes (cumul des parties)", description: "Tu progresses dans le compost cosmique.", cible: 50 },
       { id: "fetes-2", label: "Célébrer 2 fêtes du Calendrier", description: "Ouvre la fiche d'une fête, lis-la, marque-la célébrée.", cible: 2 },
     ],
     niveauDebloque: 7,

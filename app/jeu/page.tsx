@@ -17,7 +17,7 @@ export default function HubJeux() {
           Jeux Liturgiques de l'Ordre
         </p>
         <h1 className="titre-liturgique mt-2 text-4xl text-mousse-800 dark:text-parchemin-100">
-          Deux jeux pour s'enraciner
+          Trois jeux pour s'enraciner
         </h1>
         <Ornement />
         <p className="mx-auto max-w-2xl font-serif italic text-mousse-700 dark:text-parchemin-200/80">
@@ -40,6 +40,9 @@ function Contenu() {
   const partiesPac = useStore((s) => s.partiesPac);
   const fantomesTabasses = useStore((s) => s.fantomesTabasses);
   const pollinisateurs = useStore((s) => s.pollinisateursRecenses);
+  const meilleurEmpreintes = useStore((s) => s.meilleurScoreEmpreintes);
+  const partiesEmpreintes = useStore((s) => s.partiesEmpreintes);
+  const mammiferes = useStore((s) => s.mammiferesRecenses);
   const graines = useStore((s) => s.graines);
 
   return (
@@ -62,16 +65,16 @@ function Contenu() {
         </div>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Link href="/jeu/tetris" className="group">
+      <div className="grid gap-4 md:grid-cols-3">
+        <Link href="/jeu/compost" className="group">
           <Card className="h-full transition hover:border-ocre-500/60 hover:bg-mousse-100/50 dark:hover:bg-mousse-900/40">
             <CardSubtitle>Jeu I</CardSubtitle>
             <div className="flex items-baseline gap-3">
               <span className="text-3xl">🧱</span>
-              <CardTitle>Tetris du Compost</CardTitle>
+              <CardTitle>La Chute du Compost</CardTitle>
             </div>
             <p className="mt-2 font-serif text-sm italic text-mousse-700 dark:text-parchemin-200/80">
-              Trie tes déchets en empilant des tétrominoes. Une ligne 100% compost te vaut une bénédiction du Mycélium. Une dosette en ligne te vaut une malédiction — proportionnée mais sentie.
+              Trie tes déchets en empilant des pièces. Une ligne 100% compost te vaut une bénédiction du Mycélium. Une dosette en ligne te vaut une malédiction — proportionnée mais sentie.
             </p>
             <Ornement />
             <div className="flex flex-wrap gap-2">
@@ -83,7 +86,7 @@ function Contenu() {
               Score ÷ 50 = Graines à planter.
             </p>
             <p className="mt-2 font-serif text-xs text-ocre-700 group-hover:underline dark:text-ocre-400">
-              Entrer dans le Tetris →
+              Entrer dans la Chute →
             </p>
           </Card>
         </Link>
@@ -114,13 +117,38 @@ function Contenu() {
             </p>
           </Card>
         </Link>
+
+        <Link href="/jeu/nuit-des-empreintes" className="group">
+          <Card className="h-full transition hover:border-ocre-500/60 hover:bg-mousse-100/50 dark:hover:bg-mousse-900/40">
+            <CardSubtitle>Jeu III</CardSubtitle>
+            <div className="flex items-baseline gap-3">
+              <span className="text-3xl">🐾</span>
+              <CardTitle>La Nuit des Empreintes</CardTitle>
+            </div>
+            <p className="mt-2 font-serif text-sm italic text-mousse-700 dark:text-parchemin-200/80">
+              Cinq nuits durant, pose des tunnels à empreintes dans le cimetière. Au matin, lis les traces : hérisson, micromammifère, fouine — ou simple chat de passage. L'habitat décide de ce qui viendra.
+            </p>
+            <Ornement />
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="grace">Meilleur : {meilleurEmpreintes}</Badge>
+              <Badge variant="outline">Parties : {partiesEmpreintes}</Badge>
+              <Badge variant="outline">{mammiferes} mammifères recensés</Badge>
+            </div>
+            <p className="mt-3 font-serif text-xs italic text-mousse-700 dark:text-parchemin-200/70">
+              Score ÷ 50 = Graines à planter.
+            </p>
+            <p className="mt-2 font-serif text-xs text-ocre-700 group-hover:underline dark:text-ocre-400">
+              Entrer dans la nuit →
+            </p>
+          </Card>
+        </Link>
       </div>
 
       <Card>
         <div className="flex items-center justify-between">
           <CardSubtitle>Statistiques cumulées</CardSubtitle>
           <HelpButton titre="Pourquoi jouer ?">
-            <p>Les jeux ne sont pas un bonus isolé. Ils alimentent ton Jardin via les Graines de Grâce. Ils valident aussi plusieurs objectifs de La Voie : chapitre II (une partie de Tetris jusqu'au bout), chapitre IV (niveau 2 de la Chasse), chapitre VI (200 pollinisateurs cumulés), chapitre VIII (niveau 5 atteint). Joue détendu·e : c'est ton mètre carré liturgique.</p>
+            <p>Les jeux ne sont pas un bonus isolé. Ils alimentent ton Jardin via les Graines de Grâce. Ils valident aussi plusieurs objectifs de La Voie : chapitre II (une partie de La Chute du Compost jusqu'au bout), chapitre IV (niveau 2 de la Chasse), chapitre VI (200 pollinisateurs cumulés), chapitre VIII (niveau 5 atteint). Joue détendu·e : c'est ton mètre carré liturgique.</p>
           </HelpButton>
         </div>
         <p className="mt-2 font-serif text-mousse-800 dark:text-parchemin-100">

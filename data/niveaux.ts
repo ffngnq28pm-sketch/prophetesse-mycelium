@@ -69,7 +69,7 @@ export const niveaux: Niveau[] = [
     embleme: "✧",
     description:
       "Tu portes la Parole. Tu ne tonds plus. Tu ne prends plus l'avion. Tu connais le nom de quinze plantes. Tu en es presque embarrassant·e.",
-    privilege: "Accès au Compendium des Bénédictions Avancées et au Score Bonus du Tetris.",
+    privilege: "Accès au Compendium des Bénédictions Avancées et au Score Bonus de La Chute du Compost.",
   },
   {
     id: 8,

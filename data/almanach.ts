@@ -88,7 +88,7 @@ export const FAUNE: Faune[] = [
     rarete: "commune",
     silhouette: "Anneau de chair rose, sans yeux, sans hâte. Travaille sous la surface, à l'abri de tout mérite.",
     role: "Laboure, aère, draine, fertilise. Un hectare peut en abriter une tonne — la plus grande charrue du monde est invisible.",
-    lore: "Vénéré entre tous. Frère Théodule affirme qu'ils votent lors d'élections souterraines biannuelles ; on ne le contredit pas. Trahir le Ver de Terre — composter des dosettes, par exemple — reste, au Tetris du Compost, une faute lourde.",
+    lore: "Vénéré entre tous. Frère Théodule affirme qu'ils votent lors d'élections souterraines biannuelles ; on ne le contredit pas. Trahir le Ver de Terre — composter des dosettes, par exemple — reste, à La Chute du Compost, une faute lourde.",
     couleur: "#b9805a",
   },
   {

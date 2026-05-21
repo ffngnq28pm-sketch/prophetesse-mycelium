@@ -35,6 +35,12 @@ export interface PartiePac {
   date: string;
 }
 
+export interface PartieEmpreintes {
+  score: number;
+  mammiferes: number;
+  date: string;
+}
+
 export interface ProphetesseData {
   // Identité
   nomBaptismale: string;
@@ -82,6 +88,12 @@ export interface ProphetesseData {
   historiqueTetris: PartieTetris[];
   historiquePac: PartiePac[];
   audioActif: boolean;
+  // Jeu III — La Nuit des Empreintes
+  meilleurScoreEmpreintes: number;
+  partiesEmpreintes: number;
+  mammiferesRecenses: number;
+  historiqueEmpreintes: PartieEmpreintes[];
+  tutoEmpreintesFait: boolean;
 }
 
 export interface ProphetesseActions {
@@ -96,6 +108,8 @@ export interface ProphetesseActions {
   ajouterConfession: (c: ConfessionEntry) => void;
   enregistrerScoreTetris: (score: number, lignes: number) => void;
   enregistrerScorePac: (score: number, niveauAtteint: number, fantomes: number, pollinisateurs: number) => void;
+  enregistrerScoreEmpreintes: (score: number, mammiferes: number) => void;
+  setTutoEmpreintesFait: (b: boolean) => void;
   setAudioActif: (b: boolean) => void;
   // V3 actions
   setOnboardingFait: (b: boolean) => void;
@@ -149,6 +163,11 @@ const initialState: ProphetesseData = {
   historiqueTetris: [] as PartieTetris[],
   historiquePac: [] as PartiePac[],
   audioActif: false,
+  meilleurScoreEmpreintes: 0,
+  partiesEmpreintes: 0,
+  mammiferesRecenses: 0,
+  historiqueEmpreintes: [] as PartieEmpreintes[],
+  tutoEmpreintesFait: false,
 };
 
 // Clés des données persistées — sert à l'export/import sans énumérer chaque champ.
@@ -212,6 +231,17 @@ export const useStore = create<ProphetesseState>()(
             { score, niveau: niveauAtteint, date: new Date().toISOString() },
           ].slice(-60),
         })),
+      enregistrerScoreEmpreintes: (score, mammiferes) =>
+        set((s) => ({
+          meilleurScoreEmpreintes: Math.max(s.meilleurScoreEmpreintes, score),
+          partiesEmpreintes: s.partiesEmpreintes + 1,
+          mammiferesRecenses: s.mammiferesRecenses + mammiferes,
+          historiqueEmpreintes: [
+            ...s.historiqueEmpreintes,
+            { score, mammiferes, date: new Date().toISOString() },
+          ].slice(-60),
+        })),
+      setTutoEmpreintesFait: (b) => set({ tutoEmpreintesFait: b }),
       setAudioActif: (b) => set({ audioActif: b }),
       setOnboardingFait: (b) => set({ onboardingFait: b }),
       setTutoTetrisFait: (b) => set({ tutoTetrisFait: b }),

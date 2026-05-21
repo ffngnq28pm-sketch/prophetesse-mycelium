@@ -62,7 +62,7 @@ export default function ColophonPage() {
               l'Almanach du vivant, le Glossaire et les Sanctuaires.
             </li>
             <li>
-              <strong>Les Jeux</strong> — le Tetris du Compost et la Chasse aux Pollinisateurs.
+              <strong>Les Jeux</strong> — La Chute du Compost, La Chasse aux Pollinisateurs et La Nuit des Empreintes.
             </li>
             <li>
               <strong>Les Progrès</strong> — le Jardin, le Reliquaire des hauts faits et les Annales.

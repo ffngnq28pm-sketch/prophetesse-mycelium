@@ -2,7 +2,7 @@
 
 import { useStore } from "@/lib/store";
 import { peches } from "@/data/peches";
-import { PartieTetris, PartiePac } from "@/lib/store";
+import { PartieTetris, PartiePac, PartieEmpreintes } from "@/lib/store";
 import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Ornement } from "@/components/liturgical/Ornement";
@@ -69,14 +69,16 @@ function Contenu() {
   const histoTetris = useStore((s) => s.historiqueTetris);
   const histoPac = useStore((s) => s.historiquePac);
   const confessions = useStore((s) => s.confessions);
+  const histoEmpreintes = useStore((s) => s.historiqueEmpreintes);
   const meilleurTetris = useStore((s) => s.meilleurScoreTetris);
   const meilleurPac = useStore((s) => s.meilleurScorePac);
+  const meilleurEmpreintes = useStore((s) => s.meilleurScoreEmpreintes);
 
   return (
     <div className="space-y-5">
       <section>
         <h2 className="mb-2 titre-liturgique text-xl text-mousse-800 dark:text-parchemin-100">
-          Tetris du Compost
+          La Chute du Compost
         </h2>
         <Card>
           {histoTetris.length === 0 ? (
@@ -131,6 +133,42 @@ function Contenu() {
                     <span className="text-mousse-600 dark:text-parchemin-200/70">{dateCourte(p.date)}</span>
                     <span className="text-mousse-800 dark:text-parchemin-100">
                       <strong>{p.score}</strong> pts · niveau {p.niveau}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </Card>
+      </section>
+
+      <section>
+        <h2 className="mb-2 titre-liturgique text-xl text-mousse-800 dark:text-parchemin-100">
+          La Nuit des Empreintes
+        </h2>
+        <Card>
+          {histoEmpreintes.length === 0 ? (
+            <p className="font-serif text-sm italic text-mousse-700 dark:text-parchemin-200/70">
+              Aucune veille enregistrée. Les tunnels attendent d'être posés.
+            </p>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardSubtitle>
+                  {histoEmpreintes.length} veille{histoEmpreintes.length > 1 ? "s" : ""} consignée
+                  {histoEmpreintes.length > 1 ? "s" : ""}
+                </CardSubtitle>
+                <Badge variant="grace">Meilleur : {meilleurEmpreintes}</Badge>
+              </div>
+              <div className="mt-2">
+                <Sparkline values={histoEmpreintes.map((p) => p.score)} couleur="#8a7fb0" />
+              </div>
+              <ul className="mt-2 divide-y divide-mousse-500/15">
+                {[...histoEmpreintes].reverse().slice(0, 12).map((p: PartieEmpreintes, i) => (
+                  <li key={i} className="flex items-center justify-between py-1.5 font-serif text-sm">
+                    <span className="text-mousse-600 dark:text-parchemin-200/70">{dateCourte(p.date)}</span>
+                    <span className="text-mousse-800 dark:text-parchemin-100">
+                      <strong>{p.score}</strong> pts · {p.mammiferes} mammifère{p.mammiferes > 1 ? "s" : ""}
                     </span>
                   </li>
                 ))}
