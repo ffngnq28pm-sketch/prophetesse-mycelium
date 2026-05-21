@@ -1,200 +1,49 @@
-// La Nuit des Empreintes — moteur du jeu d'observation, tour par tour.
-// Inspiré du protocole de relevé des mammifères par tunnels à empreintes
-// de l'étude « Cimetières vivants » (ARB Île-de-France).
+// La Nuit des Empreintes — puzzle de déduction (lignée du démineur).
 //
-// Deux décisions portent le jeu :
-//  — le PLACEMENT des tunnels, guidé par un objectif de carnet et les habitats ;
-//  — la LECTURE des empreintes : on ne reconnaît pas une image, on déduit
-//    l'espèce à partir d'un relevé partiel (deux indices sur trois lisibles).
+// Une grille de cimetière, la nuit. Des chats et de la faune y sont cachés.
+// Sonder une case sûre révèle le nombre de chats dans les huit cases voisines :
+// en croisant ces nombres, on DÉDUIT où sont les chats. On découvre la faune
+// en dégageant le terrain sûr — sans jamais déranger un chat.
 
-export type MorphoId = "herisson" | "micromammifere" | "fouine" | "chat" | "vide";
-export type TraitKey = "doigts" | "griffes" | "taille";
+export type FauneId = "herisson" | "micromammifere" | "fouine";
+export type Contenu = "vide" | "chat" | FauneId;
 
-export const TRAIT_LABEL: Record<TraitKey, string> = {
-  doigts: "Doigts",
-  griffes: "Griffes",
-  taille: "Taille",
-};
-
-export interface Morphogroupe {
-  id: MorphoId;
+export interface EspeceFaune {
+  id: FauneId;
   nom: string;
   embleme: string;
   points: number;
-  recense: boolean;
-  indice: string;
-  traits: Record<TraitKey, string>;
 }
 
-export const MORPHOGROUPES: Record<MorphoId, Morphogroupe> = {
-  herisson: {
-    id: "herisson",
-    nom: "Hérisson",
-    embleme: "🦔",
-    points: 120,
-    recense: true,
-    indice: "Empreinte large et trapue, cinq doigts griffus nettement écartés.",
-    traits: { doigts: "Cinq", griffes: "Présentes", taille: "Large" },
-  },
-  micromammifere: {
-    id: "micromammifere",
-    nom: "Micromammifère",
-    embleme: "🐭",
-    points: 60,
-    recense: true,
-    indice: "Traces minuscules en étoile — mulot, musaraigne ou campagnol confondus.",
-    traits: { doigts: "Minuscules", griffes: "Indistinctes", taille: "Très petite" },
-  },
-  fouine: {
-    id: "fouine",
-    nom: "Fouine",
-    embleme: "🐾",
-    points: 170,
-    recense: true,
-    indice: "Empreinte élancée, cinq doigts en demi-cercle, griffes fines. Rare.",
-    traits: { doigts: "Cinq", griffes: "Présentes", taille: "Moyenne" },
-  },
-  chat: {
-    id: "chat",
-    nom: "Chat domestique",
-    embleme: "🐈",
-    points: 25,
-    recense: false,
-    indice: "Coussinet rond, quatre doigts, aucune griffe. Les autres bêtes ont fui.",
-    traits: { doigts: "Quatre", griffes: "Absentes", taille: "Moyenne" },
-  },
-  vide: {
-    id: "vide",
-    nom: "Tunnel vide",
-    embleme: "·",
-    points: 0,
-    recense: false,
-    indice: "Aucune empreinte. La nuit fut discrète.",
-    traits: { doigts: "—", griffes: "—", taille: "—" },
-  },
+export const FAUNE: Record<FauneId, EspeceFaune> = {
+  herisson: { id: "herisson", nom: "Hérisson", embleme: "🦔", points: 80 },
+  micromammifere: { id: "micromammifere", nom: "Micromammifère", embleme: "🐭", points: 50 },
+  fouine: { id: "fouine", nom: "Fouine", embleme: "🐾", points: 150 },
 };
 
-export const IDENTIFIABLES: MorphoId[] = ["herisson", "micromammifere", "fouine", "chat"];
+export interface Cellule {
+  contenu: Contenu;
+  chatsVoisins: number;
+  revelee: boolean;
+  marquee: boolean;
+}
+export type Grille = Cellule[][];
 
-export type IndiceTerrain = null | "chat" | "fraiche" | "fauche";
-
-export interface Habitat {
-  id: string;
+export interface ConfigNuit {
   nom: string;
-  ambiance: string;
-  poids: Record<MorphoId, number>;
+  cols: number;
+  rows: number;
+  chats: number;
+  faune: number;
 }
 
-// Pondérations tirées des tendances du mémoire : le hérisson préfère le
-// minéralisé, les micromammifères la végétation haute, le chat rôde dans les allées.
-export const HABITATS: Habitat[] = [
-  {
-    id: "allee",
-    nom: "Allée minérale",
-    ambiance: "Gravier sec entre les rangées de tombes.",
-    poids: { herisson: 4, micromammifere: 1, fouine: 1, chat: 4, vide: 3 },
-  },
-  {
-    id: "prairie",
-    nom: "Prairie en fauche tardive",
-    ambiance: "Herbes hautes laissées libres au carré 28.",
-    poids: { herisson: 2, micromammifere: 5, fouine: 1, chat: 1, vide: 2 },
-  },
-  {
-    id: "haie",
-    nom: "Vieille haie",
-    ambiance: "Un corridor de feuillage qui relie deux carrés.",
-    poids: { herisson: 4, micromammifere: 3, fouine: 2, chat: 1, vide: 2 },
-  },
-  {
-    id: "mur",
-    nom: "Pied de vieux mur",
-    ambiance: "Pierres descellées, interstices et fraîcheur.",
-    poids: { herisson: 1, micromammifere: 4, fouine: 3, chat: 2, vide: 2 },
-  },
-  {
-    id: "ifs",
-    nom: "Sous les ifs",
-    ambiance: "Ombre dense, litière épaisse, silence.",
-    poids: { herisson: 1, micromammifere: 3, fouine: 3, chat: 2, vide: 3 },
-  },
-  {
-    id: "lisiere",
-    nom: "Lisière du carré abandonné",
-    ambiance: "La friche sacrée que nul ne fauche.",
-    poids: { herisson: 3, micromammifere: 4, fouine: 3, chat: 1, vide: 1 },
-  },
+export const NUITS: ConfigNuit[] = [
+  { nom: "Le petit cimetière", cols: 7, rows: 7, chats: 7, faune: 6 },
+  { nom: "Le cimetière paysager", cols: 8, rows: 8, chats: 13, faune: 9 },
+  { nom: "La grande nécropole", cols: 9, rows: 8, chats: 19, faune: 11 },
 ];
 
-// Les deux espèces que l'habitat favorise — affiché pour guider le placement.
-export function favorisHabitat(h: Habitat): MorphoId[] {
-  return (Object.keys(h.poids) as MorphoId[])
-    .filter((k) => k !== "vide")
-    .sort((a, b) => h.poids[b] - h.poids[a])
-    .slice(0, 2);
-}
-
-export interface Emplacement {
-  habitat: Habitat;
-  indice: IndiceTerrain;
-}
-
-// ===== Objectifs de carnet =====
-export interface ObjectifCarnet {
-  id: string;
-  demande: string; // « Le carnet réclame … »
-  detail: string;
-  bonus: number;
-  verifier: (morphos: MorphoId[]) => boolean;
-}
-
-export const OBJECTIFS: ObjectifCarnet[] = [
-  {
-    id: "herisson",
-    demande: "un Hérisson",
-    detail: "Capture au moins un hérisson dans tes trois tunnels.",
-    bonus: 220,
-    verifier: (m) => m.includes("herisson"),
-  },
-  {
-    id: "fouine",
-    demande: "une Fouine",
-    detail: "La fouine est rare : vise les habitats qui la favorisent.",
-    bonus: 340,
-    verifier: (m) => m.includes("fouine"),
-  },
-  {
-    id: "micro2",
-    demande: "deux Micromammifères",
-    detail: "Il en faut deux : la prairie haute est ton amie.",
-    bonus: 260,
-    verifier: (m) => m.filter((x) => x === "micromammifere").length >= 2,
-  },
-  {
-    id: "plein",
-    demande: "trois tunnels habités",
-    detail: "Aucun tunnel vide cette nuit. Évite les terrains fauchés.",
-    bonus: 240,
-    verifier: (m) => m.every((x) => x !== "vide"),
-  },
-  {
-    id: "sansChat",
-    demande: "une nuit sans chat",
-    detail: "Aucun chat dans tes relevés. Fuis les odeurs de chat.",
-    bonus: 240,
-    verifier: (m) => !m.includes("chat"),
-  },
-  {
-    id: "varie",
-    demande: "trois espèces différentes",
-    detail: "Tes trois tunnels doivent livrer trois bêtes distinctes.",
-    bonus: 320,
-    verifier: (m) => new Set(m.filter((x) => x !== "vide")).size >= 3,
-  },
-];
-
-export const TUNNELS_PAR_NUIT = 3;
-export const NUITS_TOTAL = 5;
+export const BONUS_NUIT = 250;
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -205,56 +54,108 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-export interface Nuit {
-  emplacements: Emplacement[];
-  objectif: ObjectifCarnet;
+function pickEspece(): FauneId {
+  const r = Math.random();
+  if (r < 0.15) return "fouine";
+  if (r < 0.5) return "micromammifere";
+  return "herisson";
 }
 
-// Génère une nuit : six emplacements (avec indices de terrain) + un objectif de carnet.
-export function genererNuit(): Nuit {
-  const habitats = shuffle(HABITATS);
-  const indices: IndiceTerrain[] = [null, null, null, null, null, null];
-  const nbIndices = 1 + Math.floor(Math.random() * 3);
-  const types: IndiceTerrain[] = ["chat", "fraiche", "fauche"];
-  const positions = shuffle([0, 1, 2, 3, 4, 5]).slice(0, nbIndices);
-  for (const p of positions) {
-    indices[p] = types[Math.floor(Math.random() * types.length)];
-  }
-  return {
-    emplacements: habitats.map((habitat, i) => ({ habitat, indice: indices[i] })),
-    objectif: OBJECTIFS[Math.floor(Math.random() * OBJECTIFS.length)],
-  };
+function celluleVide(): Cellule {
+  return { contenu: "vide", chatsVoisins: 0, revelee: false, marquee: false };
 }
 
-// Résout un tunnel posé : tire un morphogroupe selon l'habitat et l'indice de terrain.
-export function resoudreTunnel(emp: Emplacement): MorphoId {
-  const poids: Record<MorphoId, number> = { ...emp.habitat.poids };
-  if (emp.indice === "chat") {
-    poids.chat *= 3;
-    poids.herisson = Math.max(1, Math.round(poids.herisson / 2));
-    poids.micromammifere = Math.max(1, Math.round(poids.micromammifere / 2));
-  } else if (emp.indice === "fraiche") {
-    poids.vide = Math.max(1, Math.round(poids.vide / 2));
-    poids.herisson += 2;
-    poids.micromammifere += 2;
-    poids.fouine += 1;
-  } else if (emp.indice === "fauche") {
-    poids.vide += 8;
-  }
-  const total = (Object.values(poids) as number[]).reduce((s, n) => s + n, 0);
-  let r = Math.random() * total;
-  for (const id of Object.keys(poids) as MorphoId[]) {
-    r -= poids[id];
-    if (r <= 0) return id;
-  }
-  return "vide";
+// Grille vierge (toutes cases cachées) — affichée avant la première sonde.
+export function grilleVierge(cfg: ConfigNuit): Grille {
+  return Array.from({ length: cfg.rows }, () =>
+    Array.from({ length: cfg.cols }, celluleVide)
+  );
 }
 
-// Deux traits sur trois sont lisibles sur l'empreinte ; le troisième est brouillé.
-export function traitsLisibles(): TraitKey[] {
-  const tous: TraitKey[] = ["doigts", "griffes", "taille"];
-  const cache = Math.floor(Math.random() * 3);
-  return tous.filter((_, i) => i !== cache);
+// Place chats et faune. La première case sondée et ses 8 voisines sont
+// garanties sans chat — la première sonde ouvre donc toujours une zone.
+export function genererGrille(cfg: ConfigNuit, safeX: number, safeY: number): Grille {
+  const { cols, rows, chats, faune } = cfg;
+  const g = grilleVierge(cfg);
+
+  const interdit = new Set<string>();
+  for (let dy = -1; dy <= 1; dy++)
+    for (let dx = -1; dx <= 1; dx++) interdit.add(`${safeX + dx},${safeY + dy}`);
+
+  const cellules: [number, number][] = [];
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) cellules.push([x, y]);
+
+  const candidatsChats = shuffle(cellules.filter(([x, y]) => !interdit.has(`${x},${y}`)));
+  for (let i = 0; i < chats && i < candidatsChats.length; i++) {
+    const [x, y] = candidatsChats[i];
+    g[y][x].contenu = "chat";
+  }
+
+  const candidatsFaune = shuffle(
+    cellules.filter(([x, y]) => g[y][x].contenu === "vide" && !(x === safeX && y === safeY))
+  );
+  for (let i = 0; i < faune && i < candidatsFaune.length; i++) {
+    const [x, y] = candidatsFaune[i];
+    g[y][x].contenu = pickEspece();
+  }
+
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx;
+          const ny = y + dy;
+          if (ny >= 0 && ny < rows && nx >= 0 && nx < cols && g[ny][nx].contenu === "chat") n++;
+        }
+      g[y][x].chatsVoisins = n;
+    }
+  }
+  return g;
+}
+
+// Révèle une case ; si elle n'a aucun chat voisin, propage aux voisines (flood).
+// Mute la grille passée. Renvoie les cases nouvellement révélées.
+export function revelerCellule(g: Grille, x: number, y: number): { x: number; y: number }[] {
+  const rows = g.length;
+  const cols = g[0].length;
+  const out: { x: number; y: number }[] = [];
+  const pile: [number, number][] = [[x, y]];
+  while (pile.length) {
+    const item = pile.pop();
+    if (!item) break;
+    const [cx, cy] = item;
+    if (cy < 0 || cy >= rows || cx < 0 || cx >= cols) continue;
+    const c = g[cy][cx];
+    if (c.revelee || c.marquee) continue;
+    c.revelee = true;
+    out.push({ x: cx, y: cy });
+    // Un flot ne part que d'une case à 0 chat voisin : ses voisines ne sont
+    // donc jamais des chats. Le flot ne révèle jamais de chat.
+    if (c.contenu !== "chat" && c.chatsVoisins === 0) {
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          pile.push([cx + dx, cy + dy]);
+        }
+    }
+  }
+  return out;
+}
+
+// Nuit gagnée : toutes les cases non-chat sont révélées.
+export function nuitGagnee(g: Grille): boolean {
+  for (const row of g) {
+    for (const c of row) {
+      if (c.contenu !== "chat" && !c.revelee) return false;
+    }
+  }
+  return true;
+}
+
+export function clonerGrille(g: Grille): Grille {
+  return g.map((row) => row.map((c) => ({ ...c })));
 }
 
 export function recompenseGraines(score: number): number {
@@ -262,30 +163,30 @@ export function recompenseGraines(score: number): number {
 }
 
 const JUGEMENTS_SAINT = [
-  "Relevé impeccable. Mère Mycorhize aurait, dit-on, hoché la tête une fois.",
-  "Frère Hérisson lui-même n'aurait pas mieux lu ces empreintes.",
-  "L'Ordre archive ton carnet. Personne ne le lira. C'est très bien ainsi.",
+  "Pas un chat dérangé, pas une bête manquée. Mère Mycorhize aurait hoché la tête.",
+  "Tu lis le cimetière comme une page. Frère Hérisson te confierait son carnet.",
+  "Relevé d'une logique sans faille. L'Ordre archive, et se tait — c'est un éloge.",
 ];
 const JUGEMENTS_BON = [
-  "Du bon travail de veilleur. Sœur Compost note quelque chose, brièvement.",
-  "Tu sais déduire une bête de deux indices. C'est un vrai savoir.",
-  "Honorable. La nuit a livré ses secrets sans trop résister.",
+  "Du beau travail de déduction. Sœur Compost note quelque chose, brièvement.",
+  "Tu as su voir les chats avant de les déranger. C'est tout l'art.",
+  "Honorable. Le cimetière a livré la plupart de ses bêtes.",
 ];
 const JUGEMENTS_MOYEN = [
-  "Quelques empreintes mal déduites, quelques tunnels mal placés. La nuit pardonne.",
-  "Frère Théodule te rappelle que même les Vers de Terre se trompent d'urne.",
-  "Tu progresses. Lire la nuit est un art lent.",
+  "Quelques chats dérangés, quelques bêtes perdues. La nuit revient toujours.",
+  "Frère Théodule te rappelle que déduire est plus sûr que deviner.",
+  "Tu progresses. Croiser les nombres deviendra un réflexe.",
 ];
 const JUGEMENTS_BAS = [
-  "Carnet maigre. Le chat, lui, a passé une bonne nuit.",
+  "Trop de chats dérangés. La faune a fui avant d'être comptée.",
   "L'Ordre ne dit rien. Ce qui, on le sait, est déjà un commentaire.",
-  "Recommence. La patience est une vertu mycélienne, et elle se travaille la nuit.",
+  "Recommence : un chiffre, bien lu, vaut mieux qu'une case, mal tentée.",
 ];
 
 export function jugerEmpreintes(score: number, mammiferes: number): string {
   const pick = (a: string[]) => a[Math.floor(Math.random() * a.length)];
-  if (score >= 2200 && mammiferes >= 9) return pick(JUGEMENTS_SAINT);
-  if (score >= 1300) return pick(JUGEMENTS_BON);
-  if (score >= 600) return pick(JUGEMENTS_MOYEN);
+  if (score >= 1900 && mammiferes >= 18) return pick(JUGEMENTS_SAINT);
+  if (score >= 1100) return pick(JUGEMENTS_BON);
+  if (score >= 500) return pick(JUGEMENTS_MOYEN);
   return pick(JUGEMENTS_BAS);
 }

@@ -15,29 +15,29 @@ import { ChevronLeft } from "lucide-react";
 
 const TUTO_EMPREINTES: Etape[] = [
   {
-    titre: "1 · Le relevé nocturne",
+    titre: "1 · Un puzzle de déduction",
     texte:
-      "Inspiré d'un vrai protocole de sciences participatives : on pose des tunnels à empreintes dans le cimetière, on passe la nuit, et au matin on lit les traces. Cinq nuits t'attendent.",
+      "Le cimetière, la nuit, cache des chats et de la faune. Ton but : recenser les bêtes sans déranger un seul chat. Trois cimetières t'attendent, de plus en plus vastes.",
   },
   {
-    titre: "2 · Le carnet réclame une bête",
+    titre: "2 · Sonde une case",
     texte:
-      "Chaque nuit, le carnet de l'Ordre exige une espèce précise — un hérisson, une fouine, deux micromammifères… Six emplacements te sont proposés, tu n'as que trois tunnels : place-les dans les habitats qui favorisent la cible. Chaque carte indique les espèces qu'elle attire.",
+      "Clique une case pour la sonder. Si elle est sûre, un chiffre apparaît : le nombre de chats dans les huit cases voisines. Une case sans aucun chat voisin ouvre toute la zone autour d'elle.",
   },
   {
-    titre: "3 · Lis les indices du terrain",
+    titre: "3 · Déduis où dorment les chats",
     texte:
-      "Certains emplacements portent un indice. « Traces fraîches » : bon signe. « Odeur de chat » : méfie-toi, le chat fait fuir les autres bêtes. « Fraîchement fauché » : tu ne trouveras presque rien.",
+      "Croise les chiffres : si un « 1 » ne touche plus qu'une seule case cachée, le chat est forcément là. Passe en mode Marquer pour y planter un drapeau — une case marquée ne peut plus être sondée par erreur.",
   },
   {
-    titre: "4 · Déduis l'espèce",
+    titre: "4 · Recense la faune",
     texte:
-      "Au matin, l'empreinte est brouillée : impossible de la reconnaître à l'œil. Le relevé ne livre que deux indices sur trois — doigts, griffes, taille. À toi de déduire la bête. Le chat et le micromammifère se trahissent vite ; hérisson et fouine se ressemblent — c'est là que ça se joue.",
+      "Chaque case sûre que tu dégages peut révéler une bête — hérisson, micromammifère, ou la rare fouine. Dégage tout le terrain sûr pour relever le cimetière entier. Sonder un chat effraie la colonie : la nuit s'arrête.",
   },
   {
     titre: "5 · Score → Graines de Grâce",
     texte:
-      "À la fin des cinq nuits, ton score est divisé par 50 pour obtenir des Graines de Grâce, à planter au Jardin. Recense la faune, gagne des graines. C'est la boucle.",
+      "Chaque bête recensée rapporte des points — la fouine le plus. Relever un cimetière entier sans faute donne un bonus. À la fin, ton score divisé par 50 devient des Graines de Grâce, à planter au Jardin.",
   },
 ];
 
@@ -59,7 +59,7 @@ export default function NuitDesEmpreintesPage() {
         </h1>
         <Ornement />
         <p className="mx-auto max-w-2xl font-serif italic text-mousse-700 dark:text-parchemin-200/80">
-          « La nuit, le cimetière appartient aux bêtes discrètes. On ne les voit pas — on lit leurs traces. Poser un tunnel, attendre, déchiffrer : c'est une forme de prière patiente. »
+          « La nuit, le cimetière appartient aux bêtes discrètes. On ne les voit pas — on les déduit. Un chiffre, puis un autre, et la carte de l'invisible se dessine. »
         </p>
       </header>
 
@@ -116,10 +116,10 @@ function Contenu() {
             Revoir le tutoriel
           </button>
           <HelpButton titre="La Nuit des Empreintes — Règles">
-            <p>Cinq nuits. Chaque nuit, pose 3 tunnels parmi 6 emplacements.</p>
-            <p className="mt-2"><strong>Hérisson :</strong> +120 · <strong>Micromammifère :</strong> +60</p>
-            <p><strong>Fouine (rare) :</strong> +170 · <strong>Chat :</strong> +25</p>
-            <p className="mt-2">L'habitat et les indices de terrain orientent ce qui viendra. Le chat fait fuir le reste.</p>
+            <p>Trois cimetières. Sonde les cases : un chiffre = le nombre de chats voisins. Déduis, marque les chats, dégage le terrain sûr.</p>
+            <p className="mt-2"><strong>Hérisson :</strong> +80 · <strong>Micromammifère :</strong> +50 · <strong>Fouine (rare) :</strong> +150</p>
+            <p><strong>Cimetière relevé en entier :</strong> +250 de bonus.</p>
+            <p className="mt-2">Sonder un chat effraie la colonie et interrompt la nuit. Tu peux « Refermer la nuit » pour garder tes acquis.</p>
             <p className="mt-3 text-xs italic">Score ÷ 50 = Graines de Grâce gagnées (à planter au Jardin).</p>
           </HelpButton>
         </div>

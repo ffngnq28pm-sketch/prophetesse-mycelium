@@ -126,7 +126,7 @@ function Contenu() {
               <CardTitle>La Nuit des Empreintes</CardTitle>
             </div>
             <p className="mt-2 font-serif text-sm italic text-mousse-700 dark:text-parchemin-200/80">
-              Cinq nuits durant, pose des tunnels à empreintes dans le cimetière. Au matin, lis les traces : hérisson, micromammifère, fouine — ou simple chat de passage. L'habitat décide de ce qui viendra.
+              Une grille de cimetière, la nuit. Déduis où dorment les chats à partir des empreintes voisines, dégage le terrain sûr et recense la faune cachée — sans en déranger un seul. Un puzzle de logique.
             </p>
             <Ornement />
             <div className="flex flex-wrap gap-2">
