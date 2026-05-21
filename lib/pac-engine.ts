@@ -356,7 +356,6 @@ function updateGhost(state: PacState, g: Ghost, dt: number, now: number) {
     if (now < g.releaseAt) return;
     const door = findDoorAbove(state, g.cx, g.cy);
     if (!door) {
-      console.log(`[Ghost ${g.id}] no door found → fallback chase`);
       g.mode = "chase";
       g.dir = DIR_UP;
       return;
@@ -371,7 +370,6 @@ function updateGhost(state: PacState, g: Ghost, dt: number, now: number) {
       g.mode = state.olivia.angryUntil ? "frightened" : "chase";
       g.dir = DIR_UP;
       g.justExited = true; // permet au pickGhostDirection suivant d'explorer toutes les dirs (no-180 désactivé)
-      console.log(`[Ghost ${g.id}] house → ${g.mode} (exit ${exitX},${exitY})`);
       // Pick une direction immédiatement pour ne pas attendre un frame en DIR_UP qui pourrait être bloqué.
       pickGhostDirection(state, g);
     }
@@ -386,7 +384,6 @@ function updateGhost(state: PacState, g: Ghost, dt: number, now: number) {
       g.cy = g.spawnY;
       g.mode = "house";
       g.releaseAt = now + 2200;
-      console.log(`[Ghost ${g.id}] eaten → house (will re-emerge in 2.2s)`);
     }
     return;
   }
@@ -403,7 +400,6 @@ function updateGhost(state: PacState, g: Ghost, dt: number, now: number) {
     g.cy = Math.round(g.cy);
     g.justExited = true; // réutilise le flag pour autoriser la marche arrière au prochain pick
     pickGhostDirection(state, g);
-    console.log(`[Ghost ${g.id}] unblocked at (${g.cx},${g.cy}) → dir=(${g.dir.x},${g.dir.y})`);
     return;
   }
 
@@ -468,7 +464,6 @@ function pickGhostDirection(state: PacState, g: Ghost) {
   const allowReverse = g.justExited;
   if (g.justExited) {
     g.justExited = false;
-    console.log(`[Ghost ${g.id}] post-exit pathfinding (180° allowed once)`);
   }
   for (const d of DIRS) {
     if (!allowReverse && d.x === -g.dir.x && d.y === -g.dir.y) continue;

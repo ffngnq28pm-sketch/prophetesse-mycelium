@@ -20,10 +20,15 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Ornement } from "@/components/liturgical/Ornement";
+import { useStore } from "@/lib/store";
 
 const CELL_PX = 22; // pixels per cell at render time
 const WIDTH = COLS * CELL_PX;
 const HEIGHT = ROWS * CELL_PX;
+
+// Classe partagée des boutons du pavé directionnel tactile.
+const padBtn =
+  "flex h-12 w-12 items-center justify-center rounded-md border border-ocre-500/30 bg-transparent font-serif text-lg text-mousse-800 transition hover:bg-mousse-500/10 active:scale-95 dark:text-parchemin-100";
 
 const JUDGMENTS_SAINT = [
   "L'Ordre note silencieusement ta performance. Mère Mycorhize aurait hoché la tête.",
@@ -129,7 +134,8 @@ export function PacOlivia({ onLevelComplete, onGameOver }: Props) {
   const lastTabassesRef = useRef<number>(0);
 
   const [, forceTick] = useState(0);
-  const [audioOn, setAudioOn] = useState(false);
+  const audioOn = useStore((s) => s.audioActif);
+  const setAudioOn = useStore((s) => s.setAudioActif);
   const [showStart, setShowStart] = useState(true);
   const [showLevelTransition, setShowLevelTransition] = useState<{ verset: string; nextLevel: number } | null>(null);
   const [malediction, setMalediction] = useState<string | null>(null);
@@ -137,7 +143,6 @@ export function PacOlivia({ onLevelComplete, onGameOver }: Props) {
   const [paused, setPaused] = useState(false);
 
   const startNewGame = useCallback(() => {
-    console.log("[PacOlivia] start clicked");
     stateRef.current = createInitialState(0);
     stateRef.current.status = "playing";
     lastInsectCountRef.current = stateRef.current.stats.insectsTotal;
@@ -175,23 +180,17 @@ export function PacOlivia({ onLevelComplete, onGameOver }: Props) {
   useEffect(() => {
     if (!stateRef.current) {
       stateRef.current = createInitialState(0);
-      console.log("[PacOlivia] mount, level:", stateRef.current.niveau.nom);
       forceTick((n) => n + 1);
     }
   }, []);
 
   // RAF loop — démarre au mount et reste actif. La logique de jeu est skippée si non-playing/paused.
   useEffect(() => {
-    let firstFrame = true;
     const loop = (t: number) => {
       const last = lastTimeRef.current || t;
       const dt = Math.min(0.06, (t - last) / 1000);
       lastTimeRef.current = t;
       animFrameRef.current = t;
-      if (firstFrame) {
-        console.log("[PacOlivia] first loop frame");
-        firstFrame = false;
-      }
       const s = stateRef.current;
       if (s && s.status === "playing" && !paused) {
         step(s, dt, t);
@@ -435,6 +434,27 @@ export function PacOlivia({ onLevelComplete, onGameOver }: Props) {
             Audio
           </label>
         </div>
+
+        {/* Pavé directionnel — alternative au clavier et au swipe, visible partout */}
+        <div className="mx-auto mt-3 grid w-fit grid-cols-3 gap-1.5">
+          <span />
+          <button className={padBtn} onClick={() => setDir(DIR_UP)} aria-label="Haut">▲</button>
+          <span />
+          <button className={padBtn} onClick={() => setDir(DIR_LEFT)} aria-label="Gauche">◀</button>
+          <button
+            className={`${padBtn} text-sm`}
+            onClick={() => {
+              if (!showStart && !gameOver && !showLevelTransition) setPaused((p) => !p);
+            }}
+            aria-label="Pause"
+          >
+            ⏸
+          </button>
+          <button className={padBtn} onClick={() => setDir(DIR_RIGHT)} aria-label="Droite">▶</button>
+          <span />
+          <button className={padBtn} onClick={() => setDir(DIR_DOWN)} aria-label="Bas">▼</button>
+          <span />
+        </div>
       </div>
 
       <aside className="grid gap-3 md:w-72">
@@ -472,6 +492,18 @@ function render(canvas: HTMLCanvasElement | null, state: PacState, time: number)
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
+
+  // Résolution interne alignée sur la taille affichée × densité de pixels (anti-flou rétina).
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const cssW = canvas.clientWidth || WIDTH;
+  const targetW = Math.round(cssW * dpr);
+  const targetH = Math.round(targetW * (ROWS / COLS));
+  if (canvas.width !== targetW || canvas.height !== targetH) {
+    canvas.width = targetW;
+    canvas.height = targetH;
+  }
+  const scale = targetW / WIDTH;
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 

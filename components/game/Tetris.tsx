@@ -9,6 +9,7 @@ import {
   BOARD_WIDTH,
   Categorie,
   DECHETS,
+  Shape,
   checkCollision,
   clearLines,
   createBoard,
@@ -21,6 +22,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardSubtitle } from "@/components/ui/Card";
+import { useStore } from "@/lib/store";
 
 const JUGEMENTS = {
   saint: [
@@ -51,6 +53,22 @@ function juger(score: number, curses: number): string {
   if (curses <= 3) return JUGEMENTS.moyen[Math.floor(Math.random() * JUGEMENTS.moyen.length)];
   return JUGEMENTS.enfer[Math.floor(Math.random() * JUGEMENTS.enfer.length)];
 }
+
+// La catégorie est le seul critère qui compte pour le score : c'est donc elle —
+// pas l'identité du déchet — qui pilote le rendu d'une tuile.
+const CAT_STYLE: Record<Categorie, { fill: string; ink: string; glyph: string; nom: string; pts: string }> = {
+  compost: { fill: "#5f8a3e", ink: "#eef6e0", glyph: "✿", nom: "Compost", pts: "30 pts / case" },
+  recycle: { fill: "#3f7a9c", ink: "#e6f1f7", glyph: "♺", nom: "Recyclable", pts: "12 pts / case" },
+  maudit: { fill: "#9a1f24", ink: "#f6dccb", glyph: "☠", nom: "Maudit", pts: "malédiction en ligne" },
+};
+
+// Marqueur de marge : état d'une rangée déjà posée.
+const ROW_MARK: Record<string, string> = {
+  vide: "transparent",
+  propre: "#5f8a3e",
+  compost: "#c9a227",
+  contaminee: "#c0392b",
+};
 
 class TetrisAudio {
   ctx: AudioContext | null = null;
@@ -116,7 +134,10 @@ export function Tetris({
   const [running, setRunning] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
-  const [audioOn, setAudioOn] = useState(false);
+  const audioOn = useStore((s) => s.audioActif);
+  const setAudioOn = useStore((s) => s.setAudioActif);
+  const [held, setHeld] = useState<{ shapes: Shape[]; dechetId: string } | null>(null);
+  const [canHold, setCanHold] = useState(true);
   const audioRef = useRef<TetrisAudio>(new TetrisAudio());
 
   useEffect(() => {
@@ -141,6 +162,8 @@ export function Tetris({
     setGameOver(false);
     setPiece(spawnPiece());
     setNextDechetId(DECHETS[Math.floor(Math.random() * DECHETS.length)].id);
+    setHeld(null);
+    setCanHold(true);
     setRunning(true);
     if (audioRef.current.enabled) audioRef.current.resume();
   }, []);
@@ -171,6 +194,7 @@ export function Tetris({
     if (Math.floor(newLignes / 8) + 1 > stateRef.current.level) setLevel((lv) => lv + 1);
     const newPiece = spawnPiece(nextDechetId);
     setNextDechetId(DECHETS[Math.floor(Math.random() * DECHETS.length)].id);
+    setCanHold(true);
     if (checkCollision(result.board, newPiece)) {
       setRunning(false);
       setGameOver(true);
@@ -240,6 +264,37 @@ export function Tetris({
     });
   }, [lock]);
 
+  // Réserve : garde la pièce courante de côté, ou l'échange avec la pièce gardée.
+  // Une seule fois par pièce (canHold), comme au Tetris moderne.
+  const hold = useCallback(() => {
+    if (!canHold) return;
+    setPiece((current) => {
+      if (!current) return current;
+      const board = stateRef.current.board;
+      if (held) {
+        const swapped: ActivePiece = {
+          shapes: held.shapes,
+          dechetId: held.dechetId,
+          rotation: 0,
+          x: Math.floor(BOARD_WIDTH / 2) - Math.floor(held.shapes[0][0].length / 2),
+          y: 0,
+        };
+        if (checkCollision(board, swapped)) return current;
+        setHeld({ shapes: current.shapes, dechetId: current.dechetId });
+        setCanHold(false);
+        audioRef.current.rotate();
+        return swapped;
+      }
+      const fresh = spawnPiece(nextDechetId);
+      if (checkCollision(board, fresh)) return current;
+      setHeld({ shapes: current.shapes, dechetId: current.dechetId });
+      setNextDechetId(DECHETS[Math.floor(Math.random() * DECHETS.length)].id);
+      setCanHold(false);
+      audioRef.current.rotate();
+      return fresh;
+    });
+  }, [canHold, held, nextDechetId]);
+
   // Keyboard
   useEffect(() => {
     if (!running) return;
@@ -250,10 +305,11 @@ export function Tetris({
       else if (e.key === "ArrowDown") softDrop();
       else if (e.key === "ArrowUp") rotate();
       else if (e.key === " ") hardDrop();
+      else if (e.key === "c" || e.key === "C") hold();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [running, move, softDrop, rotate, hardDrop]);
+  }, [running, move, softDrop, rotate, hardDrop, hold]);
 
   // Touch
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
@@ -298,8 +354,53 @@ export function Tetris({
         if (y >= 0 && y < BOARD_HEIGHT && x >= 0 && x < BOARD_WIDTH) display[y][x] = piece.dechetId;
       }
   }
+
+  // Ombre de chute : projection de la pièce + verdict de l'impact si on la pose ici.
+  const ghostCells = new Set<string>();
+  let ghostVerdict: "curse" | "sainte" | "clear" | "none" = "none";
+  if (piece) {
+    let dy = 0;
+    while (!checkCollision(board, piece, 0, dy + 1)) dy++;
+    const shape = getShape(piece);
+    if (dy > 0) {
+      for (let r = 0; r < shape.length; r++)
+        for (let c = 0; c < shape[r].length; c++) {
+          if (!shape[r][c]) continue;
+          const x = piece.x + c;
+          const y = piece.y + r + dy;
+          if (y >= 0 && y < BOARD_HEIGHT && x >= 0 && x < BOARD_WIDTH) ghostCells.add(`${y}-${x}`);
+        }
+    }
+    // Que se passe-t-il si la pièce se verrouille à cette position ?
+    const merged = mergePiece(board, { ...piece, y: piece.y + dy });
+    for (let r = 0; r < BOARD_HEIGHT; r++) {
+      if (!merged[r].every((cell) => cell !== null)) continue;
+      const cats = merged[r].map((id) => getDechet(id as string)?.categorie ?? "recycle");
+      if (cats.some((cat) => cat === "maudit")) { ghostVerdict = "curse"; break; }
+      if (cats.every((cat) => cat === "compost")) ghostVerdict = "sainte";
+      else if (ghostVerdict === "none") ghostVerdict = "clear";
+    }
+  }
+
+  const ghostColor =
+    ghostVerdict === "curse" ? "#c0392b"
+      : ghostVerdict === "sainte" ? "#c9a227"
+      : ghostVerdict === "clear" ? "#5f8a3e"
+      : "#a9b39a";
+
+  // État de chaque rangée posée, affiché dans la marge pour décider où compléter.
+  const rowStates = board.map((row) => {
+    const filled = row.filter((cell) => cell !== null) as string[];
+    if (filled.length === 0) return "vide";
+    const cats = filled.map((id) => getDechet(id)?.categorie ?? "recycle");
+    if (cats.some((cat) => cat === "maudit")) return "contaminee";
+    if (cats.every((cat) => cat === "compost")) return "compost";
+    return "propre";
+  });
+
   const currentDechet = piece ? getDechet(piece.dechetId) : null;
   const nextDechet = getDechet(nextDechetId);
+  const heldDechet = held ? getDechet(held.dechetId) : null;
 
   return (
     <div className="grid gap-4 md:grid-cols-[1fr_auto]">
@@ -309,37 +410,65 @@ export function Tetris({
           onTouchEnd={onTouchEnd}
           className="relative mx-auto w-full max-w-md select-none"
         >
-          <div
-            className="rounded-lg border-2 border-ocre-500/50 bg-gradient-to-br from-mousse-900 via-mousse-950 to-black p-1.5 shadow-xl"
-            style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${BOARD_WIDTH}, 1fr)`,
-              gap: 2,
-            }}
-          >
-            {display.flatMap((row, r) =>
-              row.map((cell, c) => {
-                const d = cell ? getDechet(cell) : null;
-                return (
-                  <div
-                    key={`${r}-${c}`}
-                    className="aspect-square"
-                    style={{
-                      backgroundColor: d?.couleur ?? "rgba(255,255,255,0.04)",
-                      border: d ? "1px solid rgba(255,255,255,0.18)" : "1px solid rgba(255,255,255,0.03)",
-                      borderRadius: 3,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "0.75rem",
-                      transition: "background-color 0.08s linear",
-                    }}
-                  >
-                    {d && <span style={{ opacity: 0.95 }}>{d.embleme}</span>}
-                  </div>
-                );
-              })
-            )}
+          <div className="flex justify-center gap-1">
+            <div
+              className="rounded-lg border-2 border-ocre-500/50 bg-gradient-to-br from-mousse-900 via-mousse-950 to-black p-1.5 shadow-xl"
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${BOARD_WIDTH}, 1fr)`,
+                gap: 2,
+                flex: 1,
+              }}
+            >
+              {display.flatMap((row, r) =>
+                row.map((cell, c) => {
+                  const d = cell ? getDechet(cell) : null;
+                  const cs = d ? CAT_STYLE[d.categorie] : null;
+                  const isGhost = !d && ghostCells.has(`${r}-${c}`);
+                  return (
+                    <div
+                      key={`${r}-${c}`}
+                      className="aspect-square"
+                      style={{
+                        backgroundColor: cs?.fill ?? (isGhost ? `${ghostColor}26` : "rgba(255,255,255,0.04)"),
+                        border: cs
+                          ? "1px solid rgba(255,255,255,0.22)"
+                          : isGhost
+                          ? `1px dashed ${ghostColor}cc`
+                          : "1px solid rgba(255,255,255,0.03)",
+                        borderRadius: 3,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "0.9rem",
+                        lineHeight: 1,
+                        transition: "background-color 0.08s linear",
+                      }}
+                    >
+                      {cs && <span style={{ color: cs.ink, opacity: 0.92 }}>{cs.glyph}</span>}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            {/* Marge d'état : or = ligne sainte en vue, vert = ligne propre, rouge = maudit présent (ne pas compléter). */}
+            <div
+              className="grid border-y-2 border-transparent py-1.5"
+              style={{ gridTemplateRows: `repeat(${BOARD_HEIGHT}, 1fr)`, gap: 2, width: 9 }}
+              aria-hidden
+            >
+              {rowStates.map((st, r) => (
+                <div
+                  key={r}
+                  style={{
+                    borderRadius: 2,
+                    backgroundColor: ROW_MARK[st],
+                    opacity: st === "vide" ? 0 : 0.85,
+                    transition: "background-color 0.12s linear",
+                  }}
+                />
+              ))}
+            </div>
           </div>
           <AnimatePresence>
             {flash && (
@@ -375,11 +504,13 @@ export function Tetris({
           </AnimatePresence>
         </div>
 
-        <div className="mt-3 grid grid-cols-4 gap-2 md:hidden">
-          <button className="btn-ghost" onClick={() => move(-1)} disabled={!running}>◀</button>
-          <button className="btn-ghost" onClick={rotate} disabled={!running}>↻</button>
-          <button className="btn-ghost" onClick={softDrop} disabled={!running}>▼</button>
-          <button className="btn-ghost" onClick={hardDrop} disabled={!running}>⇊</button>
+        {/* Pavé tactile — alternative aux touches, visible sur tous les écrans */}
+        <div className="mx-auto mt-3 grid w-full max-w-md grid-cols-5 gap-2">
+          <button className="btn-ghost py-3 text-lg" onClick={() => move(-1)} disabled={!running} aria-label="Déplacer à gauche">◀</button>
+          <button className="btn-ghost py-3 text-lg" onClick={() => move(1)} disabled={!running} aria-label="Déplacer à droite">▶</button>
+          <button className="btn-ghost py-3 text-lg" onClick={rotate} disabled={!running} aria-label="Rotation">↻</button>
+          <button className="btn-ghost py-3 text-lg" onClick={softDrop} disabled={!running} aria-label="Descendre">▼</button>
+          <button className="btn-ghost py-3 text-lg" onClick={hardDrop} disabled={!running} aria-label="Chute rapide">⇊</button>
         </div>
       </div>
 
@@ -398,6 +529,33 @@ export function Tetris({
           <p className="font-serif text-sm">Malédictions : {curses}</p>
         </Card>
         <Card>
+          <CardSubtitle>Légende</CardSubtitle>
+          <ul className="mt-2 space-y-1.5">
+            {(["compost", "recycle", "maudit"] as Categorie[]).map((cat) => {
+              const cs = CAT_STYLE[cat];
+              return (
+                <li key={cat} className="flex items-center gap-2 font-serif text-xs text-mousse-800 dark:text-parchemin-100">
+                  <span
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded"
+                    style={{ backgroundColor: cs.fill, color: cs.ink, border: "1px solid rgba(255,255,255,0.22)" }}
+                  >
+                    {cs.glyph}
+                  </span>
+                  <span><strong>{cs.nom}</strong> — {cs.pts}</span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-3 font-serif text-xs italic text-mousse-700 dark:text-parchemin-200/70">
+            Marge de droite : <span style={{ color: "#c9a227" }}>or</span> = ligne sainte en vue,{" "}
+            <span style={{ color: "#5f8a3e" }}>vert</span> = ligne propre,{" "}
+            <span style={{ color: "#c0392b" }}>rouge</span> = maudit présent, à ne pas compléter.
+          </p>
+          <p className="mt-2 font-serif text-xs italic text-mousse-700 dark:text-parchemin-200/70">
+            L'ombre de chute prend ces mêmes couleurs : elle annonce l'effet de la pièce avant que tu la poses.
+          </p>
+        </Card>
+        <Card>
           <CardSubtitle>Prochain déchet</CardSubtitle>
           <div className="mt-2 flex items-center gap-3">
             <span className="text-3xl">{nextDechet?.embleme}</span>
@@ -406,6 +564,25 @@ export function Tetris({
               <CategorieTag c={nextDechet?.categorie ?? "recycle"} />
             </div>
           </div>
+        </Card>
+        <Card>
+          <CardSubtitle>Réserve</CardSubtitle>
+          <div className="mt-2 flex items-center gap-3">
+            <span className="text-3xl">{heldDechet?.embleme ?? "—"}</span>
+            <div>
+              <p className="font-serif text-sm text-mousse-800 dark:text-parchemin-100">
+                {heldDechet?.nom ?? "Réserve vide"}
+              </p>
+              {heldDechet && <CategorieTag c={heldDechet.categorie} />}
+            </div>
+          </div>
+          <button
+            className="btn-ghost mt-3 w-full py-2 text-sm"
+            onClick={hold}
+            disabled={!running || !canHold}
+          >
+            Garder / échanger (C)
+          </button>
         </Card>
         {currentDechet && (
           <Card>
@@ -426,6 +603,7 @@ export function Tetris({
             <li>▲ : rotation</li>
             <li>▼ : descendre</li>
             <li>espace : chute rapide</li>
+            <li>C : garder / échanger</li>
             <li>Mobile : swipe + tap rotation</li>
           </ul>
           <label className="mt-3 flex items-center gap-2 font-serif text-xs text-mousse-700 dark:text-parchemin-200/80">
