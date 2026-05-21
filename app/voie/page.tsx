@@ -92,6 +92,25 @@ function Contenu() {
           />
         ))}
       </ol>
+
+      {progress.every((p) => p.complete) && (
+        <Card className="border-ocre-500/50 bg-ocre-500/5">
+          <CardSubtitle>Après la Voie</CardSubtitle>
+          <CardTitle>Le pèlerinage continue sans chapitres</CardTitle>
+          <p className="mt-2 font-serif text-mousse-800 dark:text-parchemin-100">
+            Les neuf chapitres sont franchis. Il n'y a plus rien à débloquer — et c'est précisément là
+            que commence la vraie pratique. Les Veilles t'attendent : une par jour, sans fin, sans score.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link href="/veilles" className="btn-sacre">
+              Entrer dans les Veilles
+            </Link>
+            <Link href="/voie/epilogue" className="btn-ghost">
+              Relire l'Épilogue
+            </Link>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
