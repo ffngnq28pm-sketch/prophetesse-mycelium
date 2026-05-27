@@ -129,9 +129,9 @@ function Contenu() {
         </h2>
         <div className="grid gap-3 md:grid-cols-2">
           {totems.map((t) => (
-            <Card key={t.id} className={cn(t.id === totem && "border-ocre-500/60")}>
+            <Card key={t.id} className={cn(t.id === totem && "border-ocre-500/60 bg-ocre-500/5")}>
               <div className="flex items-baseline gap-3">
-                <span className="text-2xl">{t.embleme}</span>
+                <span className="text-2xl" aria-hidden>{t.embleme}</span>
                 <CardTitle>{t.nom}</CardTitle>
               </div>
               <p className="mt-2 font-serif text-sm text-mousse-800 dark:text-parchemin-100">
@@ -139,6 +139,9 @@ function Contenu() {
               </p>
               <p className="mt-2 font-serif text-xs uppercase tracking-widest text-ocre-600 dark:text-ocre-400">
                 Vertu : {t.vertu} · {t.bonus}
+              </p>
+              <p className="mt-3 font-serif text-sm italic leading-relaxed text-mousse-700 dark:text-parchemin-200/80">
+                {t.recit}
               </p>
             </Card>
           ))}

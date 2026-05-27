@@ -2,6 +2,7 @@ import Link from "next/link";
 import { livres } from "@/data/livre-sacre";
 import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Ornement } from "@/components/liturgical/Ornement";
+import { HelpButton } from "@/components/liturgical/HelpButton";
 import { Badge } from "@/components/ui/Badge";
 
 export const metadata = {
@@ -24,6 +25,13 @@ export default function LivrePage() {
         <p className="mx-auto max-w-xl font-serif italic text-mousse-700 dark:text-parchemin-200/80">
           « Six livres pour ceux qui veulent comprendre. Lis-en un par lune, et tu auras achevé l'année. »
         </p>
+        <div className="mt-3 flex justify-center">
+          <HelpButton titre="Le Livre Sacré — Que faire ici ?">
+            <p>Six livres, dans lesquels tu peux entrer sans ordre obligatoire. La <strong>Genèse Mycélienne</strong> (Livre I) raconte le mythe fondateur. Les <strong>Hérésies</strong> (II) et les <strong>Vertus</strong> (III) en sont les piliers. Les <strong>Paraboles</strong> (IV) et les <strong>Lamentations</strong> (V) sont les pièces littéraires les plus longues — à lire le matin, à voix haute si possible.</p>
+            <p className="mt-2">Plusieurs chapitres déverrouillent des objectifs de La Voie (lire la Genèse, lire les Hérésies, lire les Vertus, lire 7 paraboles, lire les Lamentations). Pas de score : il suffit d'ouvrir le chapitre pour qu'il compte comme lu.</p>
+            <p className="mt-2">Les notes de bas de page sont des digressions assumées. C'est de la liturgie qui se permet l'aparté.</p>
+          </HelpButton>
+        </div>
       </header>
 
       <div className="grid gap-4 md:grid-cols-2">

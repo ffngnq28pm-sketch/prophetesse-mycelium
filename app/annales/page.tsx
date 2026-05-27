@@ -7,6 +7,7 @@ import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Ornement } from "@/components/liturgical/Ornement";
 import { Hydrated } from "@/components/liturgical/Hydrated";
+import { HelpButton } from "@/components/liturgical/HelpButton";
 
 function dateCourte(iso: string): string {
   const d = new Date(iso);
@@ -57,6 +58,12 @@ export default function AnnalesPage() {
         <p className="mx-auto max-w-xl font-serif italic text-mousse-700 dark:text-parchemin-200/80">
           « On garde une trace administrative de tout, non par méfiance, mais parce qu'un chiffre, parfois, console. »
         </p>
+        <div className="mt-3 flex justify-center">
+          <HelpButton titre="Les Annales — Que faire ici ?">
+            <p>Tes scores et tes confessions, dans l'ordre où tu les as déposés. Les <strong>sparklines</strong> au-dessus de chaque jeu montrent ta progression. Les 12 dernières parties sont listées en dessous.</p>
+            <p className="mt-2">Les données vivent dans ton seul appareil (localStorage). Pour les sauvegarder ailleurs, exporte-les depuis les <strong>Paramètres</strong>.</p>
+          </HelpButton>
+        </div>
       </header>
       <Hydrated>
         <Contenu />

@@ -3,6 +3,7 @@ import { ESPECES, Espece } from "@/data/jardin-especes";
 import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Ornement } from "@/components/liturgical/Ornement";
+import { HelpButton } from "@/components/liturgical/HelpButton";
 
 export const metadata = {
   title: "Almanach du Vivant",
@@ -40,6 +41,12 @@ export default function AlmanachPage() {
         <p className="mx-auto max-w-xl font-serif italic text-mousse-700 dark:text-parchemin-200/80">
           « Compter les espèces n'est pas une comptabilité : c'est une forme de politesse envers ce qui vit sans demander la parole. »
         </p>
+        <div className="mt-3 flex justify-center">
+          <HelpButton titre="L'Almanach — Que faire ici ?">
+            <p>Trois sections : les <strong>Pollinisateurs</strong> (ceux qu'on poursuit dans le jeu II), les <strong>Auxiliaires & Gardiens</strong> (Chiroptères, Coccinelles, Hérissons — ils ne pollinisent pas mais sans eux le jardin s'effondre), et la <strong>Flore</strong> (les douze espèces que tu peux semer dans ton Jardin).</p>
+            <p className="mt-2">Chaque fiche donne le rôle écologique réel et une note de bas de page mycélienne (le <em>lore</em>). C'est une page à butiner, pas à dévorer.</p>
+          </HelpButton>
+        </div>
       </header>
 
       <section className="mb-7">

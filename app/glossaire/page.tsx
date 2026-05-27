@@ -1,6 +1,6 @@
 import { GLOSSAIRE } from "@/data/glossaire";
-import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Ornement } from "@/components/liturgical/Ornement";
+import { GlossaireClient } from "@/components/liturgical/GlossaireClient";
 
 export const metadata = {
   title: "Glossaire de l'Ordre",
@@ -23,14 +23,7 @@ export default function GlossairePage() {
           « On ne juge pas un disciple qui demande la définition d'un mot. On juge un disciple qui prétend les connaître tous. »
         </p>
       </header>
-      <div className="grid gap-3 md:grid-cols-2">
-        {GLOSSAIRE.map((e) => (
-          <Card key={e.terme}>
-            <CardTitle>{e.terme}</CardTitle>
-            <p className="mt-2 font-serif text-sm text-mousse-800 dark:text-parchemin-100">{e.definition}</p>
-          </Card>
-        ))}
-      </div>
+      <GlossaireClient entries={GLOSSAIRE} />
     </div>
   );
 }

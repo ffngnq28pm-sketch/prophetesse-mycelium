@@ -116,25 +116,39 @@ function Contenu() {
           Ton totem t'accompagne dans ta progression. Chacun confère un bonus liturgique distinct.
         </p>
         <div className="mt-3 grid gap-2 md:grid-cols-2">
-          {totems.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTotem(t.id)}
-              className={`flex items-start gap-3 rounded-md border p-3 text-left font-serif transition ${
-                totem === t.id
-                  ? "border-ocre-500/60 bg-ocre-500/10"
-                  : "border-mousse-500/20 hover:border-ocre-500/40 hover:bg-mousse-100/50 dark:hover:bg-mousse-900/40"
-              }`}
-            >
-              <span className="text-2xl">{t.embleme}</span>
-              <div>
-                <p className="text-mousse-800 dark:text-parchemin-100">{t.nom}</p>
-                <p className="text-xs text-mousse-600 dark:text-parchemin-200/70">
-                  {t.bonus}
-                </p>
-              </div>
-            </button>
-          ))}
+          {totems.map((t) => {
+            const choisi = totem === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTotem(t.id)}
+                aria-pressed={choisi}
+                className={`flex flex-col items-start gap-2 rounded-md border p-3 text-left font-serif transition ${
+                  choisi
+                    ? "border-ocre-500/60 bg-ocre-500/10"
+                    : "border-mousse-500/20 hover:border-ocre-500/40 hover:bg-mousse-100/50 dark:hover:bg-mousse-900/40"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl" aria-hidden>{t.embleme}</span>
+                  <div>
+                    <p className="text-mousse-800 dark:text-parchemin-100">{t.nom}</p>
+                    <p className="text-xs uppercase tracking-widest text-ocre-600 dark:text-ocre-400">
+                      Vertu : {t.vertu}
+                    </p>
+                    <p className="mt-1 text-xs text-mousse-600 dark:text-parchemin-200/70">
+                      {t.bonus}
+                    </p>
+                  </div>
+                </div>
+                {choisi && (
+                  <p className="mt-1 text-xs italic leading-relaxed text-mousse-700 dark:text-parchemin-200/80">
+                    {t.recit}
+                  </p>
+                )}
+              </button>
+            );
+          })}
         </div>
       </Card>
 

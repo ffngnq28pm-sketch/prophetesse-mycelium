@@ -147,8 +147,8 @@ function ConfessionContent() {
                 <Badge variant="grace">−{selected.graines} graines · +{Math.ceil(selected.graines / 3)} de rachat</Badge>
                 <div className="flex gap-2">
                   <Button variant="ghost" onClick={reset}>Reculer</Button>
-                  <Button onClick={confesser}>
-                    <Skull size={14} /> Je confesse
+                  <Button variant="or" onClick={confesser}>
+                    <Skull size={14} aria-hidden /> Je confesse
                   </Button>
                 </div>
               </div>

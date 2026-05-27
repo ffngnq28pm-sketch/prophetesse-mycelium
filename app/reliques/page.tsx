@@ -6,6 +6,7 @@ import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Ornement } from "@/components/liturgical/Ornement";
 import { Hydrated } from "@/components/liturgical/Hydrated";
+import { HelpButton } from "@/components/liturgical/HelpButton";
 
 const CATEGORIES: CategorieRelique[] = ["Jardin", "Jeux", "Liturgie", "Parcours", "Exploration"];
 
@@ -23,6 +24,12 @@ export default function ReliquesPage() {
         <p className="mx-auto max-w-xl font-serif italic text-mousse-700 dark:text-parchemin-200/80">
           « Une relique ne récompense rien : elle se contente de se souvenir. Ce qui, à bien y réfléchir, est déjà beaucoup. »
         </p>
+        <div className="mt-3 flex justify-center">
+          <HelpButton titre="Le Reliquaire — Que faire ici ?">
+            <p>Cinq catégories de reliques : Jardin, Jeux, Liturgie, Parcours, Exploration. Chacune se déverrouille automatiquement quand sa condition est remplie — tu n'as rien à cocher.</p>
+            <p className="mt-2">Si tu lis la condition d'une relique grisée, c'est qu'elle reste à atteindre. Si tu lis sa description, c'est qu'elle est tienne. Aucun jugement sur le compteur : la collection complète est possible mais n'est pas l'objectif.</p>
+          </HelpButton>
+        </div>
       </header>
       <Hydrated>
         <Contenu />

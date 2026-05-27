@@ -164,6 +164,13 @@ export default function SanctuairesPage() {
             <p className="mt-1 font-serif italic text-mousse-800 dark:text-parchemin-100">
               {selected.pelerinage}
             </p>
+            <Ornement />
+            <p className="font-serif text-xs uppercase tracking-widest text-ocre-600 dark:text-ocre-400">
+              Anecdote mycélienne
+            </p>
+            <p className="mt-1 font-serif text-sm leading-relaxed text-mousse-800 dark:text-parchemin-100">
+              {selected.anecdote}
+            </p>
           </Card>
         </motion.div>
       </div>

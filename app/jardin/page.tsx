@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Ornement } from "@/components/liturgical/Ornement";
 import { Hydrated } from "@/components/liturgical/Hydrated";
+import { HelpButton } from "@/components/liturgical/HelpButton";
 import { Sprout, Sparkles, Trash2, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,13 @@ export default function JardinPage() {
         <p className="mx-auto max-w-xl font-serif italic text-mousse-700 dark:text-parchemin-200/80">
           « Plante. Attends. Émerveille-toi. Le sol fait le reste, mais il faut quand même planter. »
         </p>
+        <div className="mt-3 flex justify-center">
+          <HelpButton titre="Le Jardin — Que faire ici ?">
+            <p>Tu dépenses tes <strong>Graines de Grâce</strong> pour planter douze espèces sauvages d'Île-de-France. Chacune a un coût et une rareté. Le Plantain coûte peu, la Véronique à feuilles d'acinus est presque inaccessible.</p>
+            <p className="mt-2">Sélectionne d'abord une espèce dans le catalogue, puis clique sur une case vide de la parcelle. Une fois plantée, l'espèce reste — et les insectes commencent à passer (animation discrète). Au survol d'une plante, une corbeille apparaît : tu peux l'arracher, mais les Graines investies sont perdues.</p>
+            <p className="mt-2">L'objectif n'est pas d'optimiser. C'est d'avoir, à terme, une parcelle qui ressemble à un coin de friche heureuse.</p>
+          </HelpButton>
+        </div>
       </header>
       <Hydrated>
         <Contenu />

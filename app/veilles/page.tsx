@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Ornement } from "@/components/liturgical/Ornement";
 import { Hydrated } from "@/components/liturgical/Hydrated";
+import { HelpButton } from "@/components/liturgical/HelpButton";
 import { ChevronLeft, Moon } from "lucide-react";
 
 export default function VeillesPage() {
@@ -70,6 +71,12 @@ function Contenu() {
         <p className="mx-auto max-w-xl font-serif italic text-mousse-700 dark:text-parchemin-200/80">
           « Le pèlerinage achevé, il ne reste plus d'objectifs. Il reste les jours. Une veille pour chacun, sans dernier chapitre, sans dernière page. »
         </p>
+        <div className="mt-3 flex justify-center">
+          <HelpButton titre="Les Veilles — Que faire ici ?">
+            <p>Une <strong>veille du jour</strong> tournante, choisie déterministiquement parmi 21. Tu n'es pas obligé·e de la cocher : tu peux simplement la lire et l'observer dans ta journée. Cocher signifie « j'ai prêté attention », rien de plus.</p>
+            <p className="mt-2">Aucun score, aucune récompense. Les Veilles existent parce que la pratique mycélienne, sans objectif, est l'objectif réel. Le compteur en haut n'est qu'un souvenir du temps qui passe.</p>
+          </HelpButton>
+        </div>
       </header>
 
       <Card className="border-ocre-500/50 bg-ocre-500/5">
@@ -89,6 +96,7 @@ function Contenu() {
           </p>
         ) : (
           <Button
+            variant="or"
             onClick={() => {
               if (observerVeille(key)) {
                 setJustObserved(true);

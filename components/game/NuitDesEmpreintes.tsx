@@ -22,6 +22,14 @@ type Phase = "intro" | "jeu" | "verdict";
 type Mode = "sonder" | "marquer";
 type Fin = null | "clear" | "chat" | "ferme";
 
+interface JournalEntry {
+  nom: string;
+  fin: Exclude<Fin, null>;
+  grille: Grille;
+  faune: number;
+  fauneMax: number;
+}
+
 const NUM_COLOR: Record<number, string> = {
   1: "#6db3e8",
   2: "#82c878",
@@ -47,6 +55,7 @@ export function NuitDesEmpreintes({
   const [mammiferes, setMammiferes] = useState(0);
   const [nuitFaune, setNuitFaune] = useState(0);
   const [fin, setFin] = useState<Fin>(null);
+  const [journal, setJournal] = useState<JournalEntry[]>([]);
 
   const cfg: ConfigNuit = NUITS[nuitIndex];
   const marques = useMemo(
@@ -67,6 +76,7 @@ export function NuitDesEmpreintes({
   const commencer = () => {
     setScore(0);
     setMammiferes(0);
+    setJournal([]);
     installerNuit(0);
   };
 
@@ -123,6 +133,15 @@ export function NuitDesEmpreintes({
   };
 
   const continuer = () => {
+    if (!fin) return;
+    const entry: JournalEntry = {
+      nom: cfg.nom,
+      fin,
+      grille: clonerGrille(grille),
+      faune: nuitFaune,
+      fauneMax: cfg.faune,
+    };
+    setJournal((j) => [...j, entry]);
     if (nuitIndex < NUITS.length - 1) {
       installerNuit(nuitIndex + 1);
     } else {
@@ -232,16 +251,29 @@ export function NuitDesEmpreintes({
             <div className="text-center">
               <p className="text-xs uppercase tracking-[0.3em] text-ocre-400">Carnet de relevés refermé</p>
               <h2 className="titre-liturgique mt-2 text-3xl">Verdict du Veilleur</h2>
-              <div className="ornement" />
+              <div className="ornement" aria-hidden />
               <p className="mx-auto max-w-md font-serif italic text-parchemin-200/85">
                 « {jugerEmpreintes(score, mammiferes)} »
               </p>
               <p className="mt-3 font-serif">
                 Score : <strong>{score}</strong> · Mammifères recensés : <strong>{mammiferes}</strong>
               </p>
-              <Button onClick={commencer} className="mt-4">
-                Recommencer le relevé
-              </Button>
+            </div>
+
+            {journal.length > 0 && (
+              <div className="mx-auto mt-5 grid max-w-3xl gap-3 sm:grid-cols-3">
+                {journal.map((entry, i) => (
+                  <NuitRecap key={i} entry={entry} numero={i + 1} />
+                ))}
+              </div>
+            )}
+
+            <p className="mx-auto mt-4 max-w-md text-center font-serif text-xs italic text-parchemin-200/65">
+              Vert : chat correctement déduit (drapeau bien placé). Rouge : chat manqué (sans drapeau). Drapeau seul sur fond clair : fausse alerte sur une bête recensée.
+            </p>
+
+            <div className="mt-5 text-center">
+              <Button onClick={commencer}>Recommencer le relevé</Button>
             </div>
           </motion.div>
         )}
@@ -262,6 +294,101 @@ function ModeBtn({ actif, onClick, label }: { actif: boolean; onClick: () => voi
     >
       {label}
     </button>
+  );
+}
+
+function NuitRecap({ entry, numero }: { entry: JournalEntry; numero: number }) {
+  const { grille, fin, faune, fauneMax, nom } = entry;
+  const cols = grille[0]?.length ?? 0;
+  // Comptes pour le résumé textuel sous la mini-grille
+  let chatsBienDeduits = 0;
+  let chatsManques = 0;
+  let faussesAlertes = 0;
+  for (const row of grille) {
+    for (const c of row) {
+      if (c.contenu === "chat") {
+        if (c.marquee) chatsBienDeduits++;
+        else chatsManques++;
+      } else if (c.contenu !== "vide" && c.marquee) {
+        // un drapeau placé sur une bête recensée = fausse alerte
+        faussesAlertes++;
+      }
+    }
+  }
+  const finLabel =
+    fin === "clear" ? "Cimetière relevé" : fin === "chat" ? "Chat dérangé" : "Nuit refermée";
+  const finColor =
+    fin === "clear" ? "text-ocre-300" : fin === "chat" ? "text-terre-300" : "text-parchemin-200/75";
+
+  return (
+    <div className="rounded-md border border-parchemin-200/15 bg-mousse-950/40 p-3">
+      <div className="mb-2 flex items-baseline justify-between gap-2 font-serif text-xs">
+        <span className="uppercase tracking-widest text-ocre-400/80">Nuit {numero} · {nom}</span>
+        <span className={`font-medium ${finColor}`}>{finLabel}</span>
+      </div>
+      <div
+        className="mx-auto grid gap-[2px]"
+        style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, maxWidth: cols * 18 }}
+        aria-hidden
+      >
+        {grille.flatMap((row, y) =>
+          row.map((c, x) => <CelluleMini key={`${x}-${y}`} c={c} />)
+        )}
+      </div>
+      <p className="mt-2 text-center font-serif text-[11px] leading-relaxed text-parchemin-200/80">
+        <span className="text-emerald-300">{chatsBienDeduits}</span> bien déduit{chatsBienDeduits > 1 ? "s" : ""}
+        {" · "}
+        <span className="text-red-300">{chatsManques}</span> manqué{chatsManques > 1 ? "s" : ""}
+        {faussesAlertes > 0 && (
+          <>
+            {" · "}
+            <span className="text-ocre-300">{faussesAlertes}</span> fausse{faussesAlertes > 1 ? "s" : ""} alerte{faussesAlertes > 1 ? "s" : ""}
+          </>
+        )}
+        {" · "}
+        {faune}/{fauneMax} bête{fauneMax > 1 ? "s" : ""}
+      </p>
+    </div>
+  );
+}
+
+function CelluleMini({ c }: { c: { contenu: string; chatsVoisins: number; revelee: boolean; marquee: boolean } }) {
+  // Mini-grille de bilan : on rend lisible d'un coup d'œil les chats bien marqués
+  // (vert), les chats manqués (rouge), les bêtes recensées (or) et les fausses alertes.
+  let bg = "rgba(0,0,0,0.35)";
+  let glyph: React.ReactNode = null;
+  let border = "1px solid rgba(255,255,255,0.05)";
+  const estFaune = c.contenu === "herisson" || c.contenu === "micromammifere" || c.contenu === "fouine";
+
+  if (c.contenu === "chat") {
+    if (c.marquee) {
+      bg = "rgba(46,160,67,0.35)"; // vert = bien déduit
+      border = "1px solid rgba(46,160,67,0.6)";
+      glyph = "🐈";
+    } else {
+      bg = "rgba(180,60,60,0.4)"; // rouge = manqué
+      border = "1px solid rgba(180,60,60,0.6)";
+      glyph = "🐈";
+    }
+  } else if (estFaune) {
+    bg = "rgba(201,162,39,0.22)";
+    border = "1px solid rgba(201,162,39,0.4)";
+    glyph = c.marquee ? "🚩" : FAUNE[c.contenu as keyof typeof FAUNE].embleme;
+  } else {
+    // case vide ; on n'affiche rien sauf si l'utilisateur y a planté un drapeau (fausse alerte)
+    if (c.marquee) {
+      bg = "rgba(150,120,30,0.22)";
+      glyph = "🚩";
+    }
+  }
+
+  return (
+    <div
+      className="flex aspect-square items-center justify-center rounded-[2px]"
+      style={{ background: bg, border, fontSize: "0.65rem", lineHeight: 1 }}
+    >
+      {glyph}
+    </div>
   );
 }
 

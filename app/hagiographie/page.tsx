@@ -2,6 +2,7 @@ import { HAGIOGRAPHIE, Personnage } from "@/data/hagiographie";
 import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Ornement } from "@/components/liturgical/Ornement";
+import { HelpButton } from "@/components/liturgical/HelpButton";
 
 export const metadata = {
   title: "Hagiographie de l'Ordre",
@@ -26,6 +27,12 @@ export default function HagiographiePage() {
         <p className="mx-auto max-w-xl font-serif italic text-mousse-700 dark:text-parchemin-200/80">
           « Un saint mycélien n'a rien accompli d'éclatant. Il a seulement fait, lentement, la même petite chose, jusqu'à ce qu'elle devienne une forêt. »
         </p>
+        <div className="mt-3 flex justify-center">
+          <HelpButton titre="Hagiographie — Que faire ici ?">
+            <p>L'Hagiographie répertorie les figures qui peuplent les Évangiles Verts. La <strong>Fondatrice</strong> (la Marcheuse) en est l'origine. Les <strong>Premiers Disciples</strong> — Sœur Compost, Frère Lichen, Frère Théodule, Mère Mycorhize, Vieux Marcel — sont les autorités citées dans les Versets, les Citations et les Jugements des jeux.</p>
+            <p className="mt-2">Aucune action ici : c'est une page de référence. La lire aide à comprendre les blagues internes du Livre Sacré et les jugements de fin de partie.</p>
+          </HelpButton>
+        </div>
       </header>
 
       {fondatrice && (

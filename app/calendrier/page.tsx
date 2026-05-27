@@ -109,8 +109,8 @@ function Contenu() {
                     <CheckCircle2 size={12} /> Célébrée
                   </Badge>
                 ) : (
-                  <Button onClick={() => handleCelebrer(f.id)} variant="ghost">
-                    <Sparkles size={14} /> Célébrer (+15 graines)
+                  <Button onClick={() => handleCelebrer(f.id)} variant="or">
+                    <Sparkles size={14} aria-hidden /> Célébrer (+15 graines)
                   </Button>
                 )}
               </div>

@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { offices } from "@/data/rituels";
+import { AnimatePresence } from "framer-motion";
+import { offices, gesteDuJour, LABEL_SAISON, OfficeRituel } from "@/data/rituels";
 import { useStore } from "@/lib/store";
 import { todayKey, formatDate } from "@/lib/utils";
 import { computeStreak, streakJalon } from "@/lib/streak";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Ornement } from "@/components/liturgical/Ornement";
 import { Hydrated } from "@/components/liturgical/Hydrated";
+import { BenedictionOverlay } from "@/components/liturgical/BenedictionOverlay";
 import { Sun, Sparkles, Flame } from "lucide-react";
 
 export default function RituelsPage() {
@@ -44,7 +45,7 @@ function RituelsContent() {
   const jour = useStore((s) => s.rituelsParJour[key] ?? {});
   const rituelsParJour = useStore((s) => s.rituelsParJour);
   const totalGraines = useStore((s) => s.graines);
-  const [recentReward, setRecentReward] = useState<number | null>(null);
+  const [benediction, setBenediction] = useState<OfficeRituel | null>(null);
 
   const streak = useMemo(() => computeStreak(rituelsParJour), [rituelsParJour]);
   const jalon = streakJalon(streak.actuel);
@@ -102,21 +103,22 @@ function RituelsContent() {
       </Card>
 
       <AnimatePresence>
-        {recentReward !== null && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="rounded-md border border-ocre-500/40 bg-ocre-500/10 p-3 text-center font-serif text-ocre-700 dark:text-ocre-400"
-          >
-            + {recentReward} Graines de Grâce. Bénie sois-tu.
-          </motion.div>
+        {benediction && (
+          <BenedictionOverlay
+            key={benediction.id}
+            embleme={benediction.embleme}
+            nom={benediction.nom}
+            benediction={benediction.benediction}
+            graines={benediction.graines}
+            onClose={() => setBenediction(null)}
+          />
         )}
       </AnimatePresence>
 
       <div className="grid gap-3">
         {offices.map((o) => {
           const accompli = !!jour[o.id];
+          const geste = gesteDuJour(o);
           return (
             <Card
               key={o.id}
@@ -124,7 +126,7 @@ function RituelsContent() {
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <span className="mt-1 text-2xl text-ocre-600 dark:text-ocre-400">
+                  <span className="mt-1 text-2xl text-ocre-600 dark:text-ocre-400" aria-hidden>
                     {o.embleme}
                   </span>
                   <div className="flex-1">
@@ -133,12 +135,17 @@ function RituelsContent() {
                         {o.nom}
                       </h3>
                       <span className="font-serif text-xs uppercase tracking-widest text-ocre-600 dark:text-ocre-400">
-                        <Sun size={12} className="inline" /> {o.heure}
+                        <Sun size={12} className="inline" aria-hidden /> {o.heure}
                       </span>
                     </div>
                     <p className="mt-2 font-serif text-mousse-800 dark:text-parchemin-100">
-                      {o.geste}
+                      {geste.texte}
                     </p>
+                    {geste.estSaisonnier && (
+                      <p className="mt-1 font-serif text-[11px] uppercase tracking-widest text-ocre-600/80 dark:text-ocre-400/80">
+                        {LABEL_SAISON[geste.saison]}
+                      </p>
+                    )}
                     {accompli && (
                       <p className="mt-2 font-serif italic text-mousse-700 dark:text-parchemin-200/80">
                         « {o.benediction} »
@@ -160,11 +167,11 @@ function RituelsContent() {
                     </Button>
                   ) : (
                     <Button
+                      variant="or"
                       onClick={() => {
                         if (cocher(key, o.id)) {
                           ajouterGraines(o.graines);
-                          setRecentReward(o.graines);
-                          setTimeout(() => setRecentReward(null), 2200);
+                          setBenediction(o);
                         }
                       }}
                     >

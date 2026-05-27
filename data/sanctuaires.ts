@@ -8,6 +8,7 @@ export interface Sanctuaire {
   description: string;
   especes: string;
   pelerinage: string;
+  anecdote: string;
 }
 
 export const sanctuaires: Sanctuaire[] = [
@@ -24,6 +25,8 @@ export const sanctuaires: Sanctuaire[] = [
       "Marronnier, Tilleul, Hêtre, Érable sycomore, Lierre grimpant, Renard roux, Pigeon ramier, Chouette hulotte, Lichens en abondance.",
     pelerinage:
       "Entrée principale boulevard de Ménilmontant. Marcher dans la division 76 où dorment les premiers compostiers oubliés. Ne pas se presser. S'arrêter à la tombe d'une inconnue.",
+    anecdote:
+      "On raconte qu'un gardien du Père-Lachaise, qui prend sa retraite dans dix-huit mois, sait par cœur le nom latin de chaque arbre du cimetière. Il ne l'a jamais dit à personne. Il les nomme à voix basse en passant devant eux, le matin, quand il fait sa tournée. C'est, selon les chroniqueurs de l'Ordre, la plus haute liturgie laïque qui se pratique dans Paris.",
   },
   {
     id: "montparnasse",
@@ -38,6 +41,8 @@ export const sanctuaires: Sanctuaire[] = [
       "Marronnier, Cèdre du Liban, Cyprès, Buis, Mousse Hypnum, Hérisson d'Europe, Grive musicienne.",
     pelerinage:
       "Entrer par la rue Émile-Richard. Saluer la tombe de Beckett. Marcher en silence pendant vingt minutes minimum. Repérer un Lichen jaune (Xanthoria) sur une dalle.",
+    anecdote:
+      "Beckett, qui repose au carré 12, n'a jamais écrit un mot sur les Lichens. C'est, observait Sœur Compost, à peu près la seule chose qu'il n'ait pas écrite. On peut s'asseoir sur le banc qui lui fait face et lui adresser silencieusement la liste des espèces qu'il a manquées. Il prendra cela, dit-on, avec la patience qui le caractérisait — laquelle ressemble assez à celle d'un Lichen.",
   },
   {
     id: "bagneux",
@@ -52,6 +57,8 @@ export const sanctuaires: Sanctuaire[] = [
       "Prairies fauches tardives, Halictes femelles, Bourdon terrestre, Hérisson d'Europe, Orchidées du genre Ophrys signalées, Pic épeiche.",
     pelerinage:
       "Carré 28, samedi matin de juin. Apporter un carnet. Compter les espèces florales sur un mètre carré. Y rester une heure. La Marcheuse, dit-on, y passe parfois.",
+    anecdote:
+      "Au printemps 2017, le service municipal a interrompu la fauche du carré 28 pendant cinq semaines, à la demande discrète d'un naturaliste local. On a compté quarante-sept espèces de plantes à fleurs sur dix mètres carrés. Le service en a tiré une note interne. La note s'est perdue. La pratique, elle, a survécu — l'une des spécificités des bonnes pratiques étant qu'elles n'ont pas besoin de note pour exister.",
   },
   {
     id: "pantin",
@@ -66,6 +73,8 @@ export const sanctuaires: Sanctuaire[] = [
       "Rouge-gorge, Mésange charbonnière, Renard roux, Hérisson, Plantain lancéolé, Cardamine hérissée, Pâquerette commune, Vipérine commune.",
     pelerinage:
       "Avenue Édouard-Vaillant. Marcher d'est en ouest, lentement, à 7h du matin. Écouter le concert matinal. Ne parler à personne.",
+    anecdote:
+      "Frère Lichen y vient depuis vingt-deux ans pour photographier les Lichens crustacés des stèles anciennes. Il a recensé cent quatre espèces, ce qui est, à sa connaissance, le record francilien — record qu'il n'a déclaré à aucune autorité botanique, par méfiance des autorités en général. Ses photographies sont rangées dans un carton sous son lit. Il a fait promettre à sa nièce de tout brûler quand il mourra. La nièce a promis. Elle ne tiendra pas parole.",
   },
   {
     id: "thiais",
@@ -80,6 +89,8 @@ export const sanctuaires: Sanctuaire[] = [
       "Pelouses sèches, Lézard des murailles, Halicte cordée, Anthidie cotonneuse, Tilleul.",
     pelerinage:
       "Stèle des morts isolés. Y déposer mentalement une fleur de Tilleul. Réciter la Lamentation 4 sur la Dosette.",
+    anecdote:
+      "À chaque atterrissage à Orly, un Airbus passe à cent cinquante mètres au-dessus du carré des anonymes. Les Lézards des murailles, qu'on croirait dérangés, ne le sont pas : ils ont appris à ignorer le bruit comme un humain finit par ignorer le sien. C'est, prétend Mère Mycorhize, le miracle écologique le plus discret de la région — une zone qui devrait être un enfer sonore et qui n'est, en pratique, qu'une grande prairie qui n'écoute personne.",
   },
   {
     id: "gentilly",
@@ -94,6 +105,8 @@ export const sanctuaires: Sanctuaire[] = [
       "Renoncule rampante, Pâquerette, Plantain, Trèfle blanc, Lierre, Hérisson, Mésange bleue.",
     pelerinage:
       "Entrée principale. Lire un Verset à voix basse devant le plus vieux Tilleul. Compter trois espèces d'oiseaux entendues.",
+    anecdote:
+      "Une association de quartier y a planté, en 2019, un Tilleul que personne n'avait commandé. Personne ne l'a non plus retiré. Six ans plus tard, le Tilleul fait trois mètres, et les enfants de l'école d'à côté viennent y déjeuner en juin. C'est, prétendent les chroniques de l'Ordre, l'unique exemple connu où l'inaction administrative a produit un bien public — ce qui mériterait une étude sociologique qu'aucun sociologue n'a entreprise.",
   },
   {
     id: "saint-ouen",
@@ -108,6 +121,8 @@ export const sanctuaires: Sanctuaire[] = [
       "Pic vert, Pic épeiche, Sittelle torchepot, Lichens crustacés, Marronnier d'Inde.",
     pelerinage:
       "Aller en automne. Récolter mentalement une feuille de Marronnier. La méditer.",
+    anecdote:
+      "Un Pic vert y vit depuis au moins onze ans. C'est, à l'échelle des Pics, une vie longue. Il tambourine chaque matin sur le même Marronnier, à la même heure, sur le même rythme. Le gardien-chef, qui a soixante-deux ans, dit qu'il prendra sa retraite quand le Pic prendra la sienne. Le Pic n'a pas signalé d'intention en ce sens, et les deux continuent leur compagnonnage tacite.",
   },
   {
     id: "ivry",
@@ -122,5 +137,7 @@ export const sanctuaires: Sanctuaire[] = [
       "Grenouille verte, Hirondelle rustique, Roseau commun, Saule blanc, Aulne glutineux.",
     pelerinage:
       "Printemps. S'asseoir sur un banc et attendre vingt minutes. Compter les passages d'Hirondelles.",
+    anecdote:
+      "Les Hirondelles rustiques d'Ivry sont, statistiquement, les plus tenaces de la région — elles reviennent depuis l'Afrique du Sud chaque printemps pour nicher sous le même auvent de chapelle funéraire, depuis au moins quatorze générations. La chapelle a été repeinte une fois. Les Hirondelles ont attendu trois jours, puis reconsidéré, et adopté la nouvelle peinture. Une Hirondelle, observait Sœur Halicte, fait preuve d'un pragmatisme architectural que beaucoup d'urbanistes lui envieraient.",
   },
 ];

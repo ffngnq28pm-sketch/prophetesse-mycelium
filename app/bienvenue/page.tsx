@@ -211,8 +211,8 @@ export default function BienvenuePage() {
                 Avancer <ChevronRight size={14} />
               </Button>
             ) : (
-              <Button onClick={finir} disabled={!nom.trim() || !totemId}>
-                <Sprout size={14} /> Entrer dans l'Ordre
+              <Button variant="or" onClick={finir} disabled={!nom.trim() || !totemId}>
+                <Sprout size={14} aria-hidden /> Entrer dans l'Ordre
               </Button>
             )}
           </div>
