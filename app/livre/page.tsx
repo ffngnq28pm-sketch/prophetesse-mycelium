@@ -4,6 +4,12 @@ import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Ornement } from "@/components/liturgical/Ornement";
 import { Badge } from "@/components/ui/Badge";
 
+export const metadata = {
+  title: "Le Livre Sacré",
+  description:
+    "Évangiles Verts en six livres : Genèse Mycélienne, Hérésies, Vertus, Paraboles, Lamentations sur la Dosette, Calendrier liturgique.",
+};
+
 export default function LivrePage() {
   return (
     <div>

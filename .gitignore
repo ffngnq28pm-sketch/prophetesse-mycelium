@@ -34,3 +34,6 @@ ios/DerivedData/
 .idea/
 .vscode/
 *.swp
+
+# Dev artefacts (audits, rapports internes)
+AUDIT_*.md

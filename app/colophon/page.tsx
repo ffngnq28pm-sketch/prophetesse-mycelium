@@ -3,7 +3,9 @@ import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Ornement } from "@/components/liturgical/Ornement";
 
 export const metadata = {
-  title: "Colophon · Prophétesse-Mycélium",
+  title: "Colophon",
+  description:
+    "Note sur la fabrication de cet objet. Comment l'application a été bâtie, et par quelles mains.",
 };
 
 export default function ColophonPage() {

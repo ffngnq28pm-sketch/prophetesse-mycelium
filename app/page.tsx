@@ -14,7 +14,6 @@ import { getTotem } from "@/data/totems";
 import { computeProgress, currentChapitreIndex } from "@/lib/voie-progress";
 import { computeStreak, streakJalon } from "@/lib/streak";
 import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 import { Ornement } from "@/components/liturgical/Ornement";
 import { Hydrated } from "@/components/liturgical/Hydrated";
 import { HelpButton } from "@/components/liturgical/HelpButton";
@@ -166,7 +165,7 @@ function HomeContent() {
           <Card className="h-full transition hover:border-ocre-500/40">
             <CardSubtitle>Aujourd'hui</CardSubtitle>
             <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-2xl">✷</span>
+              <span className="text-2xl" aria-hidden>✷</span>
               <p className="font-serif text-2xl text-mousse-800 dark:text-parchemin-100">
                 {ritualsTodayDone}/7
               </p>

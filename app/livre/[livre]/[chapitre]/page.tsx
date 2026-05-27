@@ -13,6 +13,23 @@ export function generateStaticParams() {
   return params;
 }
 
+export function generateMetadata({
+  params,
+}: {
+  params: { livre: string; chapitre: string };
+}) {
+  const livre = getLivre(params.livre);
+  if (!livre) return {};
+  const chapitre = livre.chapitres.find((c) => c.id === params.chapitre);
+  if (!chapitre) return {};
+  return {
+    title: chapitre.titre.replace(/^Chapitre \d+ — /, ""),
+    description:
+      chapitre.ouverture?.replace(/^«\s*/, "").replace(/\s*»$/, "") ??
+      livre.sousTitre,
+  };
+}
+
 export default function ChapitreDetail({
   params,
 }: {

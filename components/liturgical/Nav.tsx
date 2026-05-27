@@ -66,8 +66,8 @@ export function Nav() {
   return (
     <header className="sticky top-0 z-30 border-b border-ocre-500/30 bg-parchemin-50/85 backdrop-blur dark:border-ocre-500/20 dark:bg-mousse-950/80">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 md:px-6">
-        <Link href="/" className="flex items-center gap-3 font-serif">
-          <span className="text-2xl">🍄</span>
+        <Link href="/" className="flex items-center gap-3 font-serif" aria-label="Sanctuaire — Accueil">
+          <span className="text-2xl" aria-hidden>🍄</span>
           <div className="flex flex-col leading-tight">
             <span className="text-base font-semibold tracking-wide text-mousse-800 dark:text-parchemin-100">
               Prophétesse-Mycélium
@@ -91,6 +91,7 @@ export function Nav() {
                     ? "bg-mousse-700 text-parchemin-50"
                     : "text-mousse-800 hover:bg-mousse-500/10 dark:text-parchemin-100"
                 )}
+                aria-haspopup="menu"
                 aria-expanded={openMenu === g.label}
               >
                 {g.label}
@@ -105,6 +106,7 @@ export function Nav() {
                     <Link
                       key={l.href}
                       href={l.href}
+                      aria-current={isActive(l.href) ? "page" : undefined}
                       className={cn(
                         "block rounded px-3 py-1.5 font-serif text-sm transition",
                         isActive(l.href)
@@ -169,6 +171,7 @@ function TopLink({ link, active }: { link: NavLink; active: boolean }) {
   return (
     <Link
       href={link.href}
+      aria-current={active ? "page" : undefined}
       className={cn(
         "rounded-md px-3 py-1.5 font-serif text-sm transition",
         active
@@ -185,6 +188,7 @@ function MobileLink({ link, active }: { link: NavLink; active: boolean }) {
   return (
     <Link
       href={link.href}
+      aria-current={active ? "page" : undefined}
       className={cn(
         "rounded-md px-3 py-2 font-serif text-sm transition",
         active

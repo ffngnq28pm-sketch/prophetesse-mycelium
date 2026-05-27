@@ -619,9 +619,7 @@ export function Tetris({
         <div className="flex gap-2">
           {!running && !gameOver && <Button onClick={start} className="w-full">Commencer</Button>}
           {running && <Button variant="ghost" onClick={stop} className="w-full">Pause</Button>}
-          {!running && !gameOver && false}
           {gameOver && <Button onClick={start} className="w-full">Rejouer</Button>}
-          {!running && !gameOver && stateRef.current.score === 0 ? null : null}
         </div>
       </aside>
     </div>

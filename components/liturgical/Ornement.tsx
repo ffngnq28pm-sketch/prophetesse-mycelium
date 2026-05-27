@@ -6,6 +6,8 @@ export function Ornement({ centered = true }: { centered?: boolean }) {
         className="h-6 w-56 text-ocre-500/70"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+        focusable="false"
       >
         <line x1="0" y1="12" x2="100" y2="12" stroke="currentColor" strokeWidth="0.6" />
         <line x1="140" y1="12" x2="240" y2="12" stroke="currentColor" strokeWidth="0.6" />

@@ -4,6 +4,12 @@ import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Ornement } from "@/components/liturgical/Ornement";
 
+export const metadata = {
+  title: "Almanach du Vivant",
+  description:
+    "Le petit peuple que tu recenses : pollinisateurs, auxiliaires, et les douze espèces sacrées du Jardin.",
+};
+
 const RARETE_FAUNE: Record<RareteFaune, string> = {
   commune: "Commune",
   frequente: "Fréquente",

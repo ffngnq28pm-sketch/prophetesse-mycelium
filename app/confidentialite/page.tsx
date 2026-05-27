@@ -3,7 +3,7 @@ import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Ornement } from "@/components/liturgical/Ornement";
 
 export const metadata = {
-  title: "Politique de confidentialité · Prophétesse-Mycélium",
+  title: "Politique de confidentialité",
   description:
     "Prophétesse-Mycélium ne collecte aucune donnée personnelle. Tout reste sur l'appareil.",
 };
@@ -77,14 +77,11 @@ export default function ConfidentialitePage() {
         <Card>
           <CardSubtitle>Éditeur & contact</CardSubtitle>
           <p className="mt-2 font-serif text-sm text-mousse-800 dark:text-parchemin-100">
-            Application éditée par Charif Hachichi. Pour toute question :{" "}
-            <a
-              href="mailto:Charif.Hachichi@icloud.com"
-              className="text-ocre-700 hover:underline dark:text-ocre-400"
-            >
-              Charif.Hachichi@icloud.com
-            </a>
-            .
+            L'identité de l'éditeur et un moyen de le joindre figurent sur le{" "}
+            <Link href="/colophon" className="text-ocre-700 hover:underline dark:text-ocre-400">
+              Colophon
+            </Link>
+            , qui est le lieu canonique des crédits dans un livre — comme dans cette application.
           </p>
         </Card>
 

@@ -96,7 +96,7 @@ Amen-Compost.`,
       id: "lamentation-5",
       titre: "Lamentation Cinquième — Sur le Café d'Un Million d'Années",
       ouverture: "« Le café d'un million d'années compressé en huit grammes. »",
-      texte: `Le café fut une plante. La plante poussa pendant des siècles dans les hautes terres d'Éthiopie, du Yémen, du Vietnam, du Brésil, du Honduras, du Burundi, du Rwanda. Les paysans la cueillirent à la main. Les producteurs la dépulpèrent, la fermentèrent, la séchèrent, la triélrent, la torréfièrent. Les transporteurs la chargèrent dans des cargos. Les acheteurs la goutèrent. Les négociants la commercialisèrent[^1].
+      texte: `Le café fut une plante. La plante poussa pendant des siècles dans les hautes terres d'Éthiopie, du Yémen, du Vietnam, du Brésil, du Honduras, du Burundi, du Rwanda. Les paysans la cueillirent à la main. Les producteurs la dépulpèrent, la fermentèrent, la séchèrent, la triérent, la torréfièrent. Les transporteurs la chargèrent dans des cargos. Les acheteurs la goutèrent. Les négociants la commercialisèrent[^1].
 
 Tout cela pour qu'à la fin, dans un bureau parisien, on glisse un disque en aluminium dans une fente, et qu'on appuie sur un bouton, et que quatre-vingt-dix secondes plus tard, le café d'un million d'années évolutifs et de douze mille kilomètres de voyage soit éjecté tiède dans une tasse Made in China[^2].
 

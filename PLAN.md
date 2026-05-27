@@ -27,7 +27,7 @@ Solo autonome. Décisions tranchées. Contenu d'abord, code après.
    - Progression — Échelle du Mycélium
    - Confessionnal — sélection péché → pénitence → bénédiction
    - Calendrier — 12 fêtes, mise en avant prochaine
-   - Sanctuaires — carte SVG cimetières IDF
+   - Sanctuaires — carte SVG cimetières d'Île-de-France
    - Paramètres — nom de baptême, totem, thème, reset
 7. **Tetris du Compost** — vrai Tetris jouable, pièces = déchets, zones de tri, score
 8. **Polissage** — animations Framer Motion, états vides, transitions

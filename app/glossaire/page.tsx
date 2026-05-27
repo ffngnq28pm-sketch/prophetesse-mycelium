@@ -2,6 +2,12 @@ import { GLOSSAIRE } from "@/data/glossaire";
 import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Ornement } from "@/components/liturgical/Ornement";
 
+export const metadata = {
+  title: "Glossaire de l'Ordre",
+  description:
+    "Le mycélium s'explique. Définitions, noms latins, et tournures liturgiques pour disciples curieux.",
+};
+
 export default function GlossairePage() {
   return (
     <div>

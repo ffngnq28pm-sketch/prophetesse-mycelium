@@ -9,6 +9,16 @@ export function generateStaticParams() {
   return livres.map((l) => ({ livre: l.id }));
 }
 
+export function generateMetadata({ params }: { params: { livre: string } }) {
+  const livre = getLivre(params.livre);
+  if (!livre) return {};
+  const nu = livre.titre.replace(/^Livre [IVX]+ — /, "");
+  return {
+    title: `Livre ${livre.numero} — ${nu}`,
+    description: livre.sousTitre,
+  };
+}
+
 export default function LivreDetail({ params }: { params: { livre: string } }) {
   const livre = getLivre(params.livre);
   if (!livre) return notFound();

@@ -3,6 +3,12 @@ import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Ornement } from "@/components/liturgical/Ornement";
 
+export const metadata = {
+  title: "Hagiographie de l'Ordre",
+  description:
+    "Celles et ceux qui marchèrent avant toi. La Fondatrice, les Premiers Disciples — un saint mycélien n'a rien accompli d'éclatant.",
+};
+
 export default function HagiographiePage() {
   const fondatrice = HAGIOGRAPHIE.find((p) => p.groupe === "fondatrice");
   const disciples = HAGIOGRAPHIE.filter((p) => p.groupe === "disciple");

@@ -152,6 +152,7 @@ function Contenu() {
                 transition={{ duration: 3 }}
                 className="pointer-events-none absolute text-2xl"
                 style={{ left: `${v.x}%`, top: `${v.y}%` }}
+                aria-hidden
               >
                 {v.emoji}
               </motion.span>
@@ -233,46 +234,117 @@ function SlotCell({
 }) {
   const isEmpty = !entry;
   const [hover, setHover] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      className={cn(
-        "relative flex items-center justify-center rounded-md border transition",
-        isEmpty
-          ? selectedEspece
-            ? "border-ocre-500/60 bg-terre-50/50 hover:bg-ocre-500/10 dark:bg-mousse-900/30 dark:hover:bg-mousse-800/40"
-            : "border-terre-500/30 bg-terre-50/30 dark:bg-mousse-900/20"
-          : "border-mousse-500/30 bg-terre-50/40 dark:bg-mousse-900/30"
-      )}
-      style={{ aspectRatio: "1 / 1" }}
-      aria-label={isEmpty ? `Case ${slot + 1} vide` : `Case ${slot + 1} : ${entry?.especeId}`}
-    >
-      {isEmpty ? (
-        selectedEspece && (
-          <span className="text-mousse-600/60 dark:text-parchemin-200/40">
-            <Sprout size={20} />
-          </span>
-        )
-      ) : (
-        <>
-          <EspeceSprite especeId={entry!.especeId} size={56} animate={growing} />
-          {hover && (
-            <span
-              className="absolute right-1 top-1 rounded-full bg-terre-500/80 p-1 text-parchemin-50"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (confirm("Arracher cette plante ? Les graines investies sont perdues.")) onRetire();
-              }}
-              role="button"
-              aria-label="Retirer"
-            >
-              <Trash2 size={10} />
+    <>
+      <button
+        onClick={onClick}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        className={cn(
+          "relative flex items-center justify-center rounded-md border transition",
+          isEmpty
+            ? selectedEspece
+              ? "border-ocre-500/60 bg-terre-50/50 hover:bg-ocre-500/10 dark:bg-mousse-900/30 dark:hover:bg-mousse-800/40"
+              : "border-terre-500/30 bg-terre-50/30 dark:bg-mousse-900/20"
+            : "border-mousse-500/30 bg-terre-50/40 dark:bg-mousse-900/30"
+        )}
+        style={{ aspectRatio: "1 / 1" }}
+        aria-label={isEmpty ? `Case ${slot + 1} vide` : `Case ${slot + 1} : ${entry?.especeId}`}
+      >
+        {isEmpty ? (
+          selectedEspece && (
+            <span className="text-mousse-600/60 dark:text-parchemin-200/40" aria-hidden>
+              <Sprout size={20} />
             </span>
-          )}
-        </>
-      )}
-    </button>
+          )
+        ) : (
+          <>
+            <EspeceSprite especeId={entry!.especeId} size={56} animate={growing} />
+            {hover && (
+              <span
+                className="absolute right-1 top-1 rounded-full bg-terre-500/80 p-1 text-parchemin-50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setConfirmOpen(true);
+                }}
+                role="button"
+                aria-label="Arracher cette plante"
+              >
+                <Trash2 size={10} />
+              </span>
+            )}
+          </>
+        )}
+      </button>
+      <AnimatePresence>
+        {confirmOpen && (
+          <ConfirmArrachage
+            onCancel={() => setConfirmOpen(false)}
+            onConfirm={() => {
+              setConfirmOpen(false);
+              onRetire();
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+function ConfirmArrachage({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <motion.div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="arracher-titre"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-mousse-950/70 p-4 backdrop-blur"
+      onClick={onCancel}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.92, opacity: 0 }}
+        className="w-full max-w-md rounded-lg border-2 border-ocre-500/40 bg-parchemin-50 p-6 shadow-xl dark:bg-mousse-950"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="font-sans text-xs uppercase tracking-widest text-ocre-600 dark:text-ocre-400">
+          Au Jardin
+        </p>
+        <h3 id="arracher-titre" className="titre-liturgique mt-1 text-2xl text-mousse-800 dark:text-parchemin-100">
+          Arracher cette plante ?
+        </h3>
+        <p className="mt-3 font-serif text-mousse-800 dark:text-parchemin-100">
+          Les graines investies sont perdues. Le sol, lui, retient quelque chose —
+          mais ça ne se compte pas en graines.
+        </p>
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="btn-ghost"
+            autoFocus
+          >
+            Garder la plante
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="btn-sacre"
+          >
+            <Trash2 size={14} /> Arracher
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
