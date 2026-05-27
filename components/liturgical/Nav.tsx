@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Menu, X, ChevronDown } from "lucide-react";
+import { MereMycorhizeOverlay } from "@/components/liturgical/MereMycorhizeOverlay";
 
 interface NavLink {
   href: string;
@@ -49,10 +51,19 @@ const GROUPS: NavGroup[] = [
   },
 ];
 
+// Easter egg : 7 clics sur le 🍄 du logo, dans une fenêtre de 5 secondes,
+// font apparaître Mère Mycorhize. Une seule fois par session de navigateur.
+const SECRET_CLICS_REQUIS = 7;
+const SECRET_FENETRE_MS = 5_000;
+const SECRET_FLAG = "mycelium_mere_mycorhize_vue";
+
 export function Nav() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [mereVisible, setMereVisible] = useState(false);
+  const clicsRef = useRef(0);
+  const dernierClicRef = useRef(0);
 
   // Tout se referme dès qu'on change de page.
   useEffect(() => {
@@ -60,13 +71,42 @@ export function Nav() {
     setOpenMenu(null);
   }, [pathname]);
 
+  const handleLogoClick = () => {
+    if (typeof window === "undefined") return;
+    // Déjà vue dans cette session : on laisse la navigation normale faire son office.
+    if (window.sessionStorage?.getItem(SECRET_FLAG)) return;
+
+    const maintenant = Date.now();
+    if (maintenant - dernierClicRef.current > SECRET_FENETRE_MS) {
+      clicsRef.current = 0;
+    }
+    clicsRef.current += 1;
+    dernierClicRef.current = maintenant;
+
+    if (clicsRef.current >= SECRET_CLICS_REQUIS) {
+      clicsRef.current = 0;
+      try {
+        window.sessionStorage.setItem(SECRET_FLAG, "1");
+      } catch {
+        // Si sessionStorage est bloqué (mode privé strict), tant pis :
+        // l'apparition restera reproductible, ce qui n'est pas un drame.
+      }
+      setMereVisible(true);
+    }
+  };
+
   const isActive = (href: string) => pathname === href;
   const groupActive = (g: NavGroup) => g.links.some((l) => pathname === l.href);
 
   return (
     <header className="sticky top-0 z-30 border-b border-ocre-500/30 bg-parchemin-50/85 backdrop-blur dark:border-ocre-500/20 dark:bg-mousse-950/80">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 md:px-6">
-        <Link href="/" className="flex items-center gap-3 font-serif" aria-label="Sanctuaire — Accueil">
+        <Link
+          href="/"
+          className="flex items-center gap-3 font-serif"
+          aria-label="Sanctuaire — Accueil"
+          onClick={handleLogoClick}
+        >
           <span className="text-2xl" aria-hidden>🍄</span>
           <div className="flex flex-col leading-tight">
             <span className="text-base font-semibold tracking-wide text-mousse-800 dark:text-parchemin-100">
@@ -138,6 +178,10 @@ export function Nav() {
       {openMenu && (
         <div className="fixed inset-0 z-20" aria-hidden onClick={() => setOpenMenu(null)} />
       )}
+
+      <AnimatePresence>
+        {mereVisible && <MereMycorhizeOverlay onClose={() => setMereVisible(false)} />}
+      </AnimatePresence>
 
       {/* Navigation mobile : sections regroupées */}
       {mobileOpen && (

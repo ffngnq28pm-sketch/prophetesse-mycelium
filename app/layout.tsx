@@ -5,6 +5,7 @@ import { Nav } from "@/components/liturgical/Nav";
 import { ThemeBootstrap } from "@/components/liturgical/ThemeBootstrap";
 import { Footer } from "@/components/liturgical/Footer";
 import { MotionProvider } from "@/components/liturgical/MotionProvider";
+import { ConsoleGreeting } from "@/components/liturgical/ConsoleGreeting";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -116,6 +117,7 @@ export default function RootLayout({
     <html lang="fr" className={`${cormorant.variable} ${inter.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased">
         <ThemeBootstrap />
+        <ConsoleGreeting />
         <MotionProvider>
           <Nav />
           <main className="mx-auto max-w-5xl px-4 pb-24 pt-6 md:px-6">{children}</main>

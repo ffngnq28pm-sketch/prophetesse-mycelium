@@ -35,9 +35,15 @@ export function GlossaireClient({ entries }: { entries: EntreeGlossaire[] }) {
   }, [entries]);
 
   const lettresDisponibles = useMemo(() => {
-    const set = new Set(triees.map((e) => lettreInitiale(e.terme)));
-    return Array.from(set).sort();
+    return new Set(triees.map((e) => lettreInitiale(e.terme)));
   }, [triees]);
+
+  // Alphabet complet : on affiche toutes les lettres pour que l'utilisateur
+  // voie d'un coup d'œil lesquelles ont des entrées.
+  const ALPHABET = useMemo(
+    () => Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)),
+    []
+  );
 
   const filtrees = useMemo(() => {
     const r = normaliser(recherche.trim());
@@ -80,7 +86,7 @@ export function GlossaireClient({ entries }: { entries: EntreeGlossaire[] }) {
           )}
         </div>
 
-        {/* Index alphabétique */}
+        {/* Index alphabétique complet. Les lettres sans entrée sont grisées. */}
         <nav aria-label="Filtrer par lettre" className="flex flex-wrap items-center justify-center gap-1">
           <button
             type="button"
@@ -94,21 +100,32 @@ export function GlossaireClient({ entries }: { entries: EntreeGlossaire[] }) {
           >
             Tout
           </button>
-          {lettresDisponibles.map((l) => (
-            <button
-              key={l}
-              type="button"
-              onClick={() => setLettreActive((current) => (current === l ? null : l))}
-              aria-pressed={lettreActive === l}
-              className={`min-w-[2rem] rounded-full px-2 py-1 font-serif text-xs transition ${
-                lettreActive === l
-                  ? "bg-mousse-700 text-parchemin-50"
-                  : "border border-mousse-500/30 text-mousse-700 hover:border-ocre-500/50 dark:text-parchemin-200"
-              }`}
-            >
-              {l}
-            </button>
-          ))}
+          {ALPHABET.map((l) => {
+            const disponible = lettresDisponibles.has(l);
+            const active = lettreActive === l;
+            return (
+              <button
+                key={l}
+                type="button"
+                disabled={!disponible}
+                aria-pressed={active}
+                aria-disabled={!disponible}
+                onClick={() => {
+                  if (!disponible) return;
+                  setLettreActive((current) => (current === l ? null : l));
+                }}
+                className={`min-w-[2rem] rounded-full px-2 py-1 font-serif text-xs transition ${
+                  !disponible
+                    ? "cursor-not-allowed text-mousse-500/50 dark:text-parchemin-200/30"
+                    : active
+                    ? "bg-mousse-700 text-parchemin-50"
+                    : "border border-mousse-500/30 text-mousse-700 hover:border-ocre-500/50 hover:text-ocre-600 dark:text-parchemin-200 dark:hover:text-ocre-400"
+                }`}
+              >
+                {l}
+              </button>
+            );
+          })}
         </nav>
 
         {/* Compteur */}

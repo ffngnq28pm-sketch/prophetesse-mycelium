@@ -17,6 +17,8 @@ import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Ornement } from "@/components/liturgical/Ornement";
 import { Hydrated } from "@/components/liturgical/Hydrated";
 import { HelpButton } from "@/components/liturgical/HelpButton";
+import { SolsticeVerset } from "@/components/liturgical/SolsticeVerset";
+import { PissenlitIdle } from "@/components/liturgical/PissenlitIdle";
 import { Sprout, Flame, BookOpen, ScrollText, Gamepad2, Trees, Map, Users, Leaf, Award, LineChart, ChevronRight } from "lucide-react";
 import { todayKey, formatDate } from "@/lib/utils";
 
@@ -90,6 +92,9 @@ function HomeContent() {
 
   return (
     <div className="space-y-5">
+      <PissenlitIdle />
+      <SolsticeVerset />
+
       <motion.section
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -212,16 +217,16 @@ function HomeContent() {
         </Link>
       </div>
 
-      {/* Citation et verset en widget */}
+      {/* Citation et verset en widget — chacun avec son identité visuelle */}
       <div className="grid gap-3 md:grid-cols-2">
-        <Card>
+        <Card className="border-ocre-500/40 bg-ocre-500/5 dark:bg-ocre-500/10">
           <CardSubtitle>Verset du jour</CardSubtitle>
           <p className="mt-1 font-serif text-xs italic text-ocre-700 dark:text-ocre-400">
             {verset.livre} · {verset.reference}
           </p>
           <p className="mt-2 versicle text-mousse-900 dark:text-parchemin-100">« {verset.texte} »</p>
         </Card>
-        <Card>
+        <Card className="border-mousse-600/40 bg-mousse-500/5 dark:bg-mousse-700/15">
           <CardSubtitle>Parole de l'Ordre</CardSubtitle>
           <p className="mt-2 versicle text-mousse-900 dark:text-parchemin-100">« {citation.texte} »</p>
           {citation.contexte && (

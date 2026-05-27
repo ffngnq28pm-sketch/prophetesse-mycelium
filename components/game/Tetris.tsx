@@ -134,6 +134,8 @@ export function Tetris({
   const [running, setRunning] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
+  // Effet "ligne sainte" : sparkles + flash doré sur le board (~1,1 s).
+  const [saintBurst, setSaintBurst] = useState<{ id: number; lines: number } | null>(null);
   const audioOn = useStore((s) => s.audioActif);
   const setAudioOn = useStore((s) => s.setAudioActif);
   const [held, setHeld] = useState<{ shapes: Shape[]; dechetId: string } | null>(null);
@@ -177,12 +179,24 @@ export function Tetris({
     if (result.linesCleared > 0) {
       setScore((s) => s + result.score - result.malus);
       setLignes((l) => l + result.linesCleared);
+      // Une "ligne sainte" est une ligne où chaque case est du compost.
+      const lignesSaintes = result.categoriesCleared.filter(
+        (cats) => cats.every((c) => c === "compost")
+      ).length;
       if (result.curse) {
         setCurses((c) => c + 1);
         setFlash("Malédiction du Mycélium : déchets maudits dans le compost.");
         audioRef.current.clearCursed();
+      } else if (lignesSaintes > 0) {
+        setFlash(
+          lignesSaintes === 1
+            ? "Ligne sainte. Le compost vibre."
+            : `${lignesSaintes} lignes saintes ! Le compost chante.`
+        );
+        setSaintBurst({ id: Date.now(), lines: lignesSaintes });
+        audioRef.current.clearGood(Math.max(4, lignesSaintes + 3));
       } else if (result.linesCleared >= 2) {
-        setFlash(`+${result.linesCleared} lignes saintes !`);
+        setFlash(`+${result.linesCleared} lignes compostées.`);
         audioRef.current.clearGood(result.linesCleared);
       } else {
         setFlash("Ligne compostée. Bénédiction.");
@@ -471,6 +485,13 @@ export function Tetris({
             </div>
           </div>
           <AnimatePresence>
+            {saintBurst && (
+              <SaintBurst
+                key={saintBurst.id}
+                lines={saintBurst.lines}
+                onDone={() => setSaintBurst((b) => (b && b.id === saintBurst.id ? null : b))}
+              />
+            )}
             {flash && (
               <motion.div
                 key={flash}
@@ -623,6 +644,57 @@ export function Tetris({
         </div>
       </aside>
     </div>
+  );
+}
+
+// Burst lumineux de ligne sainte : flash doré + 8 sparkles qui partent du
+// centre du board. Auto-dismiss après 1,1 s.
+function SaintBurst({ lines, onDone }: { lines: number; onDone: () => void }) {
+  // intensité visuelle modulée par le nombre de lignes saintes (1 → 1.0, 4 → 1.4)
+  const intensite = Math.min(1.4, 1 + (lines - 1) * 0.15);
+  const sparkles = Array.from({ length: 8 }, (_, i) => ({
+    angle: (i * 360) / 8,
+    delay: i * 0.03,
+  }));
+  return (
+    <motion.div
+      className="pointer-events-none absolute inset-0 flex items-center justify-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      onAnimationComplete={() => setTimeout(onDone, 1100)}
+      aria-hidden
+    >
+      {/* Flash doré qui couvre tout le board */}
+      <motion.div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(circle at center, rgba(241,213,108,0.55) 0%, rgba(201,162,39,0.30) 35%, rgba(201,162,39,0) 70%)",
+        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 0.9 * intensite, 0] }}
+        transition={{ duration: 0.9, ease: "easeOut" }}
+      />
+      {/* 8 sparkles qui s'éloignent */}
+      {sparkles.map((s, i) => (
+        <motion.span
+          key={i}
+          className="absolute text-xl text-ocre-300"
+          initial={{ opacity: 0, x: 0, y: 0, scale: 0.4 }}
+          animate={{
+            opacity: [0, 1, 1, 0],
+            x: Math.cos((s.angle * Math.PI) / 180) * (90 * intensite),
+            y: Math.sin((s.angle * Math.PI) / 180) * (90 * intensite),
+            scale: [0.4, 1.1, 1, 0.8],
+          }}
+          transition={{ duration: 1.0, delay: s.delay, ease: "easeOut" }}
+        >
+          ✦
+        </motion.span>
+      ))}
+    </motion.div>
   );
 }
 

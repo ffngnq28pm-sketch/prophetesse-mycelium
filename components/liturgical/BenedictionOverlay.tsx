@@ -19,9 +19,9 @@ const SPARKLES = Array.from({ length: 8 }, (_, i) => ({
 }));
 
 export function BenedictionOverlay({ embleme, nom, benediction, graines, onClose }: Props) {
-  // Auto-dismiss après 2,8 s — assez pour lire la bénédiction sans bloquer le rythme.
+  // Auto-dismiss après 3,5 s — assez pour lire la bénédiction sans bloquer le rythme.
   useEffect(() => {
-    const t = setTimeout(onClose, 2800);
+    const t = setTimeout(onClose, 3500);
     return () => clearTimeout(t);
   }, [onClose]);
 

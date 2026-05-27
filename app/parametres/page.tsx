@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { totems } from "@/data/totems";
 import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
@@ -40,6 +40,65 @@ function Contenu() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingImport, setPendingImport] = useState<string | null>(null);
   const [importMsg, setImportMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Le mycélium se souvient des hésitations — mais pas longtemps.
+  // Chaque annulation incrémente. Tout est oublié après 30 s d'inactivité.
+  const [clicsAnnulation, setClicsAnnulation] = useState(0);
+  const [resetSuspendu, setResetSuspendu] = useState(false);
+  const inactiviteRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suspensionRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Programme une remise à zéro silencieuse après 30 s sans interaction.
+  const planifierOubli = () => {
+    if (inactiviteRef.current) clearTimeout(inactiviteRef.current);
+    inactiviteRef.current = setTimeout(() => setClicsAnnulation(0), 30_000);
+  };
+
+  useEffect(() => () => {
+    if (inactiviteRef.current) clearTimeout(inactiviteRef.current);
+    if (suspensionRef.current) clearTimeout(suspensionRef.current);
+  }, []);
+
+  const handleAnnulerReset = () => {
+    setConfirmReset(false);
+    const prochain = clicsAnnulation + 1;
+    setClicsAnnulation(prochain);
+    if (prochain >= 5 && !resetSuspendu) {
+      setResetSuspendu(true);
+      if (suspensionRef.current) clearTimeout(suspensionRef.current);
+      suspensionRef.current = setTimeout(() => setResetSuspendu(false), 30_000);
+    }
+    planifierOubli();
+  };
+
+  const handleConfirmerReset = () => {
+    reset();
+    setConfirmReset(false);
+    setClicsAnnulation(0);
+    setResetSuspendu(false);
+    if (inactiviteRef.current) clearTimeout(inactiviteRef.current);
+    if (suspensionRef.current) clearTimeout(suspensionRef.current);
+  };
+
+  const handleOuvrirReset = () => {
+    setConfirmReset(true);
+    planifierOubli();
+  };
+
+  // Texte de la modale, qui évolue avec les annulations.
+  const messageReset = ((): string => {
+    if (clicsAnnulation === 0)
+      return "Tout effacer ? Cette action est irréversible. Le mycélium ne juge pas, mais il ne reviendra pas en arrière pour toi.";
+    if (clicsAnnulation === 1)
+      return "Tu hésites. C'est, statistiquement, sain. Tu veux vraiment recommencer ?";
+    if (clicsAnnulation === 2)
+      return "Bien. Tu hésites. Le mycélium aussi hésite, mais sur des échelles de temps que tu n'as pas.";
+    if (clicsAnnulation === 3)
+      return "Le mycélium n'aime pas qu'on doute. Mais il ne te juge pas. Il se contente de noter.";
+    if (clicsAnnulation === 4)
+      return "Tu peux y aller, là. Sincèrement. Personne ne t'oblige.";
+    return "D'accord. Tu ne réinitialiseras pas. C'est, à bien y réfléchir, ce que le mycélium souhaitait.";
+  })();
 
   const handleExport = () => {
     const blob = new Blob([exportData()], { type: "application/json" });
@@ -232,22 +291,28 @@ function Contenu() {
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {!confirmReset ? (
-            <Button variant="ghost" onClick={() => setConfirmReset(true)}>
-              <RefreshCcw size={14} /> Réinitialiser
+            <Button variant="ghost" onClick={handleOuvrirReset}>
+              <RefreshCcw size={14} aria-hidden /> Réinitialiser
             </Button>
           ) : (
-            <>
-              <Badge variant="grace">As-tu bien réfléchi ?</Badge>
-              <Button onClick={() => {
-                reset();
-                setConfirmReset(false);
-              }}>
-                Oui, je recommence ma vie spirituelle
-              </Button>
-              <Button variant="ghost" onClick={() => setConfirmReset(false)}>
-                Non, je reste
-              </Button>
-            </>
+            <div className="flex w-full flex-col gap-3">
+              <p className="font-serif italic text-mousse-700 dark:text-parchemin-200/80">
+                {messageReset}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button onClick={handleConfirmerReset} disabled={resetSuspendu}>
+                  Oui, je recommence ma vie spirituelle
+                </Button>
+                <Button variant="ghost" onClick={handleAnnulerReset}>
+                  Non, je reste
+                </Button>
+                {resetSuspendu && (
+                  <span className="font-serif text-xs italic text-mousse-600 dark:text-parchemin-200/60">
+                    Le mycélium reprend son souffle. Reviens dans un instant.
+                  </span>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </Card>
