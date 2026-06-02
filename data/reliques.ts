@@ -147,6 +147,24 @@ export const RELIQUES: Relique[] = [
     condition: "Atteindre 1000 points à La Nuit des Empreintes",
     estObtenue: (d) => d.meilleurScoreEmpreintes >= 1000,
   },
+  {
+    id: "sentier-acheve",
+    nom: "Le Sentier Achevé",
+    embleme: "🌅",
+    categorie: "Jeux",
+    description: "Olivia a traversé le cimetière reverdi et rejoint le grand If sacré du Sanctuaire.",
+    condition: "Terminer Le Sentier des Spores au moins une fois",
+    estObtenue: (d) => d.traverseeTerminee,
+  },
+  {
+    id: "ami-des-pollinisateurs",
+    nom: "Ami des Pollinisateurs",
+    embleme: "🦋",
+    categorie: "Jeux",
+    description: "Les dix pollinisateurs du sentier sauvés en une seule traversée. Aucun laissé derrière.",
+    condition: "Sauver les 10 pollinisateurs en une traversée",
+    estObtenue: (d) => d.meilleursPollinisateursTraversee >= 10,
+  },
   // ——— Liturgie ———
   {
     id: "heure-par-heure",

@@ -17,7 +17,7 @@ export default function HubJeux() {
           Jeux Liturgiques de l'Ordre
         </p>
         <h1 className="titre-liturgique mt-2 text-4xl text-mousse-800 dark:text-parchemin-100">
-          Trois jeux pour s'enraciner
+          Quatre jeux pour s'enraciner
         </h1>
         <Ornement />
         <p className="mx-auto max-w-2xl font-serif italic text-mousse-700 dark:text-parchemin-200/80">
@@ -43,7 +43,17 @@ function Contenu() {
   const meilleurEmpreintes = useStore((s) => s.meilleurScoreEmpreintes);
   const partiesEmpreintes = useStore((s) => s.partiesEmpreintes);
   const mammiferes = useStore((s) => s.mammiferesRecenses);
+  const meilleurTempsTraversee = useStore((s) => s.meilleurTempsTraversee);
+  const meilleursPollTraversee = useStore((s) => s.meilleursPollinisateursTraversee);
+  const partiesTraversee = useStore((s) => s.partiesTraversee);
   const graines = useStore((s) => s.graines);
+
+  const tempsTraverseeLabel =
+    meilleurTempsTraversee > 0
+      ? `${Math.floor(meilleurTempsTraversee / 60000)}:${Math.floor((meilleurTempsTraversee % 60000) / 1000)
+          .toString()
+          .padStart(2, "0")}`
+      : "—";
 
   return (
     <div className="space-y-4">
@@ -65,7 +75,7 @@ function Contenu() {
         </div>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Link href="/jeu/compost" className="group">
           <Card className="h-full transition hover:border-ocre-500/60 hover:bg-mousse-100/50 dark:hover:bg-mousse-900/40">
             <CardSubtitle>Jeu I</CardSubtitle>
@@ -139,6 +149,31 @@ function Contenu() {
             </p>
             <p className="mt-2 font-serif text-xs text-ocre-700 group-hover:underline dark:text-ocre-400">
               Entrer dans la nuit →
+            </p>
+          </Card>
+        </Link>
+
+        <Link href="/jeu/traversee" className="group">
+          <Card className="h-full transition hover:border-ocre-500/60 hover:bg-mousse-100/50 dark:hover:bg-mousse-900/40">
+            <CardSubtitle>Jeu IV</CardSubtitle>
+            <div className="flex items-baseline gap-3">
+              <span className="text-3xl">🍄</span>
+              <CardTitle>Le Sentier des Spores</CardTitle>
+            </div>
+            <p className="mt-2 font-serif text-sm italic text-mousse-700 dark:text-parchemin-200/80">
+              Un platformer. Olivia, casquette rouge et filet à la main, traverse un cimetière reverdi : elle saute par-dessus dosettes et tondeuses, attrape les pollinisateurs au filet, et rejoint le grand If sacré. Une fleur pousse sous chacun de ses pas.
+            </p>
+            <Ornement />
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="grace">Meilleur temps : {tempsTraverseeLabel}</Badge>
+              <Badge variant="outline">Pollinisateurs : {meilleursPollTraversee}/10</Badge>
+              <Badge variant="outline">Traversées : {partiesTraversee}</Badge>
+            </div>
+            <p className="mt-3 font-serif text-xs italic text-mousse-700 dark:text-parchemin-200/70">
+              Pollinisateurs + graines = Graines à planter.
+            </p>
+            <p className="mt-2 font-serif text-xs text-ocre-700 group-hover:underline dark:text-ocre-400">
+              Entrer sur le sentier →
             </p>
           </Card>
         </Link>

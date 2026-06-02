@@ -41,6 +41,12 @@ export interface PartieEmpreintes {
   date: string;
 }
 
+export interface PartieTraversee {
+  tempsMs: number;
+  pollinisateurs: number;
+  date: string;
+}
+
 export interface ProphetesseData {
   // Identité
   nomBaptismale: string;
@@ -94,6 +100,14 @@ export interface ProphetesseData {
   mammiferesRecenses: number;
   historiqueEmpreintes: PartieEmpreintes[];
   tutoEmpreintesFait: boolean;
+  // Jeu IV — Le Sentier des Spores (platformer)
+  meilleurTempsTraversee: number; // ms, 0 = jamais terminé
+  meilleursPollinisateursTraversee: number; // record en une traversée
+  partiesTraversee: number;
+  traverseeTerminee: boolean;
+  traverseeSansDosette: boolean; // a déjà terminé sans toucher une dosette
+  historiqueTraversee: PartieTraversee[];
+  tutoTraverseeFait: boolean;
 }
 
 export interface ProphetesseActions {
@@ -110,6 +124,8 @@ export interface ProphetesseActions {
   enregistrerScorePac: (score: number, niveauAtteint: number, fantomes: number, pollinisateurs: number) => void;
   enregistrerScoreEmpreintes: (score: number, mammiferes: number) => void;
   setTutoEmpreintesFait: (b: boolean) => void;
+  enregistrerScoreTraversee: (tempsMs: number, pollinisateurs: number, sansDosette: boolean) => void;
+  setTutoTraverseeFait: (b: boolean) => void;
   setAudioActif: (b: boolean) => void;
   // V3 actions
   setOnboardingFait: (b: boolean) => void;
@@ -168,6 +184,13 @@ const initialState: ProphetesseData = {
   mammiferesRecenses: 0,
   historiqueEmpreintes: [] as PartieEmpreintes[],
   tutoEmpreintesFait: false,
+  meilleurTempsTraversee: 0,
+  meilleursPollinisateursTraversee: 0,
+  partiesTraversee: 0,
+  traverseeTerminee: false,
+  traverseeSansDosette: false,
+  historiqueTraversee: [] as PartieTraversee[],
+  tutoTraverseeFait: false,
 };
 
 // Clés des données persistées — sert à l'export/import sans énumérer chaque champ.
@@ -242,6 +265,22 @@ export const useStore = create<ProphetesseState>()(
           ].slice(-60),
         })),
       setTutoEmpreintesFait: (b) => set({ tutoEmpreintesFait: b }),
+      enregistrerScoreTraversee: (tempsMs, pollinisateurs, sansDosette) =>
+        set((s) => ({
+          partiesTraversee: s.partiesTraversee + 1,
+          traverseeTerminee: true,
+          // meilleur temps = le plus court (0 signifie « jamais terminé »)
+          meilleurTempsTraversee:
+            s.meilleurTempsTraversee === 0 ? tempsMs : Math.min(s.meilleurTempsTraversee, tempsMs),
+          meilleursPollinisateursTraversee: Math.max(s.meilleursPollinisateursTraversee, pollinisateurs),
+          traverseeSansDosette: s.traverseeSansDosette || sansDosette,
+          pollinisateursRecenses: s.pollinisateursRecenses + pollinisateurs,
+          historiqueTraversee: [
+            ...s.historiqueTraversee,
+            { tempsMs, pollinisateurs, date: new Date().toISOString() },
+          ].slice(-60),
+        })),
+      setTutoTraverseeFait: (b) => set({ tutoTraverseeFait: b }),
       setAudioActif: (b) => set({ audioActif: b }),
       setOnboardingFait: (b) => set({ onboardingFait: b }),
       setTutoTetrisFait: (b) => set({ tutoTetrisFait: b }),
