@@ -941,25 +941,62 @@ function drawHazard(ctx: CanvasRenderingContext2D, hz: Hazard, time: number) {
       drawCompost(ctx, hz);
       return;
     }
+    // Capsule de café (type Nespresso) : tronc de cône, collerette marquée en
+    // haut, cuivre métallique avec reflet. Cuivre et non rouge vif : la
+    // casquette d'Olivia reste le seul accent rouge.
+    const phase = hz.spin ?? 0;
+    const tilt = Math.sin(phase) * 0.24; // bercement lent, jamais à l'envers
+    const hop = Math.abs(Math.sin(phase)) * 1.2; // léger tressaut en glissant
     const cx = hz.x + hz.w / 2;
-    const cy = hz.y + hz.h / 2;
+    const cy = hz.y + hz.h / 2 - hop;
+    const w = hz.w;
+    const h = hz.h;
+    const topHalf = w / 2; // large en haut
+    const botHalf = w * 0.26; // rétréci en bas (silhouette capsule)
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.rotate(hz.spin ?? 0);
-    // corps capsule aluminium
-    ctx.fillStyle = "#b9bcc4";
-    roundRectPath(ctx, -hz.w / 2, -hz.h / 2, hz.w, hz.h, 5);
-    ctx.fill();
-    ctx.fillStyle = "#8c2b2b"; // opercule rouge sombre
+    ctx.rotate(tilt);
+
+    // Corps : tronc de cône, dégradé cuivre pour le métal
+    const body = ctx.createLinearGradient(-topHalf, 0, topHalf, 0);
+    body.addColorStop(0, "#8a5424");
+    body.addColorStop(0.4, "#c2823f");
+    body.addColorStop(0.55, "#e6b878"); // reflet aluminium
+    body.addColorStop(0.75, "#b06f33");
+    body.addColorStop(1, "#7a481f");
+    ctx.fillStyle = body;
     ctx.beginPath();
-    ctx.ellipse(0, -hz.h / 2 + 3, hz.w / 2 - 2, 3.5, 0, 0, Math.PI * 2);
+    ctx.moveTo(-topHalf, -h / 2 + 2);
+    ctx.lineTo(topHalf, -h / 2 + 2);
+    ctx.lineTo(botHalf, h / 2);
+    ctx.lineTo(-botHalf, h / 2);
+    ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = "rgba(90,90,100,0.7)";
-    ctx.lineWidth = 1;
+
+    // Collerette marquée (rebord circulaire en haut)
+    ctx.fillStyle = "#8a5424";
     ctx.beginPath();
-    ctx.moveTo(-hz.w / 2 + 2, 0);
-    ctx.lineTo(hz.w / 2 - 2, 0);
+    ctx.ellipse(0, -h / 2 + 2, topHalf + 2, 3.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#d9a25e";
+    ctx.beginPath();
+    ctx.ellipse(0, -h / 2 + 1, topHalf, 2.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Opercule (foil café) au sommet
+    ctx.fillStyle = "#3a2414";
+    ctx.beginPath();
+    ctx.ellipse(0, -h / 2 + 1, topHalf - 3, 1.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Liseré clair vertical (sheen métallique)
+    ctx.strokeStyle = "rgba(255,238,200,0.55)";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-topHalf * 0.35, -h / 2 + 4);
+    ctx.lineTo(-botHalf * 0.5, h / 2 - 2);
     ctx.stroke();
+
     ctx.restore();
     return;
   }
@@ -1004,7 +1041,7 @@ function drawHazard(ctx: CanvasRenderingContext2D, hz: Hazard, time: number) {
   ctx.fillStyle = "#4a4a52";
   roundRectPath(ctx, -hz.w / 2, -hz.h / 2 + 4, hz.w, hz.h - 4, 4);
   ctx.fill();
-  ctx.fillStyle = "#c0392b"; // moteur rouge sombre (mécanique = danger sourd)
+  ctx.fillStyle = "#bf8d2c"; // capot ocre (mécanique = danger sourd ; rouge réservé à Olivia)
   roundRectPath(ctx, -hz.w / 2 + 6, -hz.h / 2, hz.w * 0.45, 8, 2);
   ctx.fill();
   // roues

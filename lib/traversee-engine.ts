@@ -179,6 +179,30 @@ function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
+// Hitbox de danger d'Olivia : resserrée sur son corps, sans les marges vides
+// (halo de tête, côté filet). Le filet n'a JAMAIS de hitbox « danger ».
+function oliviaHitbox(o: Olivia): Rect {
+  return { x: o.x + 4, y: o.y + 3, w: o.w - 8, h: o.h - 5 };
+}
+
+// Hitbox de danger d'un obstacle : contenue dans le visuel, sommet quelques
+// pixels sous le sommet dessiné. En cas de doute, la collision pardonne au
+// joueur (règle d'or platformer).
+function hazardHitbox(hz: Hazard): Rect {
+  switch (hz.kind) {
+    case "dosette":
+      // capsule 26×26 → 18×17, sommet 4px sous le haut visuel
+      return { x: hz.x + 4, y: hz.y + 4, w: hz.w - 8, h: hz.h - 5 };
+    case "tondeuse":
+      // 50×30 → 38×14, on retire les roues qui dépassent et le manche
+      return { x: hz.x + 6, y: hz.y + 7, w: hz.w - 12, h: hz.h - 9 };
+    case "pesticide":
+    default:
+      // flaque au sol : on garde la largeur, sommet 3px plus bas
+      return { x: hz.x + 4, y: hz.y + 3, w: hz.w - 8, h: hz.h - 3 };
+  }
+}
+
 function freshEvents(): TraverseeEvents {
   return {
     landed: null,
@@ -361,17 +385,20 @@ function stepFixed(state: TraverseeState, input: Input): void {
           hz.vx = -Math.abs(hz.vx);
         }
         if (hz.kind === "dosette") {
-          hz.spin = (hz.spin ?? 0) + (hz.vx / Math.max(1, hz.w)) * H * 6;
+          // phase lente : sert au bercement (la capsule reste lisible, jamais à l'envers)
+          hz.spin = (hz.spin ?? 0) + (hz.vx / Math.max(1, hz.w)) * H * 1.4;
         }
       }
     }
   }
 
   // Contact avec un danger → réapparition bienveillante (pas de game over).
+  // Collision sur hitbox resserrées, en faveur du joueur.
   if (state.time >= o.invulnUntil) {
+    const ob = oliviaHitbox(o);
     for (const hz of state.hazards) {
       if (!hz.active) continue;
-      if (overlap(o, hz)) {
+      if (overlap(ob, hazardHitbox(hz))) {
         if (hz.kind === "dosette") state.stats.dosettesHit++;
         respawn(state);
         break;
