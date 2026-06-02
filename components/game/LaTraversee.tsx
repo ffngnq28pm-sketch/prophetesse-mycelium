@@ -135,10 +135,22 @@ interface Grass {
   blades: number;
   hue: number;
 }
+// Couche de cimetière de fond : pierres tombales universellement reconnaissables.
+type BackdropGraveKind = "celtique" | "rip" | "croix" | "arche";
+interface BackdropGrave {
+  x: number;
+  h: number;
+  w: number;
+  lean: number;
+  moss: number;
+  lichen: number;
+  kind: BackdropGraveKind;
+}
 
 interface Decor {
   farTrees: FarTree[];
   mausolees: Mausolee[];
+  graves: BackdropGrave[];
   mid: MidProp[];
   grass: Grass[];
 }
@@ -187,12 +199,30 @@ function buildDecor(worldW: number): Decor {
       lichen: r() * 1000,
     });
   }
+  // Cimetière de fond : pierres tombales reconnaissables (croix celtique à
+  // anneau, stèle arrondie RIP, croix, arche). Couche dédiée, en retrait.
+  const graves: BackdropGrave[] = [];
+  for (let x = 110; x < worldW; x += 90 + r() * 70) {
+    const roll = r();
+    const kind: BackdropGraveKind =
+      roll < 0.3 ? "celtique" : roll < 0.65 ? "rip" : roll < 0.85 ? "croix" : "arche";
+    const wide = kind === "rip" || kind === "arche";
+    graves.push({
+      x,
+      h: 50 + r() * 40,
+      w: wide ? 30 + r() * 16 : 22 + r() * 12,
+      lean: (r() - 0.5) * (kind === "croix" ? 0.18 : 0.08),
+      moss: r(),
+      lichen: r() * 1000,
+      kind,
+    });
+  }
   // Herbes de premier plan : rares et courtes (touffes au sol, pas une prairie).
   const grass: Grass[] = [];
   for (let x = 0; x < worldW; x += 52 + r() * 60) {
     grass.push({ x, h: 6 + r() * 9, blades: 2 + Math.floor(r() * 3), hue: r() });
   }
-  return { farTrees, mausolees, mid, grass };
+  return { farTrees, mausolees, graves, mid, grass };
 }
 
 // ============ PARTICULES & FLEURS (rendu seulement) ============
@@ -736,6 +766,17 @@ function render(
   ctx.fillStyle = band;
   ctx.fillRect(0, bandTop, canvas.width, bandBot - bandTop);
 
+  // —— 3ter. Cimetière de fond : pierres tombales reconnaissables (parallaxe 0.45),
+  // en retrait derrière le plan moyen mais devant les arbres lointains. ——
+  if (decor) {
+    layer(0.45, 0.72);
+    const camLx = cam.x * 0.45;
+    for (const g of decor.graves) {
+      if (g.x < camLx - 120 || g.x > camLx + viewW + 120) continue;
+      drawBackdropGrave(ctx, g);
+    }
+  }
+
   // —— 4. Décor moyen : tombes, croix, murs (parallaxe 0.55) ——
   if (decor) {
     layer(0.55, 0.78);
@@ -871,6 +912,113 @@ function drawMausolee(ctx: CanvasRenderingContext2D, ma: Mausolee) {
     ctx.ellipse(x, groundY - ma.h * 0.82, cw * 0.8, ma.h * 0.15, 0, 0, Math.PI * 2);
     ctx.fill();
   }
+}
+
+function drawBackdropGrave(ctx: CanvasRenderingContext2D, g: BackdropGrave) {
+  const groundY = 600;
+  const hw = g.w / 2;
+  ctx.save();
+  ctx.translate(g.x, groundY);
+
+  // ombre portée au sol
+  ctx.fillStyle = "rgba(40,34,24,0.22)";
+  ctx.beginPath();
+  ctx.ellipse(-g.w * 0.18, 1, g.w * 0.7, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.rotate(g.lean * 0.16);
+
+  const stone = ctx.createLinearGradient(-hw, 0, hw, 0);
+  stone.addColorStop(0, "#e6dec5");
+  stone.addColorStop(1, "#bcb088");
+  ctx.fillStyle = stone;
+  ctx.strokeStyle = "#5a523c"; // contour foncé épais = ce qui rend lisible sur le vert
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
+
+  // socle bas commun
+  const baseW = g.w * 1.18;
+  const baseH = 7;
+  ctx.fillRect(-baseW / 2, -baseH, baseW, baseH);
+  ctx.strokeRect(-baseW / 2, -baseH, baseW, baseH);
+
+  const top = -g.h;
+
+  if (g.kind === "celtique") {
+    const shaftW = Math.max(7, g.w * 0.34);
+    ctx.fillRect(-shaftW / 2, top, shaftW, g.h - baseH);
+    ctx.strokeRect(-shaftW / 2, top, shaftW, g.h - baseH);
+    const crossY = top + g.h * 0.3; // traverse à ~70 % de hauteur depuis le sol
+    const armW = g.w * 1.05;
+    ctx.fillRect(-armW / 2, crossY - shaftW / 2, armW, shaftW);
+    ctx.strokeRect(-armW / 2, crossY - shaftW / 2, armW, shaftW);
+    // ANNEAU centré sur le croisement (la signature celtique)
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, crossY, g.w * 0.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.lineWidth = 2;
+  } else if (g.kind === "croix") {
+    const shaftW = Math.max(6, g.w * 0.32);
+    ctx.fillRect(-shaftW / 2, top, shaftW, g.h - baseH);
+    ctx.strokeRect(-shaftW / 2, top, shaftW, g.h - baseH);
+    const crossY = top + g.h * 0.28;
+    const armW = g.w * 0.95;
+    ctx.fillRect(-armW / 2, crossY - shaftW / 2, armW, shaftW);
+    ctx.strokeRect(-armW / 2, crossY - shaftW / 2, armW, shaftW);
+  } else if (g.kind === "rip") {
+    // corps rectangulaire + sommet en demi-cercle (la pierre tombale universelle)
+    ctx.beginPath();
+    ctx.moveTo(-hw, -baseH);
+    ctx.lineTo(-hw, top + hw);
+    ctx.arc(0, top + hw, hw, Math.PI, 0);
+    ctx.lineTo(hw, -baseH);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // croix incisée (emblème générique, aucun nom)
+    ctx.strokeStyle = "rgba(90,82,60,0.5)";
+    ctx.lineWidth = 1.4;
+    const ey = top + hw + 5;
+    ctx.beginPath();
+    ctx.moveTo(0, ey - 6);
+    ctx.lineTo(0, ey + 10);
+    ctx.moveTo(-5.5, ey);
+    ctx.lineTo(5.5, ey);
+    ctx.stroke();
+    ctx.strokeStyle = "#5a523c";
+    ctx.lineWidth = 2;
+  } else {
+    // arche : corps + sommet épaulé en arc
+    ctx.beginPath();
+    ctx.moveTo(-hw, -baseH);
+    ctx.lineTo(-hw, top + hw * 1.2);
+    ctx.quadraticCurveTo(-hw, top, 0, top);
+    ctx.quadraticCurveTo(hw, top, hw, top + hw * 1.2);
+    ctx.lineTo(hw, -baseH);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // accent reverdi sobre : touffe de mousse au pied
+  ctx.fillStyle = `rgba(95,135,76,${0.4 + g.moss * 0.3})`;
+  ctx.beginPath();
+  ctx.ellipse(-hw * 0.4, -2, g.w * 0.32, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // mini-fleur pâle éventuelle
+  if (g.moss > 0.72) {
+    ctx.fillStyle = "#f4ecd2";
+    ctx.beginPath();
+    ctx.arc(hw * 0.5, -4, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#c9a227";
+    ctx.beginPath();
+    ctx.arc(hw * 0.5, -4, 0.9, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
 }
 
 function drawMidProp(ctx: CanvasRenderingContext2D, m: MidProp) {
