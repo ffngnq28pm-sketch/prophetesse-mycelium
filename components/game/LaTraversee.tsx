@@ -112,11 +112,22 @@ interface FarTree {
   cypres: boolean;
   shade: number;
 }
+interface Mausolee {
+  x: number;
+  w: number;
+  h: number;
+  kind: "chapelle" | "obelisque" | "urne";
+  shade: number;
+}
+type MidKind = "stele" | "steleRonde" | "croix" | "caveau" | "obelisque";
 interface MidProp {
   x: number;
-  kind: "tombe" | "croix" | "mur";
+  kind: MidKind;
   h: number;
+  w: number;
   lean: number;
+  moss: number; // 0..1 niveau de reverdissement
+  lichen: number; // graine pour les taches de lichen
 }
 interface Grass {
   x: number;
@@ -127,6 +138,7 @@ interface Grass {
 
 interface Decor {
   farTrees: FarTree[];
+  mausolees: Mausolee[];
   mid: MidProp[];
   grass: Grass[];
 }
@@ -143,21 +155,41 @@ function buildDecor(worldW: number): Decor {
       shade: r(),
     });
   }
-  const mid: MidProp[] = [];
-  for (let x = 60; x < worldW; x += 150 + r() * 130) {
+  // Mausolées / chapelles funéraires lointains, dans la brume (Père-Lachaise).
+  const mausolees: Mausolee[] = [];
+  for (let x = 120; x < worldW; x += 280 + r() * 260) {
     const roll = r();
+    mausolees.push({
+      x,
+      w: 40 + r() * 36,
+      h: 70 + r() * 80,
+      kind: roll > 0.62 ? "chapelle" : roll > 0.3 ? "obelisque" : "urne",
+      shade: r(),
+    });
+  }
+  // Couche moyenne : tombes variées et reverdies, denses (on doit VOIR le cimetière).
+  const mid: MidProp[] = [];
+  const kinds: MidKind[] = ["stele", "steleRonde", "croix", "caveau", "obelisque"];
+  for (let x = 50; x < worldW; x += 80 + r() * 110) {
+    const roll = r();
+    const kind =
+      roll < 0.3 ? kinds[0] : roll < 0.5 ? kinds[1] : roll < 0.68 ? kinds[2] : roll < 0.85 ? kinds[3] : kinds[4];
+    const isCaveau = kind === "caveau";
     mid.push({
       x,
-      kind: roll > 0.66 ? "croix" : roll > 0.33 ? "tombe" : "mur",
-      h: 36 + r() * 46,
-      lean: (r() - 0.5) * 0.5,
+      kind,
+      h: isCaveau ? 22 + r() * 16 : 40 + r() * 52,
+      w: isCaveau ? 40 + r() * 30 : 20 + r() * 16,
+      lean: (r() - 0.5) * (kind === "croix" ? 0.7 : 0.35),
+      moss: r(),
+      lichen: r() * 1000,
     });
   }
   const grass: Grass[] = [];
   for (let x = 0; x < worldW; x += 26 + r() * 34) {
     grass.push({ x, h: 14 + r() * 26, blades: 3 + Math.floor(r() * 4), hue: r() });
   }
-  return { farTrees, mid, grass };
+  return { farTrees, mausolees, mid, grass };
 }
 
 // ============ PARTICULES & FLEURS (rendu seulement) ============
@@ -666,6 +698,16 @@ function render(
     }
   }
 
+  // —— 2bis. Mausolées lointains (parallaxe 0.32), avalés par la brume ——
+  if (decor) {
+    layer(0.32, 0.6);
+    const camLx = cam.x * 0.32;
+    for (const ma of decor.mausolees) {
+      if (ma.x < camLx - 140 || ma.x > camLx + viewW + 140) continue;
+      drawMausolee(ctx, ma);
+    }
+  }
+
   // —— 3. Brume basse (parallaxe 0.32) ——
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const mistY = canvas.height * 0.52;
@@ -770,31 +812,169 @@ function drawFarTree(ctx: CanvasRenderingContext2D, tr: FarTree) {
   }
 }
 
+function drawMausolee(ctx: CanvasRenderingContext2D, ma: Mausolee) {
+  const groundY = 600;
+  // Silhouette douce, désaturée, dans la brume : vert-gris bleuté translucide.
+  const v = 64 + Math.floor(ma.shade * 26);
+  ctx.fillStyle = `rgba(${v - 6}, ${v + 6}, ${v}, 0.62)`;
+  const x = ma.x;
+  if (ma.kind === "chapelle") {
+    const bw = ma.w;
+    const bh = ma.h * 0.62;
+    ctx.fillRect(x - bw / 2, groundY - bh, bw, bh);
+    // toit pointu
+    ctx.beginPath();
+    ctx.moveTo(x - bw / 2 - 3, groundY - bh);
+    ctx.lineTo(x, groundY - ma.h);
+    ctx.lineTo(x + bw / 2 + 3, groundY - bh);
+    ctx.closePath();
+    ctx.fill();
+    // petite croix au faîte
+    ctx.fillRect(x - 1.5, groundY - ma.h - 8, 3, 9);
+    ctx.fillRect(x - 4, groundY - ma.h - 5, 9, 3);
+    // porte sombre
+    ctx.fillStyle = `rgba(${v - 26}, ${v - 18}, ${v - 22}, 0.6)`;
+    ctx.fillRect(x - bw * 0.16, groundY - bh * 0.7, bw * 0.32, bh * 0.7);
+  } else if (ma.kind === "obelisque") {
+    ctx.beginPath();
+    ctx.moveTo(x - ma.w * 0.18, groundY);
+    ctx.lineTo(x - ma.w * 0.1, groundY - ma.h * 0.86);
+    ctx.lineTo(x, groundY - ma.h);
+    ctx.lineTo(x + ma.w * 0.1, groundY - ma.h * 0.86);
+    ctx.lineTo(x + ma.w * 0.18, groundY);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    // colonne surmontée d'une urne
+    const cw = ma.w * 0.4;
+    ctx.fillRect(x - cw / 2, groundY - ma.h * 0.78, cw, ma.h * 0.78);
+    ctx.beginPath();
+    ctx.ellipse(x, groundY - ma.h * 0.82, cw * 0.8, ma.h * 0.16, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 function drawMidProp(ctx: CanvasRenderingContext2D, m: MidProp) {
   const groundY = 600;
   ctx.save();
   ctx.translate(m.x, groundY);
-  ctx.rotate(m.lean * 0.12);
+  ctx.rotate(m.lean * 0.16);
+
+  const stone = "#928868";
+  const stoneEdge = "#6c6450";
+  const mossCol = `rgba(95,135,76,${0.45 + m.moss * 0.4})`;
+  const hw = m.w / 2;
+
+  ctx.strokeStyle = stoneEdge;
+  ctx.lineWidth = 1.2;
+
   if (m.kind === "croix") {
-    ctx.fillStyle = "#4a4636";
-    ctx.fillRect(-4, -m.h, 8, m.h);
-    ctx.fillRect(-14, -m.h + 10, 28, 7);
-    // lierre
-    ctx.fillStyle = "rgba(95,135,76,0.7)";
-    ctx.fillRect(-4, -m.h * 0.5, 8, m.h * 0.5);
-  } else if (m.kind === "tombe") {
-    ctx.fillStyle = "#56503e";
-    roundRectPath(ctx, -16, -m.h, 32, m.h, 8);
+    ctx.fillStyle = stone;
+    ctx.fillRect(-3.5, -m.h, 7, m.h);
+    ctx.fillRect(-12, -m.h + 9, 24, 6.5);
+    ctx.strokeRect(-3.5, -m.h, 7, m.h);
+    // lierre grimpant
+    ctx.strokeStyle = mossCol;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-4, -m.h * 0.4, 1, -m.h * 0.75);
+    ctx.stroke();
+  } else if (m.kind === "caveau") {
+    // tombeau-coffre bas, avec dalle qui déborde
+    ctx.fillStyle = stone;
+    roundRectPath(ctx, -hw, -m.h, m.w, m.h, 3);
     ctx.fill();
-    ctx.fillStyle = "rgba(95,135,76,0.55)"; // mousse au sommet
-    roundRectPath(ctx, -16, -m.h, 32, 10, 6);
+    ctx.stroke();
+    ctx.fillStyle = "#a59b80";
+    ctx.fillRect(-hw - 3, -m.h - 5, m.w + 6, 6); // dalle
+    // gravure érodée suggérée (pas de noms)
+    ctx.strokeStyle = "rgba(70,64,48,0.5)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      const ly = -m.h + 8 + i * 6;
+      ctx.beginPath();
+      ctx.moveTo(-hw + 5, ly);
+      ctx.lineTo(hw - 5 - (i % 2) * 8, ly);
+      ctx.stroke();
+    }
+    ctx.fillStyle = mossCol;
+    ctx.fillRect(-hw - 3, -m.h - 5, m.w + 6, 3);
+  } else if (m.kind === "obelisque") {
+    // colonne fuselée à cap pyramidal
+    ctx.fillStyle = stone;
+    ctx.beginPath();
+    ctx.moveTo(-hw * 0.7, 0);
+    ctx.lineTo(-hw * 0.45, -m.h * 0.85);
+    ctx.lineTo(0, -m.h);
+    ctx.lineTo(hw * 0.45, -m.h * 0.85);
+    ctx.lineTo(hw * 0.7, 0);
+    ctx.closePath();
     ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = mossCol;
+    ctx.fillRect(-hw * 0.55, -m.h * 0.4, hw * 1.1, 4);
   } else {
-    ctx.fillStyle = "#514b3a";
-    ctx.fillRect(-26, -m.h * 0.6, 52, m.h * 0.6);
-    ctx.fillStyle = "rgba(126,163,106,0.5)";
-    ctx.fillRect(-26, -m.h * 0.6, 52, 6);
+    // stèle (haut plat ou arrondi)
+    ctx.fillStyle = stone;
+    ctx.beginPath();
+    if (m.kind === "steleRonde") {
+      ctx.moveTo(-hw, 0);
+      ctx.lineTo(-hw, -m.h + hw);
+      ctx.arc(0, -m.h + hw, hw, Math.PI, 0);
+      ctx.lineTo(hw, 0);
+    } else {
+      roundRectPath(ctx, -hw, -m.h, m.w, m.h, 2);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // mousse au sommet
+    ctx.fillStyle = mossCol;
+    ctx.fillRect(-hw, -m.h, m.w, 5);
+    // gravure érodée suggérée
+    ctx.strokeStyle = "rgba(70,64,48,0.45)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 2; i++) {
+      const ly = -m.h * 0.55 + i * 6;
+      ctx.beginPath();
+      ctx.moveTo(-hw + 4, ly);
+      ctx.lineTo(hw - 4 - i * 5, ly);
+      ctx.stroke();
+    }
   }
+
+  // —— Reverdissement commun : lichen, herbe à la base, fleur éventuelle ——
+  // taches de lichen claires (déterministe)
+  ctx.fillStyle = "rgba(214,205,160,0.5)";
+  const lr = mulberry32(Math.floor(m.lichen));
+  const spots = 2 + Math.floor(lr() * 2);
+  for (let i = 0; i < spots; i++) {
+    ctx.beginPath();
+    ctx.arc((lr() - 0.5) * m.w, -m.h * lr(), 1.6 + lr() * 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // touffe d'herbe à la base
+  ctx.strokeStyle = "rgba(74,108,57,0.85)";
+  ctx.lineWidth = 1.6;
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath();
+    ctx.moveTo(i * 3, 0);
+    ctx.lineTo(i * 3 + 1.5, -5 - Math.abs(i));
+    ctx.stroke();
+  }
+  // petite fleur dans une fissure
+  if (m.moss > 0.7) {
+    ctx.fillStyle = "#f4ecd2";
+    ctx.beginPath();
+    ctx.arc(hw * 0.5, -m.h * 0.5, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#c9a227";
+    ctx.beginPath();
+    ctx.arc(hw * 0.5, -m.h * 0.5, 0.9, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   ctx.restore();
 }
 
@@ -888,19 +1068,50 @@ function drawPlatform(ctx: CanvasRenderingContext2D, p: Platform) {
     }
     return;
   }
-  // tombe
-  ctx.fillStyle = "#56503e";
-  roundRectPath(ctx, p.x, p.y, p.w, p.h, 8);
+  // tombe JOUABLE : dalle funéraire en pierre parcheminé claire, surface plane
+  // bien marquée + liseré de mousse net = signal « on peut marcher ici »
+  // (volontairement plus claire et nette que les tombes-décor de l'arrière-plan).
+  const slab = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
+  slab.addColorStop(0, "#b7ac8c");
+  slab.addColorStop(1, "#8c8268");
+  ctx.fillStyle = slab;
+  roundRectPath(ctx, p.x, p.y, p.w, p.h, 6);
   ctx.fill();
-  ctx.fillStyle = "rgba(95,135,76,0.7)";
-  roundRectPath(ctx, p.x, p.y, p.w, 9, 6);
+  ctx.strokeStyle = "rgba(108,100,80,0.8)";
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  // liseré de mousse vif au sommet (la surface jouable)
+  ctx.fillStyle = "#5f874c";
+  roundRectPath(ctx, p.x, p.y, p.w, 7, 5);
   ctx.fill();
-  // lichen
-  ctx.fillStyle = "rgba(191,141,44,0.25)";
+  ctx.fillStyle = "#7ea36a";
+  ctx.fillRect(p.x + 3, p.y, p.w - 6, 3);
+  // touffes d'herbe sur la crête (renforce « surface vivante »)
+  ctx.strokeStyle = "#496c39";
+  ctx.lineWidth = 2;
+  for (let gx = p.x + 10; gx < p.x + p.w - 4; gx += 26) {
+    ctx.beginPath();
+    ctx.moveTo(gx, p.y);
+    ctx.lineTo(gx - 2, p.y - 6);
+    ctx.moveTo(gx + 3, p.y);
+    ctx.lineTo(gx + 5, p.y - 7);
+    ctx.stroke();
+  }
+  // lichen + gravure érodée suggérée (pas de noms)
+  ctx.fillStyle = "rgba(191,141,44,0.22)";
   ctx.beginPath();
-  ctx.arc(p.x + p.w * 0.3, p.y + p.h * 0.5, 5, 0, Math.PI * 2);
-  ctx.arc(p.x + p.w * 0.7, p.y + p.h * 0.62, 4, 0, Math.PI * 2);
+  ctx.arc(p.x + p.w * 0.28, p.y + p.h * 0.55, 4, 0, Math.PI * 2);
+  ctx.arc(p.x + p.w * 0.72, p.y + p.h * 0.68, 3.5, 0, Math.PI * 2);
   ctx.fill();
+  ctx.strokeStyle = "rgba(108,100,80,0.45)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 2 && p.h > 26; i++) {
+    const ly = p.y + 16 + i * 6;
+    ctx.beginPath();
+    ctx.moveTo(p.x + 8, ly);
+    ctx.lineTo(p.x + p.w - 12 - i * 6, ly);
+    ctx.stroke();
+  }
 }
 
 function drawSanctuaire(ctx: CanvasRenderingContext2D, r: { x: number; y: number; w: number; h: number }, time: number) {
