@@ -915,7 +915,9 @@ function drawMausolee(ctx: CanvasRenderingContext2D, ma: Mausolee) {
 }
 
 function drawBackdropGrave(ctx: CanvasRenderingContext2D, g: BackdropGrave) {
-  const groundY = 600;
+  // Relevées au-dessus de la ligne de sol pour rester visibles en permanence
+  // (pas seulement quand Olivia saute). Décor de fond, posé sur un talus.
+  const groundY = 600 - 90;
   const hw = g.w / 2;
   ctx.save();
   ctx.translate(g.x, groundY);
