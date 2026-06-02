@@ -180,17 +180,17 @@ function buildDecor(worldW: number): Decor {
     mid.push({
       x,
       kind,
-      h: isCaveau ? 26 + r() * 14 : isCroix ? 46 + r() * 24 : 38 + r() * 24,
-      w: isCaveau ? 54 + r() * 30 : 30 + r() * 18, // trapues (ratio l/h proche de 1)
-      lean: (r() - 0.5) * (isCroix ? 0.5 : 0.16),
+      h: isCaveau ? 32 + r() * 16 : isCroix ? 58 + r() * 28 : 52 + r() * 30,
+      w: isCaveau ? 66 + r() * 36 : 38 + r() * 22, // grosses et trapues
+      lean: (r() - 0.5) * (isCroix ? 0.5 : 0.14),
       moss: r(),
       lichen: r() * 1000,
     });
   }
-  // Herbes de premier plan : courtes (touffes au sol, pas une prairie).
+  // Herbes de premier plan : rares et courtes (touffes au sol, pas une prairie).
   const grass: Grass[] = [];
-  for (let x = 0; x < worldW; x += 34 + r() * 42) {
-    grass.push({ x, h: 9 + r() * 12, blades: 3 + Math.floor(r() * 3), hue: r() });
+  for (let x = 0; x < worldW; x += 52 + r() * 60) {
+    grass.push({ x, h: 6 + r() * 9, blades: 2 + Math.floor(r() * 3), hue: r() });
   }
   return { farTrees, mausolees, mid, grass };
 }
@@ -691,6 +691,10 @@ function render(
   ctx.fillStyle = halo;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  // —— 1bis. Rayons obliques (god rays) — atmosphère confinée à la bande haute,
+  // dessinés AVANT le décor pour ne pas laver les pierres au sol. ——
+  drawGodRays(ctx, canvas, time, cam.x / s.worldW);
+
   // —— 2. Arbres lointains (parallaxe 0.22) ——
   if (decor) {
     layer(0.22, 0.5);
@@ -720,6 +724,17 @@ function render(
   mist.addColorStop(1, "rgba(214,205,180,0.55)");
   ctx.fillStyle = mist;
   ctx.fillRect(0, mistY, canvas.width, canvas.height - mistY);
+
+  // —— 3bis. Voile d'atmosphère sourd DERRIÈRE les tombes (taupe désaturé, pas
+  // vert) : donne un fond contrastant aux pierres, fait reculer le vert. ——
+  const bandTop = canvas.height * 0.4;
+  const bandBot = canvas.height * 0.74;
+  const band = ctx.createLinearGradient(0, bandTop, 0, bandBot);
+  band.addColorStop(0, "rgba(150,140,120,0)");
+  band.addColorStop(0.5, "rgba(150,140,120,0.13)");
+  band.addColorStop(1, "rgba(150,140,120,0)");
+  ctx.fillStyle = band;
+  ctx.fillRect(0, bandTop, canvas.width, bandBot - bandTop);
 
   // —— 4. Décor moyen : tombes, croix, murs (parallaxe 0.55) ——
   if (decor) {
@@ -767,10 +782,6 @@ function render(
       drawGrass(ctx, g, time);
     }
   }
-
-  // —— 7. Rayons de lumière obliques (god rays, intensifient vers l'Ascension) ——
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  drawGodRays(ctx, canvas, time, cam.x / s.worldW);
 
   // —— 8. HUD ——
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -864,19 +875,27 @@ function drawMausolee(ctx: CanvasRenderingContext2D, ma: Mausolee) {
 
 function drawMidProp(ctx: CanvasRenderingContext2D, m: MidProp) {
   const groundY = 600;
+  const hw = m.w / 2;
   ctx.save();
   ctx.translate(m.x, groundY);
+
+  // Ombre portée au sol (vers la gauche, opposé au soleil en haut-droite) :
+  // signale « objet posé sur le sol » → empêche de lire « herbe ».
+  ctx.fillStyle = "rgba(40,34,24,0.22)";
+  ctx.beginPath();
+  ctx.ellipse(-m.w * 0.2, 1, m.w * 0.62, 4.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.rotate(m.lean * 0.16);
 
-  const hw = m.w / 2;
   // Pierre calcaire CLAIRE, léger volume gauche→droite (pas de rayures verticales).
   const stone = ctx.createLinearGradient(-hw, 0, hw, 0);
   stone.addColorStop(0, "#e6dec5");
   stone.addColorStop(0.55, "#d6cca9");
   stone.addColorStop(1, "#bcb088");
-  const edge = "#9c9070";
+  const edge = "#8a7e5e";
   ctx.strokeStyle = edge;
-  ctx.lineWidth = 1.3;
+  ctx.lineWidth = 1.6;
 
   if (m.kind === "croix") {
     // croix épaisse, plantée
@@ -936,15 +955,28 @@ function drawMidProp(ctx: CanvasRenderingContext2D, m: MidProp) {
     }
     ctx.fill();
     ctx.stroke();
-    // gravure érodée suggérée
-    ctx.strokeStyle = "rgba(120,110,82,0.38)";
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 2; i++) {
-      const ly = -m.h * 0.5 + i * 6;
+    if (m.kind === "steleRonde") {
+      // petite croix incisée sur la face → emblème funéraire (aucun nom)
+      ctx.strokeStyle = "rgba(120,110,82,0.5)";
+      ctx.lineWidth = 1.4;
+      const ey = -m.h + hw + 3;
       ctx.beginPath();
-      ctx.moveTo(-hw + 5, ly);
-      ctx.lineTo(hw - 5 - i * 5, ly);
+      ctx.moveTo(0, ey - 7);
+      ctx.lineTo(0, ey + 9);
+      ctx.moveTo(-5.5, ey - 1);
+      ctx.lineTo(5.5, ey - 1);
       ctx.stroke();
+    } else {
+      // gravure érodée suggérée
+      ctx.strokeStyle = "rgba(120,110,82,0.38)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 2; i++) {
+        const ly = -m.h * 0.5 + i * 6;
+        ctx.beginPath();
+        ctx.moveTo(-hw + 5, ly);
+        ctx.lineTo(hw - 5 - i * 5, ly);
+        ctx.stroke();
+      }
     }
   }
 
@@ -1528,26 +1560,59 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   ctx.lineTo(handX, handY);
   ctx.stroke();
 
-  // filet : manche + cerceau
-  ctx.strokeStyle = "#7a5a32";
-  ctx.lineWidth = 2;
-  const reach = swinging ? 22 : 16;
+  // FILET À PAPILLONS : manche (bois) + cerceau (métal neutre) + poche en filet
+  // translucide. Tons sourds — la casquette rouge reste le seul accent vif.
+  const reach = swinging ? 24 : 18;
   const hoopX = handX + reach;
-  const hoopY = handY - (swinging ? 2 : 8);
+  const hoopY = handY - (swinging ? 4 : 10);
+  const rx = 7;
+  const ry = 9;
+  const tilt = swinging ? 0.15 : -0.2;
+
+  // 1. MANCHE — tige de bois sourde
+  ctx.strokeStyle = "#8a7b5c";
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(handX, handY);
-  ctx.lineTo(hoopX - 6, hoopY + 4);
+  ctx.lineTo(hoopX - rx * 0.7, hoopY + ry * 0.55);
   ctx.stroke();
-  ctx.strokeStyle = "#caa45a";
-  ctx.lineWidth = 1.6;
+
+  // 2. POCHE EN FILET — cône translucide qui pend sous le cerceau
+  const tipX = hoopX - 2;
+  const tipY = hoopY + ry + (swinging ? 12 : 17);
   ctx.beginPath();
-  ctx.ellipse(hoopX, hoopY, 7, 9, swinging ? 0.2 : -0.3, 0, Math.PI * 2);
-  ctx.stroke();
-  // maille
-  ctx.strokeStyle = "rgba(233,216,173,0.5)";
-  ctx.lineWidth = 0.7;
+  ctx.moveTo(hoopX - rx, hoopY);
+  ctx.quadraticCurveTo(hoopX - rx * 1.15, hoopY + ry, tipX, tipY);
+  ctx.quadraticCurveTo(hoopX + rx * 1.15, hoopY + ry, hoopX + rx, hoopY);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(245,240,225,0.16)";
+  ctx.fill();
+  // maillage suggéré (fines lignes croisées), borné à la poche
+  ctx.save();
+  ctx.clip();
+  ctx.strokeStyle = "rgba(245,240,225,0.28)";
+  ctx.lineWidth = 0.6;
+  for (let i = -3; i <= 3; i++) {
+    ctx.beginPath();
+    ctx.moveTo(hoopX + i * 2.6, hoopY + 1);
+    ctx.lineTo(tipX + i * 1.1, tipY);
+    ctx.stroke();
+  }
+  for (let j = 0; j < 3; j++) {
+    const yy = hoopY + ry * 0.6 + j * 5;
+    ctx.beginPath();
+    ctx.moveTo(hoopX - rx, yy);
+    ctx.quadraticCurveTo(tipX, yy + 3.5, hoopX + rx, yy);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // 3. CERCEAU — anneau métal neutre clair, sans remplissage vif
+  ctx.strokeStyle = "#cfc7ad";
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.ellipse(hoopX, hoopY, 4, 5, swinging ? 0.2 : -0.3, 0, Math.PI * 2);
+  ctx.ellipse(hoopX, hoopY, rx, ry, tilt, 0, Math.PI * 2);
   ctx.stroke();
 
   ctx.restore();
@@ -1558,19 +1623,26 @@ function netIsActiveLocal(o: Olivia, time: number): boolean {
 }
 
 function drawGodRays(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, time: number, progress: number) {
-  const intensity = 0.045 + progress * 0.1;
+  const intensity = 0.04 + progress * 0.08;
   ctx.globalCompositeOperation = "lighter";
+  // Dégradé vertical : plein en haut, éteint avant la ligne de sol → les pierres
+  // restent propres.
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  grad.addColorStop(0, `rgba(255,240,200,${intensity})`);
+  grad.addColorStop(0.42, `rgba(255,240,200,${intensity * 0.45})`);
+  grad.addColorStop(0.6, "rgba(255,240,200,0)");
+  grad.addColorStop(1, "rgba(255,240,200,0)");
+  ctx.fillStyle = grad;
   const rays = 4;
   for (let i = 0; i < rays; i++) {
     const drift = Math.sin(time / 4000 + i) * 30;
     const x = canvas.width * (0.2 + i * 0.22) + drift;
     const w = canvas.width * 0.12;
-    ctx.fillStyle = `rgba(255,240,200,${intensity})`;
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x + w, 0);
-    ctx.lineTo(x + w * 2.4, canvas.height);
-    ctx.lineTo(x + w * 1.2, canvas.height);
+    ctx.lineTo(x + w * 2.4, canvas.height * 0.62);
+    ctx.lineTo(x + w * 1.2, canvas.height * 0.62);
     ctx.closePath();
     ctx.fill();
   }
