@@ -38,14 +38,14 @@ export default function VerbePage() {
         <Ornement />
         <p className="mx-auto max-w-2xl font-serif italic text-mousse-700 dark:text-parchemin-200/80">
           « Un seul mot par jour, le même pour tout l'Ordre, qui change à minuit. Six lettres, six
-          tentatives, et l'on ne prononce que les paroles du canon. Le trouver déverrouille sa révélation. »
+          tentatives. Le Verbe à trouver est tiré du canon de l'Ordre — le trouver déverrouille sa révélation. »
         </p>
         <div className="mt-3 flex justify-center">
           <HelpButton titre="Le Verbe du Jour — Règles">
             <p><strong>But</strong> : deviner le Verbe du Jour (6 lettres) en 6 tentatives.</p>
             <p className="mt-1"><strong>Indice</strong> : la première lettre est révélée et pré-remplie.</p>
-            <p className="mt-1"><strong>Canon</strong> : un essai n'est recevable que si c'est un mot du canon (le lexique du jeu). Sinon, l'essai n'est pas consommé.</p>
-            <p className="mt-1"><strong>Couleurs sourdes</strong> : mousse = bonne lettre bien placée ; ocre = bonne lettre mal placée ; greige = absente. Les trois restent distinguables sans la couleur (bordure pleine, pointillée, ou estompée).</p>
+            <p className="mt-1"><strong>Tentatives</strong> : tu peux tenter n'importe quel mot de six lettres. Seul un essai trop court est refusé (et n'est pas consommé). La réponse, elle, est toujours un mot du canon de l'Ordre.</p>
+            <p className="mt-1"><strong>Couleurs</strong> : vert mousse = bonne lettre bien placée ; ambre = bonne lettre mal placée ; taupe = absente. Les trois restent distinguables sans la couleur (bordure pleine épaisse, pointillée, ou aplat mat).</p>
             <p className="mt-1"><strong>Série</strong> : chaque jour gagné d'affilée allonge ta série. Une journée manquée la remet à zéro — sans drame.</p>
             <p className="mt-2 text-xs italic">Saisie au clavier tactile ou physique. Accents et casse sont ignorés.</p>
           </HelpButton>

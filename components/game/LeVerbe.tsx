@@ -8,7 +8,6 @@ import {
   cleDuJour,
   construireGrillePartage,
   evaluer,
-  estMotValide,
   formatCompteur,
   indexDuJour,
   normaliser,
@@ -25,8 +24,9 @@ const LONGUEUR = 6;
 const NB_ESSAIS = 6;
 
 // Le canon, normalisé une seule fois au chargement du module.
+// Sert à TIRER la réponse du jour, pas à filtrer les tentatives : on accepte
+// n'importe quel mot de 6 lettres comme essai (cf. soumettre).
 const ENTREES = LEXIQUE.map((e) => ({ mot: normaliser(e.mot), revelation: e.revelation }));
-const ENSEMBLE = new Set(ENTREES.map((e) => e.mot));
 
 // Disposition AZERTY : 3 rangées. Entrée et Effacer encadrent la dernière.
 const RANGEES = [
@@ -35,12 +35,14 @@ const RANGEES = [
   ["ENTREE", "W", "X", "C", "V", "B", "N", "EFFACER"],
 ];
 
-// Palette sourde (DA : la couleur vive reste réservée à la casquette d'Olivia).
+// Palette terre à fort contraste, en STYLE INLINE (jamais une classe Tailwind
+// interpolée : ces dernières sont purgées en prod et le retour de couleur
+// disparaîtrait en ligne). Aucun ROUGE : il reste réservé à la casquette d'Olivia.
 const STYLE_ETAT: Record<Etat | "vide", React.CSSProperties> = {
-  vide: { background: "#e6dec5", color: "#5a523c", border: "2px solid #5a523c" },
-  juste: { background: "#6e7a4e", color: "#f3efe2", border: "2px solid #4f5836" },
-  present: { background: "#c2a35a", color: "#3a3526", border: "2px dashed #7a6630" },
-  absent: { background: "#8a8270", color: "#e6dec5", border: "2px solid #6f6857", opacity: 0.85 },
+  vide: { backgroundColor: "#e6dec5", color: "#5a523c", border: "1px solid #c9bfa3" },
+  juste: { backgroundColor: "#5a7d3c", color: "#f3efe2", border: "3px solid #3f5a28" },
+  present: { backgroundColor: "#c9952f", color: "#2b2410", border: "3px dashed #8a6418" },
+  absent: { backgroundColor: "#6f6857", color: "#ece5d3", border: "1px solid #5a5446" },
 };
 
 const LIBELLE_ETAT: Record<Etat, string> = {
@@ -96,11 +98,8 @@ export function LeVerbe() {
       secouer();
       return;
     }
-    if (!estMotValide(mot, ENSEMBLE)) {
-      setMessage("Ce mot n'est pas (encore) au canon. Essaie une parole connue de l'Ordre.");
-      secouer();
-      return;
-    }
+    // On accepte tout mot de six lettres : le canon sert à tirer la réponse,
+    // pas à censurer les tentatives. Le joueur n'a pas à connaître les ~50 mots.
     setMessage(null);
     ajouterEssai(cle, mot);
     const total = essais.length + 1;
@@ -282,7 +281,7 @@ export function LeVerbe() {
         <p className="text-center font-serif text-sm italic text-mousse-700 dark:text-parchemin-200/80">
           Indice de l'Ordre : le Verbe commence par{" "}
           <span className="font-bold not-italic text-mousse-900 dark:text-parchemin-100">{premiere}</span>. Six lettres,
-          six tentatives — et seules les paroles du canon sont recevables.
+          six tentatives — tente n'importe quel mot de six lettres, l'Ordre l'accueille.
         </p>
       )}
 
@@ -302,10 +301,15 @@ export function LeVerbe() {
         ))}
       </div>
 
-      {/* Message doux (mot hors canon / incomplet) */}
-      <div aria-live="polite" className="min-h-[1.25rem] text-center">
+      {/* Message de soumission (essai trop court) — visible, près de la grille */}
+      <div aria-live="polite" role="status" className="min-h-[2.5rem]">
         {message && (
-          <span className="font-serif text-sm italic text-ocre-700 dark:text-ocre-400">{message}</span>
+          <p
+            className="rounded-md px-3 py-2 text-center font-serif text-sm font-medium"
+            style={{ backgroundColor: "#c9952f", color: "#2b2410", border: "1px solid #8a6418" }}
+          >
+            {message}
+          </p>
         )}
       </div>
 
