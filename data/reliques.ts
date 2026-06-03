@@ -157,6 +157,15 @@ export const RELIQUES: Relique[] = [
     estObtenue: (d) => d.traverseeTerminee,
   },
   {
+    id: "verbe-enracine",
+    nom: "Le Verbe Enraciné",
+    embleme: "📜",
+    categorie: "Jeux",
+    description: "Sept jours d'affilée à deviner le Verbe du Jour. Le canon t'habite désormais sans effort.",
+    condition: "Atteindre 7 jours de série au Verbe du Jour",
+    estObtenue: (d) => d.verbeMeilleurStreak >= 7,
+  },
+  {
     id: "ami-des-pollinisateurs",
     nom: "Ami des Pollinisateurs",
     embleme: "🦋",

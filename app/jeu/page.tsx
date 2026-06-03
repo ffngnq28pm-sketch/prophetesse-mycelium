@@ -17,7 +17,7 @@ export default function HubJeux() {
           Jeux Liturgiques de l'Ordre
         </p>
         <h1 className="titre-liturgique mt-2 text-4xl text-mousse-800 dark:text-parchemin-100">
-          Quatre jeux pour s'enraciner
+          Cinq jeux pour s'enraciner
         </h1>
         <Ornement />
         <p className="mx-auto max-w-2xl font-serif italic text-mousse-700 dark:text-parchemin-200/80">
@@ -47,6 +47,9 @@ function Contenu() {
   const meilleursPollTraversee = useStore((s) => s.meilleursPollinisateursTraversee);
   const partiesTraversee = useStore((s) => s.partiesTraversee);
   const graines = useStore((s) => s.graines);
+  const verbeParties = useStore((s) => s.verbeParties);
+  const verbeMeilleurStreak = useStore((s) => s.verbeMeilleurStreak);
+  const verbesTrouves = Object.values(verbeParties).filter((p) => p.statut === "gagne").length;
 
   const tempsTraverseeLabel =
     meilleurTempsTraversee > 0
@@ -174,6 +177,30 @@ function Contenu() {
             </p>
             <p className="mt-2 font-serif text-xs text-ocre-700 group-hover:underline dark:text-ocre-400">
               Entrer sur le sentier →
+            </p>
+          </Card>
+        </Link>
+
+        <Link href="/jeu/verbe" className="group">
+          <Card className="h-full transition hover:border-ocre-500/60 hover:bg-mousse-100/50 dark:hover:bg-mousse-900/40">
+            <CardSubtitle>Jeu V</CardSubtitle>
+            <div className="flex items-baseline gap-3">
+              <span className="text-3xl">📜</span>
+              <CardTitle>Le Verbe du Jour</CardTitle>
+            </div>
+            <p className="mt-2 font-serif text-sm italic text-mousse-700 dark:text-parchemin-200/80">
+              Devine le Verbe du Jour. Un seul mot, six tentatives, une révélation à la clé. Le même pour tout l'Ordre, qui change à minuit — et l'on ne prononce que les paroles du canon.
+            </p>
+            <Ornement />
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="grace">Meilleure série : {verbeMeilleurStreak}</Badge>
+              <Badge variant="outline">{verbesTrouves} Verbe{verbesTrouves > 1 ? "s" : ""} trouvé{verbesTrouves > 1 ? "s" : ""}</Badge>
+            </div>
+            <p className="mt-3 font-serif text-xs italic text-mousse-700 dark:text-parchemin-200/70">
+              Un Verbe par jour. La série récompense l'assiduité.
+            </p>
+            <p className="mt-2 font-serif text-xs text-ocre-700 group-hover:underline dark:text-ocre-400">
+              Prononcer le Verbe →
             </p>
           </Card>
         </Link>

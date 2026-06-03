@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { cleDuJour } from "@/lib/verbe-logic";
 
 export interface ConfessionEntry {
   id: string;
@@ -45,6 +46,13 @@ export interface PartieTraversee {
   tempsMs: number;
   pollinisateurs: number;
   date: string;
+}
+
+export type StatutPartieVerbe = "en_cours" | "gagne" | "perdu";
+
+export interface PartieJourVerbe {
+  essais: string[]; // mots saisis (normalisés)
+  statut: StatutPartieVerbe;
 }
 
 export interface ProphetesseData {
@@ -108,6 +116,11 @@ export interface ProphetesseData {
   traverseeSansDosette: boolean; // a déjà terminé sans toucher une dosette
   historiqueTraversee: PartieTraversee[];
   tutoTraverseeFait: boolean;
+  // Jeu V — Le Verbe du Jour (Wordle éco-liturgique quotidien)
+  verbeParties: Record<string, PartieJourVerbe>; // clé = cleDuJour()
+  verbeStreak: number;
+  verbeMeilleurStreak: number;
+  verbeDerniereDateGagnee: string | null; // cleDuJour de la dernière victoire
 }
 
 export interface ProphetesseActions {
@@ -126,6 +139,8 @@ export interface ProphetesseActions {
   setTutoEmpreintesFait: (b: boolean) => void;
   enregistrerScoreTraversee: (tempsMs: number, pollinisateurs: number, sansDosette: boolean) => void;
   setTutoTraverseeFait: (b: boolean) => void;
+  verbeAjouterEssai: (cle: string, mot: string) => void;
+  verbeTerminer: (cle: string, statut: StatutPartieVerbe) => void;
   setAudioActif: (b: boolean) => void;
   // V3 actions
   setOnboardingFait: (b: boolean) => void;
@@ -191,6 +206,10 @@ const initialState: ProphetesseData = {
   traverseeSansDosette: false,
   historiqueTraversee: [] as PartieTraversee[],
   tutoTraverseeFait: false,
+  verbeParties: {} as Record<string, PartieJourVerbe>,
+  verbeStreak: 0,
+  verbeMeilleurStreak: 0,
+  verbeDerniereDateGagnee: null,
 };
 
 // Clés des données persistées — sert à l'export/import sans énumérer chaque champ.
@@ -281,6 +300,34 @@ export const useStore = create<ProphetesseState>()(
           ].slice(-60),
         })),
       setTutoTraverseeFait: (b) => set({ tutoTraverseeFait: b }),
+      verbeAjouterEssai: (cle, mot) =>
+        set((s) => {
+          const ex = s.verbeParties[cle] ?? { essais: [], statut: "en_cours" as StatutPartieVerbe };
+          return {
+            verbeParties: {
+              ...s.verbeParties,
+              [cle]: { ...ex, essais: [...ex.essais, mot] },
+            },
+          };
+        }),
+      verbeTerminer: (cle, statut) =>
+        set((s) => {
+          const ex = s.verbeParties[cle] ?? { essais: [], statut: "en_cours" as StatutPartieVerbe };
+          const parties = { ...s.verbeParties, [cle]: { ...ex, statut } };
+          if (statut === "gagne") {
+            // cle = "AAAA-MM-JJ" : on reconstruit la date locale pour calculer la veille.
+            const [y, m, d] = cle.split("-").map(Number);
+            const hier = cleDuJour(new Date(y, m - 1, d - 1));
+            const nouveauStreak = s.verbeDerniereDateGagnee === hier ? s.verbeStreak + 1 : 1;
+            return {
+              verbeParties: parties,
+              verbeStreak: nouveauStreak,
+              verbeMeilleurStreak: Math.max(s.verbeMeilleurStreak, nouveauStreak),
+              verbeDerniereDateGagnee: cle,
+            };
+          }
+          return { verbeParties: parties, verbeStreak: 0 };
+        }),
       setAudioActif: (b) => set({ audioActif: b }),
       setOnboardingFait: (b) => set({ onboardingFait: b }),
       setTutoTetrisFait: (b) => set({ tutoTetrisFait: b }),
