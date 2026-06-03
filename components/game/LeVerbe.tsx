@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useAnimationControls, useReducedMotion } from "framer-motion";
 import { useStore } from "@/lib/store";
 import { LEXIQUE } from "@/data/verbe-lexique";
@@ -50,6 +50,52 @@ const LIBELLE_ETAT: Record<Etat, string> = {
   present: "bien présent, mal placé",
   absent: "absent",
 };
+
+// Une case de la grille. Hoistée au module + memoïsée : son identité de
+// composant est stable, donc un re-render du parent (ex. autre state) ne la
+// remonte pas et ne rejoue pas son flip. La couleur (style inline) est
+// toujours l'état final ; seul le `rotateX` s'anime — une seule fois.
+interface CaseProps {
+  lettre: string;
+  etat: Etat | "vide";
+  col: number;
+  anime: boolean; // true uniquement lors de la première révélation de la ligne
+}
+
+const Case = memo(function Case({ lettre, etat, col, anime }: CaseProps) {
+  const ariaLettre = lettre ? `lettre ${lettre}, ` : "case vide, ";
+  const ariaEtat = etat === "vide" ? "" : LIBELLE_ETAT[etat as Etat];
+  return (
+    <motion.div
+      role="img"
+      aria-label={`${ariaLettre}${ariaEtat}`.trim()}
+      initial={false}
+      animate={anime ? { rotateX: [90, 0] } : { rotateX: 0 }}
+      transition={anime ? { duration: 0.5, ease: "easeInOut", delay: col * 0.12 } : { duration: 0 }}
+      className="flex aspect-square min-h-[44px] w-full items-center justify-center rounded-md font-serif text-2xl font-bold uppercase sm:text-3xl"
+      style={STYLE_ETAT[etat]}
+    >
+      {lettre}
+    </motion.div>
+  );
+});
+
+// Compte à rebours isolé : il détient son propre setInterval/state, si bien
+// que son tic chaque seconde ne re-rend QUE lui — jamais la grille animée.
+function CompteARebours() {
+  const [restant, setRestant] = useState(() => prochainMinuit(new Date()).getTime() - Date.now());
+  useEffect(() => {
+    const id = setInterval(() => {
+      setRestant(prochainMinuit(new Date()).getTime() - Date.now());
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <p className="font-serif text-sm text-mousse-700 dark:text-parchemin-200/80">
+      Prochain Verbe dans <span className="tabular-nums font-semibold">{formatCompteur(restant)}</span>
+    </p>
+  );
+}
 
 export function LeVerbe() {
   const reduceMotion = useReducedMotion();
@@ -163,14 +209,19 @@ export function LeVerbe() {
     return map;
   }, [essais, cible]);
 
-  // Compte à rebours jusqu'au prochain minuit local.
-  const [restant, setRestant] = useState(() => prochainMinuit(new Date()).getTime() - Date.now());
+  // Lignes déjà révélées : une ligne ne s'anime QU'À sa première révélation.
+  // Au montage, on pré-marque toutes les lignes restaurées (partie déjà jouée /
+  // refresh) pour qu'elles s'affichent instantanément, sans flip d'entrée.
+  const dejaAnimees = useRef<Set<number> | null>(null);
+  if (dejaAnimees.current === null) {
+    dejaAnimees.current = new Set();
+    for (let i = 0; i < essais.length; i++) dejaAnimees.current.add(i);
+  }
+  // Après chaque nouvel essai, on note la dernière ligne comme animée afin
+  // qu'un re-render ultérieur ne rejoue pas son flip.
   useEffect(() => {
-    const id = setInterval(() => {
-      setRestant(prochainMinuit(new Date()).getTime() - Date.now());
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
+    if (essais.length > 0) dejaAnimees.current?.add(essais.length - 1);
+  }, [essais.length]);
 
   // Partage sans spoiler.
   const [copie, setCopie] = useState(false);
@@ -201,35 +252,6 @@ export function LeVerbe() {
     setTimeout(() => setCopie(false), 2200);
   }, [aujourdhui, statut, essais, cible]);
 
-  // ——— Rendu d'une case de la grille ———
-  function Case({
-    lettre,
-    etat,
-    col,
-    anime,
-  }: {
-    lettre: string;
-    etat: Etat | "vide";
-    col: number;
-    anime: boolean;
-  }) {
-    const ariaLettre = lettre ? `lettre ${lettre}, ` : "case vide, ";
-    const ariaEtat = etat === "vide" ? "" : LIBELLE_ETAT[etat as Etat];
-    return (
-      <motion.div
-        role="img"
-        aria-label={`${ariaLettre}${ariaEtat}`.trim()}
-        initial={anime && !reduceMotion ? { rotateX: -90, opacity: 0.4 } : false}
-        animate={{ rotateX: 0, opacity: 1 }}
-        transition={anime && !reduceMotion ? { delay: col * 0.08, duration: 0.32 } : { duration: 0 }}
-        className="flex aspect-square min-h-[44px] w-full items-center justify-center rounded-md font-serif text-2xl font-bold uppercase sm:text-3xl"
-        style={STYLE_ETAT[etat]}
-      >
-        {lettre}
-      </motion.div>
-    );
-  }
-
   // Lignes : passées (évaluées), courante (saisie), futures (vides).
   const lignes: { lettres: string[]; etats: (Etat | "vide")[]; anime: boolean; courante: boolean }[] = [];
   for (let r = 0; r < NB_ESSAIS; r++) {
@@ -238,7 +260,8 @@ export function LeVerbe() {
       lignes.push({
         lettres: essai.split(""),
         etats: evaluer(essai, cible),
-        anime: r === essais.length - 1, // flip uniquement sur la dernière révélée
+        // flip une seule fois : dernière ligne, pas encore animée, motion autorisée
+        anime: r === essais.length - 1 && !dejaAnimees.current.has(r) && !reduceMotion,
         courante: false,
       });
     } else if (r === essais.length && enCours) {
@@ -258,12 +281,6 @@ export function LeVerbe() {
       });
     }
   }
-
-  const compteur = (
-    <p className="font-serif text-sm text-mousse-700 dark:text-parchemin-200/80">
-      Prochain Verbe dans <span className="tabular-nums font-semibold">{formatCompteur(restant)}</span>
-    </p>
-  );
 
   const blocSerie = (
     <div className="flex flex-wrap items-center justify-center gap-2">
@@ -402,7 +419,7 @@ export function LeVerbe() {
             <button onClick={partager} className="btn-sacre">
               {copie ? "Copié ✓" : "Copier ma feuille de route"}
             </button>
-            {compteur}
+            <CompteARebours />
           </div>
         </Card>
       )}
