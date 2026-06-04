@@ -18,6 +18,7 @@ const ROUTES_STATIQUES = [
   "/jeu/pac-marcheuse/",
   "/jeu/nuit-des-empreintes/",
   "/jeu/traversee/",
+  "/jeu/verbe/",
   "/sanctuaires/",
   "/livre/",
   "/almanach/",
