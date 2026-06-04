@@ -104,7 +104,7 @@ function Contenu() {
           </Card>
         </Link>
 
-        <Link href="/jeu/pac-olivia" className="group">
+        <Link href="/jeu/pac-marcheuse" className="group">
           <Card className="h-full transition hover:border-ocre-500/60 hover:bg-mousse-100/50 dark:hover:bg-mousse-900/40">
             <CardSubtitle>Jeu II</CardSubtitle>
             <div className="flex items-baseline gap-3">
@@ -164,7 +164,7 @@ function Contenu() {
               <CardTitle>Le Sentier des Spores</CardTitle>
             </div>
             <p className="mt-2 font-serif text-sm italic text-mousse-700 dark:text-parchemin-200/80">
-              Un platformer. Olivia, casquette rouge et filet à la main, traverse un cimetière reverdi : elle saute par-dessus dosettes et tondeuses, attrape les pollinisateurs au filet, et rejoint le grand If sacré. Une fleur pousse sous chacun de ses pas.
+              Un platformer. La Marcheuse, casquette rouge et filet à la main, traverse un cimetière reverdi : elle saute par-dessus dosettes et tondeuses, attrape les pollinisateurs au filet, et rejoint le grand If sacré. Une fleur pousse sous chacun de ses pas.
             </p>
             <Ornement />
             <div className="flex flex-wrap gap-2">

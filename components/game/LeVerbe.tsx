@@ -430,7 +430,7 @@ export function LeVerbe() {
 // Mascotte discrète : Olivia, dont la casquette rouge est le SEUL accent vif autorisé.
 function OliviaMascotte() {
   return (
-    <svg width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Olivia, casquette rouge">
+    <svg width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="La Marcheuse, casquette rouge">
       {/* visage */}
       <circle cx="32" cy="36" r="15" fill="#e6dec5" stroke="#5a523c" strokeWidth="2" />
       {/* yeux */}

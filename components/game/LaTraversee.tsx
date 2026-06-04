@@ -553,10 +553,10 @@ export function LaTraversee({ onWin }: Props) {
               className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-mousse-950/85 p-6 text-center text-parchemin-50 backdrop-blur"
             >
               <p className="text-xs uppercase tracking-[0.3em] text-ocre-400">Jeu IV — Le Sentier des Spores</p>
-              <h2 className="titre-liturgique mt-2 text-3xl">La traversée d&apos;Olivia</h2>
+              <h2 className="titre-liturgique mt-2 text-3xl">La traversée de la Marcheuse</h2>
               <div className="ornement" />
               <p className="mx-auto max-w-md font-serif italic text-parchemin-100">
-                Casquette rouge, filet à la main, Olivia traverse un cimetière reverdi. Elle saute par-dessus les
+                Casquette rouge, filet à la main, la Marcheuse traverse un cimetière reverdi. Elle saute par-dessus les
                 pièges de la modernité, attrape les pollinisateurs au filet, composte les dosettes — et rejoint le
                 Sanctuaire au bout du sentier.
               </p>

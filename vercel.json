@@ -1,0 +1,14 @@
+{
+  "redirects": [
+    {
+      "source": "/jeu/pac-olivia",
+      "destination": "/jeu/pac-marcheuse",
+      "permanent": true
+    },
+    {
+      "source": "/jeu/pac-olivia/",
+      "destination": "/jeu/pac-marcheuse/",
+      "permanent": true
+    }
+  ]
+}

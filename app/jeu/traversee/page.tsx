@@ -29,9 +29,9 @@ const LaTraversee = dynamic(
 
 const TUTO: Etape[] = [
   {
-    titre: "1 · Olivia, casquette rouge",
+    titre: "1 · La Marcheuse, casquette rouge",
     texte:
-      "Tu guides Olivia, filet à la main, à travers un cimetière que le mycélium a patiemment reverdi. Sa casquette rouge est le seul éclat vif sur la brume. Mène-la jusqu'au Sanctuaire, au bout du sentier.",
+      "Tu guides la Marcheuse, filet à la main, à travers un cimetière que le mycélium a patiemment reverdi. Sa casquette rouge est le seul éclat vif sur la brume. Mène-la jusqu'au Sanctuaire, au bout du sentier.",
   },
   {
     titre: "2 · Avancer et bondir",
@@ -69,7 +69,7 @@ export default function TraverseePage() {
           Jeu IV — Le Sentier des Spores
         </p>
         <h1 className="titre-liturgique mt-2 text-4xl text-mousse-800 dark:text-parchemin-100">
-          La traversée d&apos;Olivia
+          La traversée de la Marcheuse
         </h1>
         <Ornement />
         <p className="mx-auto max-w-2xl font-serif italic text-mousse-700 dark:text-parchemin-200/80">
