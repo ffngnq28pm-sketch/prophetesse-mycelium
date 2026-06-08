@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Ornement } from "@/components/liturgical/Ornement";
@@ -40,28 +39,29 @@ function Reveal({
    l'illustration finale).                                              */
 /* ------------------------------------------------------------------ */
 function MarcheuseHero() {
-  const [imgOk, setImgOk] = useState(true);
   const alt =
     "La Marcheuse, figure allégorique de l'Ordre Mycélien : une femme sereine coiffée de rouge, un filet à papillons à la main, dans un cimetière doucement reverdi de mousse et de lichen.";
 
   return (
-    <figure className="relative mx-auto w-full max-w-sm md:max-w-none">
+    <figure
+      role="img"
+      aria-label={alt}
+      className="relative mx-auto w-full max-w-sm md:max-w-none"
+    >
       <div className="scroll-corner overflow-hidden rounded-lg border border-ocre-500/30 bg-parchemin-100/60 shadow-sm backdrop-blur dark:bg-mousse-900/40">
         <div className="relative aspect-[3/4] w-full">
-          {imgOk ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src="/marcheuse-hero.png"
-              alt={alt}
-              className="h-full w-full object-cover"
-              onError={() => setImgOk(false)}
-            />
-          ) : (
-            <PlaceholderMarcheuse />
-          )}
+          {/* Placeholder toujours présent, en tons sourds. */}
+          <PlaceholderMarcheuse />
+          {/* Vraie illustration en calque : si /marcheuse-hero.png existe, elle
+              couvre le placeholder ; si le fichier est absent, le 404 ne rend
+              rien (pas d'icône « image cassée »). */}
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: "url('/marcheuse-hero.png')" }}
+          />
         </div>
       </div>
-      <figcaption className="sr-only">{alt}</figcaption>
     </figure>
   );
 }
