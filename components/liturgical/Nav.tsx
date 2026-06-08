@@ -17,7 +17,7 @@ interface NavGroup {
   links: NavLink[];
 }
 
-const HOME: NavLink = { href: "/", label: "Sanctuaire" };
+const HOME: NavLink = { href: "/tableau", label: "Sanctuaire" };
 const JEUX: NavLink = { href: "/jeu", label: "Jeux" };
 const PARAMS: NavLink = { href: "/parametres", label: "Paramètres" };
 

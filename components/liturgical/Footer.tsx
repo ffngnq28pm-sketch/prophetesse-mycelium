@@ -1,6 +1,13 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export function Footer() {
+  const pathname = usePathname();
+  // La home (le Porche) possède son propre pied de page : pas de doublon.
+  if (pathname === "/") return null;
+
   return (
     <footer className="mt-12 border-t border-ocre-500/20 bg-parchemin-50/60 dark:bg-mousse-950/40">
       <div className="mx-auto max-w-5xl px-4 py-8 md:px-6">

@@ -2,7 +2,7 @@
   "name": "Prophétesse-Mycélium",
   "short_name": "Mycélium",
   "description": "Application liturgique de l'Ordre Mycélien. Rituels, confessions, jeux liturgiques, et la parole de la Marcheuse.",
-  "start_url": "/",
+  "start_url": "/tableau/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
