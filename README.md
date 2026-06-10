@@ -4,7 +4,7 @@
 > Rituels, confessions, Tetris du Compost, Chasse aux Pollinisateurs, Jardin sauvage,
 > et la parole de la Prophétesse — Celle-qui-marche-entre-les-tombes.
 
-🌐 **[mycelium.shadowstepsociety.com](https://mycelium.shadowstepsociety.com)** (à venir)
+🌐 **En ligne : [mycelium.shadowstepsociety.com](https://mycelium.shadowstepsociety.com)**
 
 ---
 
@@ -61,6 +61,10 @@ npm run build
 
 Génère le dossier `/out`, prêt pour un déploiement statique.
 Voir [DEPLOIEMENT_WEB.md](./DEPLOIEMENT_WEB.md) pour le déploiement complet.
+
+**En production** : hébergé sur **Vercel**, nom de domaine **OVH**
+([mycelium.shadowstepsociety.com](https://mycelium.shadowstepsociety.com)).
+Chaque push sur `main` redéploie automatiquement.
 
 ## Build iOS
 
