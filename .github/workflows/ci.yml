@@ -18,7 +18,7 @@ jobs:
       - run: npm ci
       - name: Typecheck
         run: npx tsc --noEmit
-      - name: Lint
-        run: npm run lint
+      # Lint retiré : `next lint` ouvre un prompt interactif de config ESLint
+      # en CI (eslint non configuré). À réactiver après configuration ESLint.
       - name: Build (static export)
         run: npm run build
