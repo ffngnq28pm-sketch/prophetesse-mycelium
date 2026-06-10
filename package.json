@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
     "build:static": "next build",
     "icons": "node scripts/generate-icons.mjs",
     "preview": "npx serve out",
