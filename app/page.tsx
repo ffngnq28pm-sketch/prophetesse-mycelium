@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useStore } from "@/lib/store";
 import { useShallow } from "zustand/react/shallow";
+import { Fond } from "@/components/banque/Fond";
 
 /* ------------------------------------------------------------------ */
 /* Racine du site = le Porche (vitrine publique de l'Ordre Vert).      */
@@ -186,7 +187,12 @@ function Porche() {
     // Breakout pleine largeur + neutralisation du padding du <main> global.
     <div className="-mb-24 -mt-6 mx-[calc(50%-50vw)] w-screen overflow-x-clip bg-parchemin-50 font-sans text-mousse-950">
       {/* ══ HÉRO ══════════════════════════════════════════════ */}
-      <header className="relative overflow-hidden px-6 pt-20 md:px-12">
+      {/* Surface témoin de la banque visuelle : fond d'ambiance « hero ».
+          Tant que public/banque/heros/hero-accueil.webp est absent, le repli
+          parchemin discret s'affiche → aucun bouleversement. Dépose l'image
+          pour voir le pattern s'activer (voile bas + traitement chaud). */}
+      <header className="relative overflow-hidden">
+        <Fond variante="hero" src="heros/hero-accueil.webp" className="px-6 pt-20 md:px-12">
         <Filaments className="pointer-events-none absolute left-4 top-8 hidden opacity-25 md:block" />
         <Filaments className="pointer-events-none absolute right-8 top-12 hidden -scale-x-100 opacity-25 md:block" />
 
@@ -233,6 +239,7 @@ function Porche() {
         </div>
 
         <hr className="mx-auto mt-20 max-w-3xl border-0 border-t border-ocre-500/30" />
+        </Fond>
       </header>
 
       {/* ══ QU'EST-CE QUE L'ORDRE ════════════════════════════ */}
