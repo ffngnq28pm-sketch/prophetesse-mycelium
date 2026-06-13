@@ -8,11 +8,14 @@ import { Ornement } from "@/components/liturgical/Ornement";
 import { Hydrated } from "@/components/liturgical/Hydrated";
 import { HelpButton } from "@/components/liturgical/HelpButton";
 import { JeuIllustration } from "@/components/game/JeuIllustration";
+import { FondPeint, ContenuLisible } from "@/components/banque/FondPeint";
 import { Trees } from "lucide-react";
 
 export default function HubJeux() {
   return (
     <div>
+      {/* Fond peint ambiant : visible dans les marges de la colonne, derrière le contenu. */}
+      <FondPeint seed="jeux" />
       <header className="mb-6 text-center">
         <p className="text-xs uppercase tracking-[0.4em] text-ocre-600 dark:text-ocre-400">
           Jeux Liturgiques de l'Ordre
@@ -21,9 +24,11 @@ export default function HubJeux() {
           Cinq jeux pour s'enraciner
         </h1>
         <Ornement />
-        <p className="mx-auto max-w-2xl font-serif italic text-mousse-700 dark:text-parchemin-200/80">
-          « Le jeu est une forme de méditation pratique, à condition qu'on n'en perde pas la mesure. Ce qui, faut-il le rappeler, est l'éternel risque de la méditation pratique. »
-        </p>
+        <ContenuLisible className="mx-auto max-w-2xl px-4 py-2">
+          <p className="font-serif italic text-mousse-700 dark:text-parchemin-200/80">
+            « Le jeu est une forme de méditation pratique, à condition qu'on n'en perde pas la mesure. Ce qui, faut-il le rappeler, est l'éternel risque de la méditation pratique. »
+          </p>
+        </ContenuLisible>
       </header>
       <Hydrated>
         <Contenu />

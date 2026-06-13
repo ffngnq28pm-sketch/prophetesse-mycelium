@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { useStore } from "@/lib/store";
 import { useShallow } from "zustand/react/shallow";
 import { Fond } from "@/components/banque/Fond";
+import { FondPeint } from "@/components/banque/FondPeint";
 
 /* ------------------------------------------------------------------ */
 /* Racine du site = le Porche (vitrine publique de l'Ordre Vert).      */
@@ -184,8 +185,12 @@ const CTA_FOCUS =
 
 function Porche() {
   return (
-    // Breakout pleine largeur + neutralisation du padding du <main> global.
-    <div className="-mb-24 -mt-6 mx-[calc(50%-50vw)] w-screen overflow-x-clip bg-parchemin-50 font-sans text-mousse-950">
+    <>
+      {/* Fond peint en sibling (hors du breakout overflow-x-clip qui rognerait
+          un enfant fixed). bg du porche en /80 → lavis sobre par-dessus. */}
+      <FondPeint seed="accueil" />
+      {/* Breakout pleine largeur + neutralisation du padding du <main> global. */}
+      <div className="-mb-24 -mt-6 mx-[calc(50%-50vw)] w-screen overflow-x-clip bg-parchemin-50/80 font-sans text-mousse-950">
       {/* ══ HÉRO ══════════════════════════════════════════════ */}
       {/* Surface témoin de la banque visuelle : fond d'ambiance « hero ».
           Tant que public/banque/heros/hero-accueil.webp est absent, le repli
@@ -377,6 +382,7 @@ function Porche() {
           mycelium.shadowstepsociety.com
         </span>
       </footer>
-    </div>
+      </div>
+    </>
   );
 }
