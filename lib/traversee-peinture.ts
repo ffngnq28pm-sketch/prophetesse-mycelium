@@ -117,20 +117,11 @@ function bakeLayer(source: HTMLImageElement, fadeTop: boolean, atmo: string): HT
   sc.globalCompositeOperation = "source-over";
   c.drawImage(strip, w - b, 0);
 
-  // 2) Fondu des deux bords vers la couleur atmosphérique (continuité de valeur).
-  c.globalCompositeOperation = "source-atop"; // ne touche pas le sommet transparent
-  const A = 0.5;
-  const gl = c.createLinearGradient(0, 0, b, 0);
-  gl.addColorStop(0, `rgba(${atmo},${A})`);
-  gl.addColorStop(1, `rgba(${atmo},0)`);
-  c.fillStyle = gl;
-  c.fillRect(0, 0, b, h);
-  const gr = c.createLinearGradient(w - b, 0, w, 0);
-  gr.addColorStop(0, `rgba(${atmo},0)`);
-  gr.addColorStop(1, `rgba(${atmo},${A})`);
-  c.fillStyle = gr;
-  c.fillRect(w - b, 0, b, h);
-  c.globalCompositeOperation = "source-over";
+  // NB : on garde uniquement le cross-dissolve de CONTENU. Le fondu des bords
+  // vers la couleur atmosphérique (ancien essai) créait une bande verticale
+  // périodique sombre à chaque jointure → retiré. La ligne dure résiduelle est
+  // un joint sous-pixel, corrigé par le chevauchement de 1 px dans drawLayer.
+  void atmo;
   return cv;
 }
 
@@ -426,8 +417,13 @@ export class PeintureDecor {
     const iStart = Math.floor(-shiftX / tileW) - 1;
     const iEnd = Math.ceil((cw - shiftX) / tileW) + 1;
     if (alpha < 1) c.globalAlpha = alpha;
+    // Joint sous-pixel : les positions fractionnaires font anti-créneler le bord
+    // de chaque copie → fine ligne dure à chaque jointure. On fait CHEVAUCHER les
+    // copies de 1 px (départ 1 px avant, 2 px plus large) : la copie suivante
+    // recouvre le bord AA de la précédente. Pas d'arrondi → zéro jitter de parallaxe.
+    const bleed = 1;
     for (let i = iStart; i <= iEnd; i++) {
-      c.drawImage(img, shiftX + i * tileW, yOff, tileW, drawH);
+      c.drawImage(img, shiftX + i * tileW - bleed, yOff, tileW + bleed * 2, drawH);
     }
     if (alpha < 1) c.globalAlpha = 1;
   }
