@@ -23,6 +23,14 @@ const ROLES = {
   textures: { maxW: 1280, quality: 68 },
 };
 
+// Décors peints des jeux : mêmes règles, par acte. (cf. docs/PORT-TRAVERSEE.md)
+// assets-sources/jeux/traversee/<acte>/couche-<n>-<v>.png → public/jeux/traversee/<acte>/*.webp
+const JEUX = {
+  "traversee/porche": { maxW: 1920, quality: 72 },
+  "traversee/allees": { maxW: 1920, quality: 72 },
+  "traversee/ascension": { maxW: 1920, quality: 72 },
+};
+
 const EXT_IN = new Set([".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif"]);
 
 async function ensureDir(p) {
@@ -35,63 +43,73 @@ function ko(bytes) {
   return (bytes / 1024).toFixed(0) + " Ko";
 }
 
-async function run() {
-  // Garantit l'existence des dossiers (sources + sorties) pour chaque rôle.
-  for (const role of Object.keys(ROLES)) {
-    await ensureDir(join(SRC_ROOT, role));
-    await ensureDir(join(OUT_ROOT, role));
+// Compteurs partagés entre les deux passes (banque + jeux).
+const stats = { total: 0, done: 0, skipped: 0, sumIn: 0, sumOut: 0 };
+
+// Optimise un dossier source → dossier sortie selon une config (maxW, quality).
+async function processDir(srcDir, outDir, label, cfg) {
+  await ensureDir(srcDir);
+  await ensureDir(outDir);
+  let entries;
+  try { entries = await fs.readdir(srcDir); } catch { entries = []; }
+  const images = entries.filter((f) => EXT_IN.has(extname(f).toLowerCase()));
+  if (images.length === 0) {
+    console.log(`  ${label}/  — aucune source`);
+    return;
   }
+  console.log(`  ${label}/  (largeur ≤ ${cfg.maxW}, q${cfg.quality})`);
 
-  let total = 0, done = 0, skipped = 0, sumIn = 0, sumOut = 0;
-  console.log("🍄 Optimisation de la banque visuelle\n");
+  for (const file of images) {
+    stats.total++;
+    const srcPath = join(srcDir, file);
+    const outName = basename(file, extname(file)) + ".webp";
+    const outPath = join(outDir, outName);
 
-  for (const [role, cfg] of Object.entries(ROLES)) {
-    const srcDir = join(SRC_ROOT, role);
-    let entries;
-    try { entries = await fs.readdir(srcDir); } catch { entries = []; }
-    const images = entries.filter((f) => EXT_IN.has(extname(f).toLowerCase()));
-    if (images.length === 0) {
-      console.log(`  ${role}/  — aucune source`);
+    // Idempotence : on saute si la sortie est plus récente que la source.
+    if ((await mtime(outPath)) >= (await mtime(srcPath))) {
+      stats.skipped++;
+      console.log(`    · ${outName} — à jour, sauté`);
       continue;
     }
-    console.log(`  ${role}/  (largeur ≤ ${cfg.maxW}, q${cfg.quality})`);
 
-    for (const file of images) {
-      total++;
-      const srcPath = join(srcDir, file);
-      const outName = basename(file, extname(file)) + ".webp";
-      const outPath = join(OUT_ROOT, role, outName);
+    const inSize = (await fs.stat(srcPath)).size;
+    const img = sharp(srcPath, { failOn: "none" });
+    const meta = await img.metadata();
+    const targetW = Math.min(cfg.maxW, meta.width || cfg.maxW); // jamais d'upscale
 
-      // Idempotence : on saute si la sortie est plus récente que la source.
-      if ((await mtime(outPath)) >= (await mtime(srcPath))) {
-        skipped++;
-        console.log(`    · ${outName} — à jour, sauté`);
-        continue;
-      }
+    await img
+      .resize({ width: targetW, withoutEnlargement: true })
+      .webp({ quality: cfg.quality })
+      .toFile(outPath);
 
-      const inSize = (await fs.stat(srcPath)).size;
-      const img = sharp(srcPath, { failOn: "none" });
-      const meta = await img.metadata();
-      const targetW = Math.min(cfg.maxW, meta.width || cfg.maxW); // jamais d'upscale
+    const outStat = await fs.stat(outPath);
+    const outMeta = await sharp(outPath).metadata();
+    stats.sumIn += inSize; stats.sumOut += outStat.size; stats.done++;
+    const warn = outStat.size > 400 * 1024 ? "  ⚠ > 400 Ko" : "";
+    console.log(
+      `    ✓ ${outName}  ${outMeta.width}×${outMeta.height}  ${ko(inSize)} → ${ko(outStat.size)}${warn}`
+    );
+  }
+}
 
-      await img
-        .resize({ width: targetW, withoutEnlargement: true })
-        .webp({ quality: cfg.quality })
-        .toFile(outPath);
+async function run() {
+  console.log("🍄 Optimisation des images (banque + décors de jeux)\n");
 
-      const outStat = await fs.stat(outPath);
-      const outMeta = await sharp(outPath).metadata();
-      sumIn += inSize; sumOut += outStat.size; done++;
-      const warn = outStat.size > 400 * 1024 ? "  ⚠ > 400 Ko" : "";
-      console.log(
-        `    ✓ ${outName}  ${outMeta.width}×${outMeta.height}  ${ko(inSize)} → ${ko(outStat.size)}${warn}`
-      );
-    }
+  // —— Banque visuelle (par rôle) ——
+  for (const [role, cfg] of Object.entries(ROLES)) {
+    await processDir(join(SRC_ROOT, role), join(OUT_ROOT, role), role, cfg);
+  }
+
+  // —— Décors peints des jeux (par acte) ——
+  const JEU_SRC = join(ROOT, "assets-sources", "jeux");
+  const JEU_OUT = join(ROOT, "public", "jeux");
+  for (const [rel, cfg] of Object.entries(JEUX)) {
+    await processDir(join(JEU_SRC, rel), join(JEU_OUT, rel), `jeux/${rel}`, cfg);
   }
 
   console.log(
-    `\n  Total : ${total} · optimisées ${done} · sautées ${skipped}` +
-    (done ? ` · ${ko(sumIn)} → ${ko(sumOut)}` : "")
+    `\n  Total : ${stats.total} · optimisées ${stats.done} · sautées ${stats.skipped}` +
+    (stats.done ? ` · ${ko(stats.sumIn)} → ${ko(stats.sumOut)}` : "")
   );
 }
 
