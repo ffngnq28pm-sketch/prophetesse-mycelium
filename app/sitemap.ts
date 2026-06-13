@@ -20,6 +20,7 @@ const ROUTES_STATIQUES = [
   "/jeu/nuit-des-empreintes/",
   "/jeu/traversee/",
   "/jeu/verbe/",
+  "/jeu/veillee/",
   "/sanctuaires/",
   "/universite/",
   "/livre/",

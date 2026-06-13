@@ -213,6 +213,18 @@ function Contenu() {
           note="Un Verbe par jour. La série récompense l'assiduité."
           appel="Prononcer le Verbe →"
         />
+
+        <CarteJeu
+          href="/jeu/veillee"
+          segment="veillee"
+          embleme="🕯️"
+          numero="Jeu VI · L'Épreuve de la Veillée"
+          titre="L'Épreuve de la Veillée"
+          desc="Un escape contemplatif. Resté·e dans le cimetière après la fermeture, ouvre les sceaux cachés dans la friche pour que le portail se rouvre à l'aube. Pas de chrono, des défunts railleurs, de vraies lois du vivant."
+          badges={[{ label: "Escape · 5 sceaux", grace: true }, { label: "Sans chrono" }]}
+          note="Ce que tu apprends à l'Université des Friches se pratique ici."
+          appel="Entrer dans la Veillée →"
+        />
       </div>
 
       <Card>

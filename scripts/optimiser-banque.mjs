@@ -22,6 +22,7 @@ const ROLES = {
   illustrations: { maxW: 1280, quality: 75 },
   textures: { maxW: 1280, quality: 68 },
   jeux: { maxW: 1024, quality: 72 }, // vignettes des cartes du hub (< 250 Ko visés)
+  veillee: { maxW: 1920, quality: 74 }, // fonds de scène de L'Épreuve de la Veillée (< 400 Ko visés)
 };
 
 // Décors peints des jeux : mêmes règles, par acte. (cf. docs/PORT-TRAVERSEE.md)
