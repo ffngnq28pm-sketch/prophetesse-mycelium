@@ -54,20 +54,30 @@ function juger(score: number, curses: number): string {
   return JUGEMENTS.enfer[Math.floor(Math.random() * JUGEMENTS.enfer.length)];
 }
 
-// La catégorie est le seul critère qui compte pour le score : c'est donc elle —
-// pas l'identité du déchet — qui pilote le rendu d'une tuile.
-const CAT_STYLE: Record<Categorie, { fill: string; ink: string; glyph: string; nom: string; pts: string }> = {
-  compost: { fill: "#5f8a3e", ink: "#eef6e0", glyph: "✿", nom: "Compost", pts: "30 pts / case" },
-  recycle: { fill: "#3f7a9c", ink: "#e6f1f7", glyph: "♺", nom: "Recyclable", pts: "12 pts / case" },
-  maudit: { fill: "#9a1f24", ink: "#f6dccb", glyph: "☠", nom: "Maudit", pts: "malédiction en ligne" },
+// ——— Réglages de RENDU du plateau (rien de moteur ici) ———
+const PLATEAU = {
+  url: "/banque/jeux/compost-plateau.webp",
+  VEIL: 0.5, // voile sombre par-dessus le fond peint (dial-able : monter si ça gêne la lecture)
+  REPLI: "#161a10", // repli sombre uni si le webp est absent (jamais d'<img> cassée)
+  VIDE: "rgba(20,24,15,0.34)", // cellule vide : sombre translucide → le fond peint murmure
 };
 
-// Marqueur de marge : état d'une rangée déjà posée.
+// La catégorie est le seul critère qui compte pour le score : c'est donc elle —
+// pas l'identité du déchet — qui pilote le rendu d'une tuile. Palette de
+// l'univers : teintes désaturées, distinctes (mousse / terre / alu froid).
+const CAT_STYLE: Record<Categorie, { fill: string; ink: string; glyph: string; nom: string; pts: string }> = {
+  compost: { fill: "#6f7d54", ink: "#e9edda", glyph: "✿", nom: "Compost", pts: "30 pts / case" }, // mousse
+  recycle: { fill: "#8a6a48", ink: "#ecdfc9", glyph: "♺", nom: "Recyclable", pts: "12 pts / case" }, // terre
+  // Dosette maudite : teinte FROIDE métallique (gris-bleu alu) — l'intrus qui jure.
+  maudit: { fill: "#7d8a99", ink: "#1b2430", glyph: "☠", nom: "Maudit", pts: "malédiction en ligne" },
+};
+
+// Marqueur de marge : état d'une rangée déjà posée (accordé à la palette).
 const ROW_MARK: Record<string, string> = {
   vide: "transparent",
-  propre: "#5f8a3e",
-  compost: "#c9a227",
-  contaminee: "#c0392b",
+  propre: "#6f7d54", // mousse
+  compost: "#c0a25c", // ocre (ligne sainte en vue)
+  contaminee: "#7d8a99", // alu froid (maudit présent)
 };
 
 class TetrisAudio {
@@ -444,10 +454,24 @@ export function Tetris({
   }
 
   const ghostColor =
-    ghostVerdict === "curse" ? "#c0392b"
-      : ghostVerdict === "sainte" ? "#c9a227"
-      : ghostVerdict === "clear" ? "#5f8a3e"
+    ghostVerdict === "curse" ? "#7d8a99" // alu froid (= maudit)
+      : ghostVerdict === "sainte" ? "#c0a25c" // ocre
+      : ghostVerdict === "clear" ? "#6f7d54" // mousse
       : "#a9b39a";
+
+  // Cellules de la pièce ACTIVE (en chute) — rendu un poil plus lumineux que
+  // les pièces posées pour la distinguer. (Lecture seule de `piece`, pas le moteur.)
+  const activeCells = new Set<string>();
+  if (piece) {
+    const shape = getShape(piece);
+    for (let r = 0; r < shape.length; r++)
+      for (let c = 0; c < shape[r].length; c++) {
+        if (!shape[r][c]) continue;
+        const x = piece.x + c;
+        const y = piece.y + r;
+        if (y >= 0 && y < BOARD_HEIGHT && x >= 0 && x < BOARD_WIDTH) activeCells.add(`${y}-${x}`);
+      }
+  }
 
   // État de chaque rangée posée, affiché dans la marge pour décider où compléter.
   const rowStates = board.map((row) => {
@@ -472,21 +496,38 @@ export function Tetris({
           className="relative mx-auto w-full max-w-md select-none"
         >
           <div className="flex justify-center gap-1">
+            {/* Conteneur du plateau : fond peint (repli sombre uni) + voile sombre
+                par-dessus pour que les pièces ressortent ; la grille passe au-dessus. */}
             <div
-              className="rounded-lg border-2 border-ocre-500/50 bg-gradient-to-br from-mousse-900 via-mousse-950 to-black p-1.5 shadow-xl"
-              style={{
-                display: "grid",
-                gridTemplateColumns: `repeat(${BOARD_WIDTH}, 1fr)`,
-                gap: 2,
-                flex: 1,
-              }}
+              className="relative overflow-hidden rounded-lg border-2 border-ocre-500/50 shadow-xl"
+              style={{ flex: 1 }}
             >
+              <div aria-hidden className="absolute inset-0" style={{ background: PLATEAU.REPLI }} />
+              <div
+                aria-hidden
+                className="absolute inset-0"
+                style={{
+                  backgroundImage: `url('${PLATEAU.url}')`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }}
+              />
+              <div aria-hidden className="absolute inset-0" style={{ background: `rgba(8,10,6,${PLATEAU.VEIL})` }} />
+              <div
+                className="relative p-1.5"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: `repeat(${BOARD_WIDTH}, 1fr)`,
+                  gap: 2,
+                }}
+              >
               {display.flatMap((row, r) =>
                 row.map((cell, c) => {
                   const d = cell ? getDechet(cell) : null;
                   const cs = d ? CAT_STYLE[d.categorie] : null;
                   const isGhost = !d && ghostCells.has(`${r}-${c}`);
                   const isClearing = !!cs && clearingRows.includes(r);
+                  const isActive = !!cs && activeCells.has(`${r}-${c}`);
                   return (
                     <div
                       key={`${r}-${c}`}
@@ -494,16 +535,18 @@ export function Tetris({
                       style={{
                         backgroundColor: isClearing
                           ? "#f1d56c"
-                          : cs?.fill ?? (isGhost ? `${ghostColor}26` : "rgba(255,255,255,0.04)"),
+                          : cs?.fill ?? (isGhost ? `${ghostColor}26` : PLATEAU.VIDE),
                         border: cs
-                          ? "1px solid rgba(255,255,255,0.22)"
+                          ? "1px solid rgba(20,24,16,0.55)" // contour doux foncé (détache du fond)
                           : isGhost
                           ? `1px dashed ${ghostColor}cc`
-                          : "1px solid rgba(255,255,255,0.03)",
-                        // léger relief des tuiles posées (lumière en haut, ombre en bas)
+                          : "1px solid rgba(255,255,255,0.04)",
+                        // relief (lumière en haut, ombre en bas) + ombre portée pour
+                        // détacher la tuile du fond ; pièce active un poil plus claire.
                         boxShadow: cs
-                          ? "inset 0 1.5px 0 rgba(255,255,255,0.25), inset 0 -2px 0 rgba(0,0,0,0.28)"
+                          ? "inset 0 1.5px 0 rgba(255,255,255,0.22), inset 0 -2px 0 rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.4)"
                           : undefined,
+                        filter: isActive ? "brightness(1.16)" : undefined,
                         borderRadius: 3,
                         display: "flex",
                         alignItems: "center",
@@ -522,8 +565,9 @@ export function Tetris({
                   );
                 })
               )}
+              </div>
             </div>
-            {/* Marge d'état : or = ligne sainte en vue, vert = ligne propre, rouge = maudit présent (ne pas compléter). */}
+            {/* Marge d'état : ocre = ligne sainte en vue, mousse = ligne propre, alu = maudit présent (ne pas compléter). */}
             <div
               className="grid border-y-2 border-transparent py-1.5"
               style={{ gridTemplateRows: `repeat(${BOARD_HEIGHT}, 1fr)`, gap: 2, width: 9 }}
@@ -647,9 +691,9 @@ export function Tetris({
             })}
           </ul>
           <p className="mt-3 font-serif text-xs italic text-mousse-700 dark:text-parchemin-200/70">
-            Marge de droite : <span style={{ color: "#c9a227" }}>or</span> = ligne sainte en vue,{" "}
-            <span style={{ color: "#5f8a3e" }}>vert</span> = ligne propre,{" "}
-            <span style={{ color: "#c0392b" }}>rouge</span> = maudit présent, à ne pas compléter.
+            Marge de droite : <span style={{ color: "#c0a25c" }}>ocre</span> = ligne sainte en vue,{" "}
+            <span style={{ color: "#6f7d54" }}>mousse</span> = ligne propre,{" "}
+            <span style={{ color: "#7d8a99" }}>alu</span> = maudit présent, à ne pas compléter.
           </p>
           <p className="mt-2 font-serif text-xs italic text-mousse-700 dark:text-parchemin-200/70">
             L'ombre de chute prend ces mêmes couleurs : elle annonce l'effet de la pièce avant que tu la poses.
