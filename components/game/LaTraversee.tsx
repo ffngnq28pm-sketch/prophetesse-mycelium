@@ -1678,15 +1678,31 @@ function drawParticles(ctx: CanvasRenderingContext2D, particles: Particle[], tim
   ctx.globalAlpha = 1;
 }
 
+// ════════════ Config dial-able de la Marcheuse ════════════
+const MARCHEUSE = {
+  ECHELLE: 1.5, // échelle VISUELLE vs hitbox, ancrée aux pieds (le visuel déborde, voulu)
+  CAPE_SWAY: 1.0, // amplitude de balancement de cape en marche
+  IDLE_DRIFT: 1.0, // dérive de cape à l'arrêt (brise)
+  CAPE_LIT: "#3c5430", // cape extérieure, côté éclairé (vert sourd, sous la saturation du rouge)
+  CAPE_MID: "#2a3f24",
+  CAPE_SHADE: "#1b2b17", // côté ombre
+  CAPE_DOUBLURE: "#8a9356", // doublure plus claire et chaude (ouverture + col)
+  PEAU: "#e3c79e",
+  CHEVEUX: "#caa45a",
+};
+
+// Marcheuse — pèlerine élancée peinte. Construite en formes superposées
+// (cape arrière → corps/jambes → bras+filet → tête+casquette → liserés), à
+// l'échelle MARCHEUSE.ECHELLE ancrée aux pieds. La HITBOX (o.w/o.h) n'est
+// jamais modifiée : seul le dessin est agrandi.
 function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
+  const M = MARCHEUSE;
   const moving = Math.abs(o.vx) > 12;
   const airborne = !o.onGround;
   const squashY = 1 - 0.2 * o.squash;
   const squashX = 1 + 0.14 * o.squash;
   let stretch = 1;
-  if (airborne) {
-    stretch = 1 + Math.max(-0.12, Math.min(0.16, -o.vy / 4200));
-  }
+  if (airborne) stretch = 1 + Math.max(-0.12, Math.min(0.16, -o.vy / 4200));
   const sy = squashY * stretch;
   const sx = squashX / (stretch * 0.5 + 0.5);
 
@@ -1696,187 +1712,245 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   ctx.save();
   ctx.translate(footX, footY);
   ctx.scale(o.facing * sx, sy);
-  // origine = pieds, on dessine vers le haut (y négatif), repère « face à droite »
 
-  const H = o.h; // 38
-
-  // ombre de contact douce (radiale) — suit la Marcheuse, s'élargit au squash
-  const csh = ctx.createRadialGradient(0, 2, 1, 0, 2, 13);
+  // —— Ombre de contact (au sol, NON agrandie par l'échelle visuelle) ——
+  const csh = ctx.createRadialGradient(0, 2, 1, 0, 2, 15);
   csh.addColorStop(0, "rgba(12,20,10,0.42)");
   csh.addColorStop(1, "rgba(12,20,10,0)");
   ctx.fillStyle = csh;
   ctx.beginPath();
-  ctx.ellipse(0, 2, 13, 4.2, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 2, 15, 4.6, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // jambes
+  // —— Échelle visuelle, ancrée aux pieds (origine) ; on dessine vers le haut ——
+  ctx.scale(M.ECHELLE, M.ECHELLE);
+
+  const H = o.h; // unité de proportion (38)
+  const breath = o.onGround && !moving ? Math.sin(time / 900) * 0.5 : 0;
+  const neckY = -H * 0.82 - breath;
+  const headY = -H * 0.95 - breath;
+  const hemW = 11; // demi-largeur du bas de cape (évasé)
+
+  // Bas de cape : points ondulants (Phase 1 = brise douce). Amplitude étendue
+  // en Phase 2 (marche) et Phase 3 (idle/saut).
+  const capeAmp = 1.3 * M.IDLE_DRIFT;
+  const hemY = (t: number) => Math.sin(time * 0.0022 + t * 3.4) * capeAmp * (0.35 + t * 0.65);
+
+  // ════════ 1. CAPE (arrière, longue, évasée, feutrée) ════════
+  ctx.save();
+  ctx.shadowColor = "rgba(8,14,6,0.5)";
+  ctx.shadowBlur = 4;
+  const capeGrad = ctx.createLinearGradient(-hemW, 0, hemW, 0);
+  capeGrad.addColorStop(0, M.CAPE_SHADE);
+  capeGrad.addColorStop(0.6, M.CAPE_MID);
+  capeGrad.addColorStop(1, M.CAPE_LIT);
+  ctx.fillStyle = capeGrad;
+  ctx.beginPath();
+  ctx.moveTo(-4, neckY); // épaule arrière
+  ctx.quadraticCurveTo(-hemW - 2, -H * 0.45, -hemW, hemY(0)); // descente gauche
+  for (let i = 1; i <= 5; i++) {
+    const t = i / 5;
+    ctx.lineTo(-hemW + 2 * hemW * t, hemY(t)); // ourlet ondulant
+  }
+  ctx.quadraticCurveTo(hemW + 2, -H * 0.45, 4, neckY); // remontée droite
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // AO doux dans les plis internes de la cape
+  ctx.fillStyle = "rgba(8,14,6,0.22)";
+  ctx.beginPath();
+  ctx.moveTo(-2, neckY);
+  ctx.quadraticCurveTo(-5, -H * 0.4, -hemW * 0.5, hemY(0.5));
+  ctx.lineTo(0, hemY(0.5) - 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // ════════ 2. CORPS — jambes + torse fin sous la cape ════════
+  // jambes longues et fines (le bas dépasse de la cape)
   ctx.strokeStyle = "#2b2218";
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 3.4;
   ctx.lineCap = "round";
   if (airborne) {
     ctx.beginPath();
-    ctx.moveTo(-3, -H * 0.32);
+    ctx.moveTo(-2.5, -H * 0.28);
     ctx.lineTo(-5, -2);
-    ctx.moveTo(3, -H * 0.32);
-    ctx.lineTo(6, -6);
+    ctx.moveTo(2.5, -H * 0.28);
+    ctx.lineTo(6, -7);
     ctx.stroke();
   } else if (moving) {
-    const sw = Math.sin(o.walkPhase) * 6;
+    const sw = Math.sin(o.walkPhase) * 5;
     ctx.beginPath();
-    ctx.moveTo(-2, -H * 0.32);
+    ctx.moveTo(-2, -H * 0.3);
     ctx.lineTo(-2 + sw, -1);
-    ctx.moveTo(2, -H * 0.32);
+    ctx.moveTo(2, -H * 0.3);
     ctx.lineTo(2 - sw, -1);
     ctx.stroke();
   } else {
     ctx.beginPath();
-    ctx.moveTo(-3, -H * 0.32);
-    ctx.lineTo(-3, -1);
-    ctx.moveTo(3, -H * 0.32);
-    ctx.lineTo(3, -1);
+    ctx.moveTo(-2.5, -H * 0.3);
+    ctx.lineTo(-2.5, -1);
+    ctx.moveTo(2.5, -H * 0.3);
+    ctx.lineTo(2.5, -1);
     ctx.stroke();
   }
-
-  // cape / corps — ombrage doux (ombre → lumière vers l'avant) + bord feutré
-  const breath = o.onGround && !moving ? Math.sin(time / 700) * 0.6 : 0;
-  const bodyGrad = ctx.createLinearGradient(-8, 0, 8, 0);
-  bodyGrad.addColorStop(0, "#21331f"); // côté ombre
-  bodyGrad.addColorStop(0.55, "#2f4a2c");
-  bodyGrad.addColorStop(1, "#3d5e34"); // côté éclairé (avant)
-  ctx.save();
-  ctx.shadowColor = "rgba(10,16,8,0.5)";
-  ctx.shadowBlur = 3; // silhouette peinte, bord légèrement adouci
-  ctx.fillStyle = bodyGrad;
+  // torse fin (cou gracile → hanches), majoritairement couvert par la cape
+  ctx.fillStyle = M.CAPE_MID;
   ctx.beginPath();
-  ctx.moveTo(-8, -H * 0.3);
-  ctx.quadraticCurveTo(-9, -H * 0.62 - breath, -5, -H * 0.74);
-  ctx.lineTo(5, -H * 0.74);
-  ctx.quadraticCurveTo(9, -H * 0.62 - breath, 8, -H * 0.3);
-  ctx.quadraticCurveTo(0, -H * 0.24, -8, -H * 0.3);
+  ctx.moveTo(-4, -H * 0.3);
+  ctx.quadraticCurveTo(-4.6, -H * 0.6, -3, neckY);
+  ctx.lineTo(3, neckY);
+  ctx.quadraticCurveTo(4.6, -H * 0.6, 4, -H * 0.3);
   ctx.closePath();
   ctx.fill();
-  ctx.restore();
-  // rim-light chaud sur le bord avant (contre-jour)
-  ctx.strokeStyle = "rgba(255,228,150,0.5)";
-  ctx.lineWidth = 1.3;
-  ctx.beginPath();
-  ctx.moveTo(8, -H * 0.3);
-  ctx.quadraticCurveTo(9, -H * 0.62 - breath, 5, -H * 0.74);
-  ctx.stroke();
-  // liseré clair (col)
-  ctx.fillStyle = "#496c39";
-  ctx.fillRect(-5, -H * 0.74, 10, 3);
 
-  // tête (silhouette claire neutre, pas de visage détaillé)
-  const headY = -H * 0.82 - breath;
-  ctx.fillStyle = "#e8d5b5";
+  // ════════ Doublure (ouverture avant + col) — plus claire et chaude ════════
+  ctx.fillStyle = M.CAPE_DOUBLURE;
   ctx.beginPath();
-  ctx.arc(1, headY, 6.2, 0, Math.PI * 2);
+  ctx.moveTo(-2.4, neckY + 1);
+  ctx.lineTo(2.4, neckY + 1);
+  ctx.lineTo(hemW * 0.34, hemY(0.5) - 1);
+  ctx.quadraticCurveTo(0, hemY(0.5) + 1, -hemW * 0.34, hemY(0.5) - 1);
+  ctx.closePath();
   ctx.fill();
-  // mèche blonde sous la casquette
-  ctx.fillStyle = "#caa45a";
+  // col
+  ctx.fillStyle = M.CAPE_DOUBLURE;
   ctx.beginPath();
-  ctx.ellipse(-3.5, headY + 1, 3, 4.5, 0.3, 0, Math.PI * 2);
+  ctx.moveTo(-4, neckY);
+  ctx.quadraticCurveTo(0, neckY + 3, 4, neckY);
+  ctx.quadraticCurveTo(0, neckY - 1.5, -4, neckY);
   ctx.fill();
 
-  // CASQUETTE ROUGE — l'accent
-  ctx.fillStyle = RED_CAP;
-  ctx.beginPath();
-  ctx.arc(1, headY - 1, 7, Math.PI, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = RED_CAP;
-  ctx.beginPath();
-  ctx.ellipse(1, headY - 7.5, 6.5, 3, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // visière vers l'avant
-  ctx.fillStyle = RED_CAP_DARK;
-  ctx.beginPath();
-  ctx.ellipse(7, headY - 1, 5, 2, 0, Math.PI, Math.PI * 2);
-  ctx.fill();
-  // petit bouton
-  ctx.fillStyle = RED_CAP_DARK;
-  ctx.beginPath();
-  ctx.arc(1, headY - 8, 1.3, 0, Math.PI * 2);
-  ctx.fill();
-
-  // BRAS + FILET
+  // ════════ 3. BRAS + FILET tenu en bâton de marche ════════
   const swinging = netIsActiveLocal(o, time);
+  const handX = 7.5;
+  const handY = -H * 0.46;
   // bras
-  ctx.strokeStyle = "#304527";
-  ctx.lineWidth = 3.5;
-  const shoulderY = -H * 0.6;
-  let handX: number;
-  let handY: number;
-  if (swinging) {
-    handX = 11;
-    handY = -H * 0.5;
-  } else if (moving) {
-    handX = 9 + Math.sin(o.walkPhase) * 1.5;
-    handY = -H * 0.42;
-  } else {
-    handX = 9;
-    handY = -H * 0.4;
-  }
+  ctx.strokeStyle = M.CAPE_SHADE;
+  ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(4, shoulderY);
-  ctx.lineTo(handX, handY);
+  ctx.moveTo(2.5, -H * 0.66);
+  ctx.quadraticCurveTo(6, -H * 0.56, handX, handY);
+  ctx.stroke();
+  // FILET-BÂTON : manche vertical pâle, cerceau + maille translucide en haut.
+  drawFilet(ctx, handX, handY, H, swinging, false, 0);
+
+  // ════════ 4. TÊTE + CASQUETTE ROUGE (focale) ════════
+  // cou
+  ctx.strokeStyle = M.PEAU;
+  ctx.lineWidth = 2.6;
+  ctx.beginPath();
+  ctx.moveTo(0.5, neckY + 1);
+  ctx.lineTo(0.8, headY + 5);
+  ctx.stroke();
+  // tête (volume doux : éclairée à l'avant)
+  const headGrad = ctx.createRadialGradient(2.5, headY - 1.5, 1, 1, headY, 6.4);
+  headGrad.addColorStop(0, "#efd9b2");
+  headGrad.addColorStop(1, "#cda36e");
+  ctx.fillStyle = headGrad;
+  ctx.beginPath();
+  ctx.arc(1, headY, 6, 0, Math.PI * 2);
+  ctx.fill();
+  // mèche
+  ctx.fillStyle = M.CHEVEUX;
+  ctx.beginPath();
+  ctx.ellipse(-3.4, headY + 1.5, 2.6, 4.4, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  // casquette rouge — point focal, nette
+  ctx.fillStyle = RED_CAP;
+  ctx.beginPath();
+  ctx.arc(1, headY - 1, 6.8, Math.PI, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(1, headY - 7.2, 6.2, 2.9, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = RED_CAP_DARK; // visière avant
+  ctx.beginPath();
+  ctx.ellipse(6.6, headY - 1, 4.8, 1.9, 0, Math.PI, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath(); // bouton
+  ctx.arc(1, headY - 7.6, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.22)"; // reflet calotte
+  ctx.beginPath();
+  ctx.ellipse(-1.4, headY - 3.6, 2, 1, -0.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ════════ 5. RIM-LIGHT chaud sur le bord avant (contre-jour de scène) ════════
+  ctx.strokeStyle = "rgba(255,228,150,0.5)";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(hemW, hemY(1));
+  ctx.quadraticCurveTo(hemW + 2, -H * 0.45, 4, neckY);
+  ctx.stroke();
+  // touche de rim sur l'épaule/tête avant
+  ctx.strokeStyle = "rgba(255,235,180,0.4)";
+  ctx.beginPath();
+  ctx.arc(1, headY, 6, -Math.PI * 0.15, Math.PI * 0.35);
   ctx.stroke();
 
-  // FILET À PAPILLONS : manche (bois) + cerceau (métal neutre) + poche en filet
-  // translucide. Tons sourds — la casquette rouge reste le seul accent vif.
-  const reach = swinging ? 24 : 18;
-  const hoopX = handX + reach;
-  const hoopY = handY - (swinging ? 4 : 10);
-  const rx = 7;
-  const ry = 9;
-  const tilt = swinging ? 0.15 : -0.2;
+  ctx.restore();
+}
 
-  // 1. MANCHE — tige de bois sourde
-  ctx.strokeStyle = "#8a7b5c";
-  ctx.lineWidth = 2.2;
+// Filet à papillons, dessiné en repère local de la Marcheuse. `swing` ∈ [-1,1]
+// pilote l'arc du bâton (Phase 3) ; `pose` = bâton de marche par défaut.
+function drawFilet(
+  ctx: CanvasRenderingContext2D,
+  handX: number,
+  handY: number,
+  H: number,
+  active: boolean,
+  swinging: boolean,
+  swing: number
+) {
+  ctx.save();
+  ctx.translate(handX, handY);
+  // angle du bâton : vertical (bâton de marche) → bascule en arc au swing
+  const angle = swing * 1.1 + (swinging ? 0.2 : 0);
+  ctx.rotate(angle);
+  // manche pâle : du bas (vers les pieds) au haut (cerceau au-dessus de la main)
+  const poleBot = H * 0.42;
+  const poleTop = -H * 0.5;
+  ctx.strokeStyle = "#cabf9c";
+  ctx.lineWidth = 2;
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(handX, handY);
-  ctx.lineTo(hoopX - rx * 0.7, hoopY + ry * 0.55);
+  ctx.moveTo(0, poleBot);
+  ctx.lineTo(0, poleTop);
   ctx.stroke();
-
-  // 2. POCHE EN FILET — cône translucide qui pend sous le cerceau
-  const tipX = hoopX - 2;
-  const tipY = hoopY + ry + (swinging ? 12 : 17);
+  ctx.strokeStyle = "rgba(255,244,210,0.5)"; // reflet
+  ctx.lineWidth = 0.8;
   ctx.beginPath();
-  ctx.moveTo(hoopX - rx, hoopY);
-  ctx.quadraticCurveTo(hoopX - rx * 1.15, hoopY + ry, tipX, tipY);
-  ctx.quadraticCurveTo(hoopX + rx * 1.15, hoopY + ry, hoopX + rx, hoopY);
-  ctx.closePath();
-  ctx.fillStyle = "rgba(245,240,225,0.16)";
+  ctx.moveTo(-0.6, poleBot * 0.6);
+  ctx.lineTo(-0.6, poleTop);
+  ctx.stroke();
+  // cerceau au sommet
+  const rx = 6;
+  const ry = 7.5;
+  const hy = poleTop - ry;
+  ctx.fillStyle = "rgba(245,240,225,0.14)";
+  ctx.beginPath();
+  ctx.ellipse(0, hy, rx, ry, 0, 0, Math.PI * 2);
   ctx.fill();
-  // maillage suggéré (fines lignes croisées), borné à la poche
   ctx.save();
   ctx.clip();
-  ctx.strokeStyle = "rgba(245,240,225,0.28)";
+  ctx.strokeStyle = "rgba(245,240,225,0.26)";
   ctx.lineWidth = 0.6;
-  for (let i = -3; i <= 3; i++) {
+  for (let i = -2; i <= 2; i++) {
     ctx.beginPath();
-    ctx.moveTo(hoopX + i * 2.6, hoopY + 1);
-    ctx.lineTo(tipX + i * 1.1, tipY);
-    ctx.stroke();
-  }
-  for (let j = 0; j < 3; j++) {
-    const yy = hoopY + ry * 0.6 + j * 5;
-    ctx.beginPath();
-    ctx.moveTo(hoopX - rx, yy);
-    ctx.quadraticCurveTo(tipX, yy + 3.5, hoopX + rx, yy);
+    ctx.moveTo(i * 2.4, hy - ry);
+    ctx.lineTo(i * 2.4, hy + ry);
+    ctx.moveTo(-rx, hy + i * 2.4);
+    ctx.lineTo(rx, hy + i * 2.4);
     ctx.stroke();
   }
   ctx.restore();
-
-  // 3. CERCEAU — anneau métal neutre clair, sans remplissage vif
   ctx.strokeStyle = "#cfc7ad";
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1.8;
   ctx.beginPath();
-  ctx.ellipse(hoopX, hoopY, rx, ry, tilt, 0, Math.PI * 2);
+  ctx.ellipse(0, hy, rx, ry, 0, 0, Math.PI * 2);
   ctx.stroke();
-
+  void active;
   ctx.restore();
 }
 
