@@ -191,19 +191,36 @@ export class PeintureDecor {
   }
 
   // Charge (et bake) la set d'un acte. Repli sur « porche » couche par couche
-  // si une variante manque pour l'acte demandé.
+  // si une variante manque. Si l'acte n'a AUCUNE image propre, on aliase la set
+  // « porche » telle quelle → aucun changement visible (pas de swap) tant que
+  // seul le set par défaut existe.
   async loadActe(acte: ActeNom): Promise<void> {
     if (typeof window === "undefined" || this.sets[acte] || this.loading.has(acte)) return;
     this.loading.add(acte);
+
+    // Garantit que « porche » (repli universel) est prêt avant tout autre acte.
+    if (acte !== "porche" && !this.sets.porche && !this.loading.has("porche")) {
+      this.loading.delete(acte);
+      await this.loadActe("porche");
+      this.loading.add(acte);
+    }
+
     const set: LayerSet = { c0: null, c1: null, c2: null };
     const keys: (keyof LayerSet)[] = ["c0", "c1", "c2"];
+    let own = 0;
     for (let n = 0; n < 3; n++) {
       const baked = await this.loadLayer(acte, n);
-      // Repli porche si l'acte n'a pas cette couche.
+      if (baked) own++;
       const fb = baked ?? (acte !== "porche" ? await this.loadLayer("porche", n) : null);
       set[keys[n]] = fb;
     }
-    this.sets[acte] = set;
+
+    // Acte sans aucune image propre → on réutilise l'instance porche (pas de swap).
+    if (acte !== "porche" && own === 0 && this.sets.porche) {
+      this.sets[acte] = this.sets.porche;
+    } else {
+      this.sets[acte] = set;
+    }
     this.loading.delete(acte);
   }
 

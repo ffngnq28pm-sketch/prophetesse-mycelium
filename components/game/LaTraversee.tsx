@@ -732,6 +732,14 @@ function render(
   // ══ Composite vers le canvas visible + post (bloom, grade, vignette, grain) ══
   peinture.present(visible, cw, ch, time, reduce);
 
+  // Scrim doux en haut : asseoit le HUD sur le décor peint sans l'alourdir.
+  visible.setTransform(1, 0, 0, 1, 0, 0);
+  const scrim = visible.createLinearGradient(0, 0, 0, ch * 0.16);
+  scrim.addColorStop(0, "rgba(12,18,8,0.3)");
+  scrim.addColorStop(1, "rgba(12,18,8,0)");
+  visible.fillStyle = scrim;
+  visible.fillRect(0, 0, cw, ch * 0.16);
+
   // ══ HUD crisp (au-dessus du post) ══
   visible.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawHUD(visible, s, cssW);
