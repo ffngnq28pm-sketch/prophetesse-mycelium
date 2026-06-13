@@ -152,7 +152,7 @@ export const RELIQUES: Relique[] = [
     nom: "Le Sentier Achevé",
     embleme: "🌅",
     categorie: "Jeux",
-    description: "Olivia a traversé le cimetière reverdi et rejoint le grand If sacré du Sanctuaire.",
+    description: "La Marcheuse a traversé le cimetière reverdi et rejoint le grand If sacré du Sanctuaire.",
     condition: "Terminer Le Sentier des Spores au moins une fois",
     estObtenue: (d) => d.traverseeTerminee,
   },
@@ -170,9 +170,9 @@ export const RELIQUES: Relique[] = [
     nom: "Ami des Pollinisateurs",
     embleme: "🦋",
     categorie: "Jeux",
-    description: "Les dix pollinisateurs du sentier sauvés en une seule traversée. Aucun laissé derrière.",
-    condition: "Sauver les 10 pollinisateurs en une traversée",
-    estObtenue: (d) => d.meilleursPollinisateursTraversee >= 10,
+    description: "Les seize pollinisateurs du sentier sauvés en une seule traversée. Aucun laissé derrière.",
+    condition: "Sauver les 16 pollinisateurs en une traversée",
+    estObtenue: (d) => d.meilleursPollinisateursTraversee >= 16,
   },
   // ——— Liturgie ———
   {

@@ -1,17 +1,26 @@
-// Moteur du platformer « Le Sentier des Spores ».
+// Moteur du platformer « Le Sentier des Spores » — V6.
 // Logique pure : aucune dépendance DOM, aucun rendu. Le composant React
 // pilote la boucle RAF, lit l'état et dessine. Toute la physique tourne en
 // pas de temps fixe (1/120 s) pour un game feel déterministe et stable.
+//
+// Nouveautés V6 : plateformes mobiles (transportent la Marcheuse), plateformes
+// friables (s'effritent ~0,6 s après contact, repoussent), champignons-
+// tremplins (super-saut), ronces (danger doux, non neutralisable — on évite),
+// lanternes-checkpoints, spores dorées, gravité asymétrique (chute ~1,6×),
+// caméra à look-ahead, score composite persisté.
 
 import {
   buildPlatforms,
   buildHazards,
   buildCollectibles,
+  buildCheckpoints,
   SANCTUAIRE,
   SPAWN,
   WORLD_W,
   WORLD_H,
   WORLD_BOTTOM,
+  ACT2_X,
+  ACT3_X,
 } from "@/data/traversee-niveau";
 
 // ============ TYPES ============
@@ -23,14 +32,34 @@ export interface Rect {
   h: number;
 }
 
-export type PlatformKind = "sol" | "tombe" | "tronc" | "muret" | "racine";
+export type PlatformKind =
+  | "sol"
+  | "tombe"
+  | "tronc"
+  | "muret"
+  | "racine"
+  | "mobile"
+  | "friable"
+  | "tremplin";
 
 export interface Platform extends Rect {
   kind: PlatformKind;
   oneWay?: boolean;
+  // mobile : trajectoire en va-et-vient sur un axe, lente et prévisible
+  axis?: "x" | "y";
+  min?: number;
+  max?: number;
+  speed?: number;
+  phase?: number; // direction courante (+1 / -1), runtime
+  dx?: number; // déplacement du dernier pas (transport du joueur), runtime
+  dy?: number;
+  // friable : s'effrite peu après contact, repousse quelques secondes plus tard
+  crumbleAt?: number; // ms — premier contact (0 = intact)
+  gone?: boolean;
+  respawnAt?: number; // ms — instant de repousse
 }
 
-export type HazardKind = "dosette" | "pesticide" | "tondeuse";
+export type HazardKind = "dosette" | "pesticide" | "tondeuse" | "ronces";
 
 export interface Hazard extends Rect {
   id: number;
@@ -44,7 +73,7 @@ export interface Hazard extends Rect {
   convertedAt?: number; // ms — instant de neutralisation (anim compost / reverdissement)
 }
 
-export type CollectibleKind = "pollinisateur" | "graine";
+export type CollectibleKind = "pollinisateur" | "graine" | "spore";
 export type PollinisateurEspece = "halicte" | "papillon";
 
 export interface Collectible extends Rect {
@@ -53,6 +82,13 @@ export interface Collectible extends Rect {
   taken: boolean;
   bobPhase: number;
   espece?: PollinisateurEspece;
+}
+
+export interface Checkpoint {
+  id: number;
+  x: number;
+  baseY: number; // y du sol où la lanterne est posée
+  lit: boolean;
 }
 
 export interface Olivia {
@@ -64,6 +100,7 @@ export interface Olivia {
   vy: number;
   facing: 1 | -1;
   onGround: boolean;
+  groundIndex: number | null; // plateforme porteuse (transport des mobiles)
   coyote: number; // temps restant de tolérance de saut après avoir quitté le sol
   jumpBuffer: number; // fenêtre de saut pré-enregistré
   jumpHeld: boolean;
@@ -84,6 +121,8 @@ export interface TraverseeStats {
   pollinisateursTotal: number;
   grainesCaught: number;
   grainesTotal: number;
+  sporesCaught: number;
+  sporesTotal: number;
   dosettesHit: number; // contacts subis (sert à la relique « immaculée »)
   dosettesConverties: number;
 }
@@ -93,6 +132,9 @@ export interface TraverseeEvents {
   caught: { x: number; y: number } | null;
   converted: { x: number; y: number } | null;
   graine: { x: number; y: number } | null;
+  spore: { x: number; y: number } | null;
+  bounced: { x: number; y: number } | null; // tremplin
+  checkpoint: { x: number; y: number } | null; // lanterne allumée
   respawn: boolean;
   netSwing: boolean;
   won: boolean;
@@ -106,6 +148,7 @@ export interface TraverseeState {
   platforms: Platform[];
   hazards: Hazard[];
   collectibles: Collectible[];
+  checkpoints: Checkpoint[];
   sanctuaire: Rect;
   worldW: number;
   worldH: number;
@@ -116,6 +159,7 @@ export interface TraverseeState {
   acc: number; // accumulateur de pas fixe
   prevJump: boolean;
   prevNet: boolean;
+  acte: 1 | 2 | 3; // acte courant (messages + lumière)
   events: TraverseeEvents;
   message: string | null;
   messageUntil: number;
@@ -128,26 +172,32 @@ export interface Input {
   net: boolean;
 }
 
-// ============ CONSTANTES PHYSIQUES ============
+// ============ CONSTANTES DE GAME FEEL ============
+// Regroupées et commentées pour itérer facilement.
 
 const H = 1 / 120; // pas de temps fixe
 const MAX_SUBSTEPS = 8;
 
-const GRAVITY = 2100;
-const MOVE_MAX = 232;
+const GRAVITY = 2100; // montée
+const FALL_GRAVITY_MULT = 1.6; // la chute est plus rapide que la montée (saut « moderne »)
+const MOVE_MAX = 232; // vitesse horizontale max
 const ACCEL_GROUND = 2000;
 const ACCEL_AIR = 1350;
 const FRICTION_GROUND = 2300;
 const FRICTION_AIR = 240;
-const JUMP_V = 660;
-const JUMP_CUT = 0.45;
-const MAX_FALL = 920;
-const COYOTE = 0.09;
-const JUMP_BUFFER = 0.11;
+const JUMP_V = 660; // vitesse de saut (hauteur ~103 u)
+const JUMP_CUT = 0.45; // relâcher tôt coupe la montée (saut variable)
+const TREMPLIN_V = 1050; // super-saut champignon (bond ~260 u)
+const MAX_FALL = 980;
+const COYOTE = 0.09; // ~90 ms de tolérance après avoir quitté un bord
+const JUMP_BUFFER = 0.12; // ~120 ms de saut pré-enregistré
 
 const NET_DURATION_MS = 260;
 const NET_COOLDOWN = 0.34;
 const NET_REACH = 34;
+
+const FRIABLE_DELAY_MS = 600; // temps avant effritement après contact
+const FRIABLE_RESPAWN_MS = 3200; // temps avant repousse
 
 const OLIVIA_W = 24;
 const OLIVIA_H = 38;
@@ -155,6 +205,16 @@ const OLIVIA_H = 38;
 const VIEW_H_BASE = 460; // hauteur de vue de référence (monde)
 const MIN_VIEW_W = 430; // garantit assez de contexte horizontal en portrait
 const CAM_LERP = 9; // vitesse de rattrapage de la caméra
+const CAM_LOOKAHEAD = 30; // avance dans la direction du regard
+const CAM_VX_LEAD = 0.1; // + un peu plus quand on court
+
+// Score composite (persisté) : pollinisateurs avant tout, spores ensuite,
+// graines, puis bonus de promptitude — sans jamais punir la lenteur (plancher 0).
+const SCORE_POLL = 100;
+const SCORE_SPORE = 40;
+const SCORE_GRAINE = 15;
+const SCORE_TIME_REF_S = 420; // sous 7 minutes, chaque seconde gagnée vaut 2 pts
+const SCORE_TIME_MULT = 2;
 
 const RESPAWN_PHRASES = [
   "Le mycélium te redonne pied.",
@@ -162,25 +222,26 @@ const RESPAWN_PHRASES = [
   "On recommence le passage. Sans hâte.",
   "Une racine te relève. Respire.",
   "L'Ordre ne connaît pas la chute, seulement la reprise.",
+  "La Marcheuse époussette sa casquette, et repart.",
 ];
+
+const ACT_MESSAGES: Record<2 | 3, string> = {
+  2: "Acte II — Les Allées",
+  3: "Acte III — L'Ascension",
+};
 
 // ============ HELPERS ============
 
 function overlap(a: Rect, b: Rect): boolean {
-  return (
-    a.x < b.x + b.w &&
-    a.x + a.w > b.x &&
-    a.y < b.y + b.h &&
-    a.y + a.h > b.y
-  );
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
 function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
-// Hitbox de danger d'Olivia : resserrée sur son corps, sans les marges vides
-// (halo de tête, côté filet). Le filet n'a JAMAIS de hitbox « danger ».
+// Hitbox de danger de la Marcheuse : resserrée sur son corps, sans les marges
+// vides (halo de tête, côté filet). Le filet n'a JAMAIS de hitbox « danger ».
 function oliviaHitbox(o: Olivia): Rect {
   return { x: o.x + 4, y: o.y + 3, w: o.w - 8, h: o.h - 5 };
 }
@@ -196,6 +257,9 @@ function hazardHitbox(hz: Hazard): Rect {
     case "tondeuse":
       // 50×30 → 38×14, on retire les roues qui dépassent et le manche
       return { x: hz.x + 6, y: hz.y + 7, w: hz.w - 12, h: hz.h - 9 };
+    case "ronces":
+      // touffe épineuse : on pardonne les bords
+      return { x: hz.x + 6, y: hz.y + 6, w: hz.w - 12, h: hz.h - 6 };
     case "pesticide":
     default:
       // flaque au sol : on garde la largeur, sommet 3px plus bas
@@ -209,10 +273,25 @@ function freshEvents(): TraverseeEvents {
     caught: null,
     converted: null,
     graine: null,
+    spore: null,
+    bounced: null,
+    checkpoint: null,
     respawn: false,
     netSwing: false,
     won: false,
   };
+}
+
+// Score final d'une traversée (aussi utilisé par l'écran de fin).
+export function computeScore(stats: TraverseeStats): number {
+  const sec = Math.floor(stats.elapsedMs / 1000);
+  const timeBonus = Math.max(0, SCORE_TIME_REF_S - sec) * SCORE_TIME_MULT;
+  return (
+    stats.pollinisateursCaught * SCORE_POLL +
+    stats.sporesCaught * SCORE_SPORE +
+    stats.grainesCaught * SCORE_GRAINE +
+    timeBonus
+  );
 }
 
 // ============ ÉTAT INITIAL ============
@@ -221,6 +300,7 @@ export function createInitialState(now = 0): TraverseeState {
   const collectibles = buildCollectibles();
   const pollinisateursTotal = collectibles.filter((c) => c.kind === "pollinisateur").length;
   const grainesTotal = collectibles.filter((c) => c.kind === "graine").length;
+  const sporesTotal = collectibles.filter((c) => c.kind === "spore").length;
 
   const olivia: Olivia = {
     x: SPAWN.x,
@@ -231,6 +311,7 @@ export function createInitialState(now = 0): TraverseeState {
     vy: 0,
     facing: 1,
     onGround: false,
+    groundIndex: null,
     coyote: 0,
     jumpBuffer: 0,
     jumpHeld: false,
@@ -250,6 +331,7 @@ export function createInitialState(now = 0): TraverseeState {
     platforms: buildPlatforms(),
     hazards: buildHazards(),
     collectibles,
+    checkpoints: buildCheckpoints(),
     sanctuaire: { ...SANCTUAIRE },
     worldW: WORLD_W,
     worldH: WORLD_H,
@@ -262,6 +344,8 @@ export function createInitialState(now = 0): TraverseeState {
       pollinisateursTotal,
       grainesCaught: 0,
       grainesTotal,
+      sporesCaught: 0,
+      sporesTotal,
       dosettesHit: 0,
       dosettesConverties: 0,
     },
@@ -269,6 +353,7 @@ export function createInitialState(now = 0): TraverseeState {
     acc: 0,
     prevJump: false,
     prevNet: false,
+    acte: 1,
     events: freshEvents(),
     message: null,
     messageUntil: 0,
@@ -294,10 +379,11 @@ function swingNet(state: TraverseeState): void {
       state.events.caught = { x: c.x + c.w / 2, y: c.y + c.h / 2 };
     }
   }
-  // Dosettes compostées, pesticide reverdi
+  // Dosettes compostées, pesticide reverdi. La tondeuse et les ronces ne se
+  // neutralisent pas : la mécanique, on l'évite ; le vivant, on le respecte.
   for (const hz of state.hazards) {
     if (!hz.active) continue;
-    if (hz.kind === "tondeuse") continue; // la tondeuse ne se neutralise pas, on l'évite
+    if (hz.kind === "tondeuse" || hz.kind === "ronces") continue;
     if (overlap(r, hz)) {
       hz.active = false;
       hz.convertedAt = state.time;
@@ -311,10 +397,61 @@ function swingNet(state: TraverseeState): void {
   }
 }
 
+// ============ PLATEFORMES DYNAMIQUES ============
+
+function updatePlatforms(state: TraverseeState): void {
+  for (const p of state.platforms) {
+    p.dx = 0;
+    p.dy = 0;
+    if (p.kind === "mobile" && p.axis && p.min !== undefined && p.max !== undefined && p.speed) {
+      if (!p.phase) p.phase = 1;
+      const v = p.speed * p.phase * H;
+      if (p.axis === "x") {
+        const nx = clamp(p.x + v, p.min, p.max);
+        p.dx = nx - p.x;
+        p.x = nx;
+        if (p.x <= p.min || p.x >= p.max) p.phase = -p.phase as 1 | -1;
+      } else {
+        const ny = clamp(p.y + v, p.min, p.max);
+        p.dy = ny - p.y;
+        p.y = ny;
+        if (p.y <= p.min || p.y >= p.max) p.phase = -p.phase as 1 | -1;
+      }
+    } else if (p.kind === "friable") {
+      if (p.gone) {
+        if (p.respawnAt !== undefined && state.time >= p.respawnAt) {
+          p.gone = false;
+          p.crumbleAt = 0;
+          p.respawnAt = undefined;
+        }
+      } else if (p.crumbleAt && state.time >= p.crumbleAt + FRIABLE_DELAY_MS) {
+        p.gone = true;
+        p.respawnAt = state.time + FRIABLE_RESPAWN_MS;
+      }
+    }
+  }
+}
+
+function platformSolid(p: Platform): boolean {
+  return !(p.kind === "friable" && p.gone);
+}
+
 // ============ PAS DE TEMPS FIXE ============
 
 function stepFixed(state: TraverseeState, input: Input): void {
   const o = state.olivia;
+
+  // Plateformes d'abord : mouvement des mobiles + cycle des friables.
+  updatePlatforms(state);
+
+  // Transport : si la Marcheuse est posée sur une plateforme mobile, elle suit.
+  if (o.onGround && o.groundIndex !== null) {
+    const p = state.platforms[o.groundIndex];
+    if (p && p.kind === "mobile") {
+      o.x += p.dx ?? 0;
+      o.y += p.dy ?? 0;
+    }
+  }
 
   // Coyote time : rechargé tant qu'on est au sol, sinon décompte.
   if (o.onGround) o.coyote = COYOTE;
@@ -341,6 +478,7 @@ function stepFixed(state: TraverseeState, input: Input): void {
   if (o.jumpBuffer > 0 && canJump) {
     o.vy = -JUMP_V;
     o.onGround = false;
+    o.groundIndex = null;
     o.coyote = 0;
     o.jumpBuffer = 0;
     o.jumping = true;
@@ -353,8 +491,8 @@ function stepFixed(state: TraverseeState, input: Input): void {
   }
   if (o.vy >= 0) o.jumping = false;
 
-  // Gravité.
-  o.vy += GRAVITY * H;
+  // Gravité asymétrique : la chute est ~1,6× plus rapide que la montée.
+  o.vy += GRAVITY * (o.vy > 0 ? FALL_GRAVITY_MULT : 1) * H;
   if (o.vy > MAX_FALL) o.vy = MAX_FALL;
 
   // Déplacement + collisions (X puis Y).
@@ -364,10 +502,24 @@ function stepFixed(state: TraverseeState, input: Input): void {
   o.walkPhase += Math.abs(o.vx) * H * 0.16;
   o.squash = Math.max(0, o.squash - H * 4);
 
-  // Dernier point sûr : enregistré quand on est posé hors danger.
+  // Dernier point sûr : enregistré quand on est posé hors danger, sur du solide
+  // pérenne (jamais sur une friable ou une mobile — elles bougent ou cèdent).
   if (o.onGround && state.time >= o.invulnUntil) {
-    if (!standingOnHazard(state)) {
+    const p = o.groundIndex !== null ? state.platforms[o.groundIndex] : null;
+    const perenne = !p || (p.kind !== "friable" && p.kind !== "mobile");
+    if (perenne && !standingOnHazard(state)) {
       o.lastSafe = { x: o.x, y: o.y };
+    }
+  }
+
+  // Lanternes-checkpoints : s'allument au passage, fixent le point de reprise.
+  for (const cp of state.checkpoints) {
+    if (cp.lit) continue;
+    const zone: Rect = { x: cp.x - 26, y: cp.baseY - 90, w: 52, h: 90 };
+    if (overlap(o, zone)) {
+      cp.lit = true;
+      o.lastSafe = { x: cp.x - o.w / 2, y: cp.baseY - o.h };
+      state.events.checkpoint = { x: cp.x, y: cp.baseY - 40 };
     }
   }
 
@@ -411,14 +563,27 @@ function stepFixed(state: TraverseeState, input: Input): void {
     respawn(state);
   }
 
-  // Graines ramassées au contact.
+  // Graines et spores ramassées au contact.
   for (const c of state.collectibles) {
-    if (c.taken || c.kind !== "graine") continue;
+    if (c.taken || c.kind === "pollinisateur") continue;
     if (overlap(o, c)) {
       c.taken = true;
-      state.stats.grainesCaught++;
-      state.events.graine = { x: c.x + c.w / 2, y: c.y + c.h / 2 };
+      if (c.kind === "graine") {
+        state.stats.grainesCaught++;
+        state.events.graine = { x: c.x + c.w / 2, y: c.y + c.h / 2 };
+      } else {
+        state.stats.sporesCaught++;
+        state.events.spore = { x: c.x + c.w / 2, y: c.y + c.h / 2 };
+      }
     }
+  }
+
+  // Changement d'acte : petit message, une seule fois.
+  const acte = o.x >= ACT3_X ? 3 : o.x >= ACT2_X ? 2 : 1;
+  if (acte > state.acte) {
+    state.acte = acte as 2 | 3;
+    state.message = ACT_MESSAGES[state.acte as 2 | 3];
+    state.messageUntil = state.time + 2400;
   }
 
   // Arrivée au Sanctuaire.
@@ -443,7 +608,8 @@ function moveAndCollide(state: TraverseeState): void {
   // --- Axe X ---
   o.x += o.vx * H;
   for (const p of state.platforms) {
-    if (p.oneWay) continue;
+    if (p.oneWay || !platformSolid(p)) continue;
+    if (p.kind === "tremplin") continue; // le tremplin n'agit qu'à l'atterrissage
     if (overlap(o, p)) {
       if (o.vx > 0) o.x = p.x - o.w;
       else if (o.vx < 0) o.x = p.x + p.w;
@@ -465,16 +631,40 @@ function moveAndCollide(state: TraverseeState): void {
   o.y += o.vy * H;
   const wasOnGround = o.onGround;
   o.onGround = false;
-  for (const p of state.platforms) {
+  o.groundIndex = null;
+  for (let i = 0; i < state.platforms.length; i++) {
+    const p = state.platforms[i];
+    if (!platformSolid(p)) continue;
+
+    if (p.kind === "tremplin") {
+      // Atterrir dessus = super-saut. Pas de station debout possible.
+      if (o.vy <= 0) continue;
+      const newBottom = o.y + o.h;
+      const crossing = oldBottom <= p.y + 6 && newBottom >= p.y;
+      if (crossing && o.x < p.x + p.w && o.x + o.w > p.x) {
+        o.y = p.y - o.h;
+        o.vy = -TREMPLIN_V;
+        o.jumping = false; // le bond du tremplin n'est pas coupé par le relâcher
+        o.jumpCut = true;
+        o.squash = 1;
+        state.events.bounced = { x: p.x + p.w / 2, y: p.y };
+      }
+      continue;
+    }
+
     if (p.oneWay) {
       // Plateforme traversable par en dessous : ne bloque qu'à la descente.
       if (o.vy < 0) continue;
       const newBottom = o.y + o.h;
-      const crossing = oldBottom <= p.y + 2 && newBottom >= p.y;
+      // marge élargie pour les mobiles (elles bougent entre deux pas)
+      const tol = p.kind === "mobile" ? 8 : 2;
+      const crossing = oldBottom <= p.y + tol && newBottom >= p.y;
       if (crossing && o.x < p.x + p.w && o.x + o.w > p.x) {
         o.y = p.y - o.h;
         o.vy = 0;
         o.onGround = true;
+        o.groundIndex = i;
+        if (p.kind === "friable" && !p.crumbleAt) p.crumbleAt = state.time;
       }
       continue;
     }
@@ -483,6 +673,8 @@ function moveAndCollide(state: TraverseeState): void {
         o.y = p.y - o.h;
         o.vy = 0;
         o.onGround = true;
+        o.groundIndex = i;
+        if (p.kind === "friable" && !p.crumbleAt) p.crumbleAt = state.time;
       } else if (o.vy < 0) {
         o.y = p.y + p.h;
         o.vy = 0;
@@ -514,8 +706,10 @@ function respawn(state: TraverseeState): void {
 
 function updateCamera(state: TraverseeState, dt: number, viewW: number, viewH: number): void {
   const o = state.olivia;
-  // Olivia placée à ~40% depuis la gauche pour voir devant ; ~58% en hauteur.
-  const targetX = o.x + o.w / 2 - viewW * 0.4;
+  // La Marcheuse à ~40 % depuis la gauche + look-ahead dans la direction du
+  // regard (on voit venir le sentier) ; ~58 % en hauteur, amorti par le lerp.
+  const lead = o.facing * CAM_LOOKAHEAD + clamp(o.vx * CAM_VX_LEAD, -36, 36);
+  const targetX = o.x + o.w / 2 - viewW * 0.4 + lead;
   const targetY = o.y + o.h / 2 - viewH * 0.58;
 
   const maxX = Math.max(0, state.worldW - viewW);

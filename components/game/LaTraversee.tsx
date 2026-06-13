@@ -9,10 +9,12 @@ import {
   createInitialState,
   step,
   startGame,
+  computeScore,
   Olivia,
   Platform,
   Hazard,
   Collectible,
+  Checkpoint,
 } from "@/lib/traversee-engine";
 import { Button } from "@/components/ui/Button";
 import { useStore } from "@/lib/store";
@@ -22,6 +24,9 @@ export interface TraverseeResult {
   pollinisateurs: number;
   pollinisateursTotal: number;
   graines: number;
+  spores: number;
+  sporesTotal: number;
+  score: number;
   sansDosette: boolean;
 }
 
@@ -85,6 +90,17 @@ class TraverseeAudio {
   respawn() {
     this.beep(330, 0.2, "sine", 0.05);
     setTimeout(() => this.beep(247, 0.25, "sine", 0.05), 120);
+  }
+  spore() {
+    this.beep(1318, 0.06, "sine", 0.05);
+    setTimeout(() => this.beep(1568, 0.08, "sine", 0.04), 50);
+  }
+  bounce() {
+    this.beep(330, 0.07, "sine", 0.06);
+    setTimeout(() => this.beep(660, 0.12, "sine", 0.05), 50);
+  }
+  checkpoint() {
+    [523, 784].forEach((f, i) => setTimeout(() => this.beep(f, 0.14, "triangle", 0.05), i * 90));
   }
   win() {
     [523, 659, 784, 1047, 1319].forEach((f, i) =>
@@ -242,6 +258,16 @@ interface Particle {
   color: string;
   size: number;
 }
+// Papillons du final : envol au-dessus du Sanctuaire quand on l'atteint.
+interface ButterflyFx {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  born: number;
+  hue: number;
+  phase: number;
+}
 
 // ============ COMPOSANT ============
 export function LaTraversee({ onWin }: Props) {
@@ -254,7 +280,9 @@ export function LaTraversee({ onWin }: Props) {
   const decorRef = useRef<Decor | null>(null);
   const flowersRef = useRef<Flower[]>([]);
   const particlesRef = useRef<Particle[]>([]);
+  const butterfliesRef = useRef<ButterflyFx[]>([]);
   const wonHandledRef = useRef(false);
+  const reducedMotionRef = useRef(false);
   const viewRef = useRef({ w: 800, h: 460 });
 
   const [showIntro, setShowIntro] = useState(true);
@@ -263,6 +291,7 @@ export function LaTraversee({ onWin }: Props) {
 
   const audioOn = useStore((s) => s.audioActif);
   const setAudioOn = useStore((s) => s.setAudioActif);
+  const meilleurScore = useStore((s) => s.meilleurScoreTraversee);
 
   // Init état + décor au montage (le décor est visible sous l'overlay d'intro).
   useEffect(() => {
@@ -270,6 +299,17 @@ export function LaTraversee({ onWin }: Props) {
       stateRef.current = createInitialState(performance.now());
       decorRef.current = buildDecor(stateRef.current.worldW);
     }
+  }, []);
+
+  // prefers-reduced-motion : on coupe particules et envol décoratif.
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => {
+      reducedMotionRef.current = mq.matches;
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
   }, []);
 
   // Audio on/off
@@ -313,6 +353,7 @@ export function LaTraversee({ onWin }: Props) {
     stateRef.current = fresh;
     flowersRef.current = [];
     particlesRef.current = [];
+    butterfliesRef.current = [];
     wonHandledRef.current = false;
     lastTimeRef.current = 0;
     setWon(null);
@@ -370,7 +411,17 @@ export function LaTraversee({ onWin }: Props) {
         viewRef.current = { w: viewW, h: viewH };
 
         drainEvents(s, t);
-        render(canvas, s, decorRef.current, flowersRef.current, particlesRef.current, t, viewW, viewH);
+        render(
+          canvas,
+          s,
+          decorRef.current,
+          flowersRef.current,
+          particlesRef.current,
+          butterfliesRef.current,
+          t,
+          viewW,
+          viewH
+        );
       }
       rafRef.current = requestAnimationFrame(loop);
     };
@@ -386,35 +437,71 @@ export function LaTraversee({ onWin }: Props) {
     (s: TraverseeState, t: number) => {
       const ev = s.events;
       const a = audioRef.current;
+      const calm = reducedMotionRef.current; // prefers-reduced-motion : pas de particules
       if (ev.landed) {
-        flowersRef.current.push({ x: ev.landed.x, y: ev.landed.y, born: t, hue: Math.random() });
-        if (flowersRef.current.length > 28) flowersRef.current.shift();
+        if (!calm) {
+          flowersRef.current.push({ x: ev.landed.x, y: ev.landed.y, born: t, hue: Math.random() });
+          if (flowersRef.current.length > 28) flowersRef.current.shift();
+        }
         a.land();
       }
       if (ev.netSwing && s.olivia.vy < -50) {
         /* coup en l'air : pas de son spécifique */
       }
       if (ev.caught) {
-        burst(particlesRef.current, ev.caught.x, ev.caught.y, t, "#f4d35e", 12);
+        if (!calm) burst(particlesRef.current, ev.caught.x, ev.caught.y, t, "#f4d35e", 12);
         a.catch_();
       }
       if (ev.converted) {
-        burst(particlesRef.current, ev.converted.x, ev.converted.y, t, "#7ea36a", 10);
+        if (!calm) burst(particlesRef.current, ev.converted.x, ev.converted.y, t, "#7ea36a", 10);
         a.convert();
       }
       if (ev.graine) {
-        burst(particlesRef.current, ev.graine.x, ev.graine.y, t, "#c9a227", 7);
+        if (!calm) burst(particlesRef.current, ev.graine.x, ev.graine.y, t, "#c9a227", 7);
         a.graine();
+      }
+      if (ev.spore) {
+        if (!calm) burst(particlesRef.current, ev.spore.x, ev.spore.y, t, "#f1d56c", 9);
+        a.spore();
+      }
+      if (ev.bounced) {
+        if (!calm) burst(particlesRef.current, ev.bounced.x, ev.bounced.y, t, "#e9d8ad", 8);
+        a.bounce();
+      }
+      if (ev.checkpoint) {
+        if (!calm) burst(particlesRef.current, ev.checkpoint.x, ev.checkpoint.y, t, "#ffe9b0", 10);
+        a.checkpoint();
+        s.message = "Lanterne allumée — point de reprise.";
+        s.messageUntil = t + 1600;
       }
       if (ev.respawn) a.respawn();
       if (ev.won && !wonHandledRef.current) {
         wonHandledRef.current = true;
         a.win();
+        // Envol de papillons au-dessus du Sanctuaire (moment de grâce).
+        if (!calm) {
+          const sx = s.sanctuaire.x + s.sanctuaire.w / 2;
+          const sy = s.sanctuaire.y + s.sanctuaire.h * 0.5;
+          for (let i = 0; i < 16; i++) {
+            butterfliesRef.current.push({
+              x: sx + (Math.random() - 0.5) * 90,
+              y: sy + (Math.random() - 0.5) * 50,
+              vx: (Math.random() - 0.5) * 40,
+              vy: -22 - Math.random() * 30,
+              born: t + Math.random() * 600,
+              hue: Math.random(),
+              phase: Math.random() * Math.PI * 2,
+            });
+          }
+        }
         const result: TraverseeResult = {
           tempsMs: s.stats.elapsedMs,
           pollinisateurs: s.stats.pollinisateursCaught,
           pollinisateursTotal: s.stats.pollinisateursTotal,
           graines: s.stats.grainesCaught + s.stats.pollinisateursCaught,
+          spores: s.stats.sporesCaught,
+          sporesTotal: s.stats.sporesTotal,
+          score: computeScore(s.stats),
           sansDosette: s.stats.dosettesHit === 0,
         };
         setWon(result);
@@ -556,9 +643,9 @@ export function LaTraversee({ onWin }: Props) {
               <h2 className="titre-liturgique mt-2 text-3xl">La traversée de la Marcheuse</h2>
               <div className="ornement" />
               <p className="mx-auto max-w-md font-serif italic text-parchemin-100">
-                Casquette rouge, filet à la main, la Marcheuse traverse un cimetière reverdi. Elle saute par-dessus les
-                pièges de la modernité, attrape les pollinisateurs au filet, composte les dosettes — et rejoint le
-                Sanctuaire au bout du sentier.
+                Casquette rouge, filet à la main, la Marcheuse traverse un cimetière reverdi — trois actes, du Porche à
+                l'Ascension. Elle saute par-dessus les pièges de la modernité, attrape les pollinisateurs au filet,
+                composte les dosettes, allume les lanternes et rejoint le grand If sacré.
               </p>
               <p className="mt-3 max-w-md font-serif text-xs text-parchemin-200/80">
                 ← → pour avancer · saut pour bondir · filet pour attraper et convertir. Tomber ne tue pas : le
@@ -589,15 +676,27 @@ export function LaTraversee({ onWin }: Props) {
               <p className="mx-auto max-w-md font-serif italic text-parchemin-100">{verdict(won).texte}</p>
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2 font-serif text-sm">
                 <span className="rounded-full border border-ocre-400/50 bg-ocre-500/15 px-3 py-1">
+                  Score : <strong>{won.score}</strong>
+                  {won.score >= meilleurScore && meilleurScore > 0 ? " ✦ record" : ""}
+                </span>
+                <span className="rounded-full border border-ocre-400/50 bg-ocre-500/15 px-3 py-1">
                   ⏱ {formatTime(won.tempsMs)}
                 </span>
                 <span className="rounded-full border border-ocre-400/50 bg-ocre-500/15 px-3 py-1">
-                  🦋 {won.pollinisateurs}/{won.pollinisateursTotal} pollinisateurs
+                  🦋 {won.pollinisateurs}/{won.pollinisateursTotal}
+                </span>
+                <span className="rounded-full border border-ocre-400/50 bg-ocre-500/15 px-3 py-1">
+                  ✨ {won.spores}/{won.sporesTotal} spores
                 </span>
                 <span className="rounded-full border border-ocre-400/50 bg-ocre-500/15 px-3 py-1">
                   🌱 {won.graines} graines
                 </span>
               </div>
+              {meilleurScore > 0 && (
+                <p className="mt-2 font-serif text-xs text-parchemin-200/70">
+                  Meilleur score : {Math.max(meilleurScore, won.score)}
+                </p>
+              )}
               <Button onClick={restart} className="mt-5">
                 Refaire la traversée
               </Button>
@@ -617,11 +716,12 @@ export function LaTraversee({ onWin }: Props) {
 // ============ VERDICT MYCÉLIEN ============
 function verdict(r: TraverseeResult): { titre: string; texte: string } {
   const tousPoll = r.pollinisateurs >= r.pollinisateursTotal;
-  if (tousPoll && r.sansDosette) {
+  const toutesSpores = r.spores >= r.sporesTotal;
+  if (tousPoll && toutesSpores && r.sansDosette) {
     return {
       titre: "Traversée immaculée",
       texte:
-        "Tous les pollinisateurs recensés, pas une dosette pour te faire trébucher. Mère Mycorhize aurait posé une main sur ton épaule, sans rien dire — ce qui, chez elle, est un sacre.",
+        "Tous les pollinisateurs, toutes les spores, pas une dosette pour te faire trébucher. Mère Mycorhize aurait posé une main sur ton épaule, sans rien dire — ce qui, chez elle, est un sacre.",
     };
   }
   if (tousPoll) {
@@ -678,6 +778,7 @@ function render(
   decor: Decor | null,
   flowers: Flower[],
   particles: Particle[],
+  butterflies: ButterflyFx[],
   time: number,
   viewW: number,
   viewH: number
@@ -792,10 +893,15 @@ function render(
 
   for (const p of s.platforms) {
     if (p.x + p.w < cam.x - 40 || p.x > cam.x + viewW + 40) continue;
-    drawPlatform(ctx, p);
+    drawPlatform(ctx, p, time);
   }
 
   drawSanctuaire(ctx, s.sanctuaire, time);
+
+  for (const cp of s.checkpoints) {
+    if (cp.x < cam.x - 60 || cp.x > cam.x + viewW + 60) continue;
+    drawCheckpoint(ctx, cp, time);
+  }
 
   for (const f of flowers) drawFlower(ctx, f, time);
 
@@ -811,6 +917,8 @@ function render(
   }
 
   drawParticles(ctx, particles, time);
+
+  drawButterflies(ctx, butterflies, time);
 
   drawOlivia(ctx, s.olivia, time);
 
@@ -1175,7 +1283,117 @@ function drawGrass(ctx: CanvasRenderingContext2D, g: Grass, time: number) {
   }
 }
 
-function drawPlatform(ctx: CanvasRenderingContext2D, p: Platform) {
+function drawPlatform(ctx: CanvasRenderingContext2D, p: Platform, time: number) {
+  if (p.kind === "tremplin") {
+    // Champignon-tremplin : chapeau bombé ocre-cuivré à taches pâles sur pied
+    // trapu — bondissant mais sourd (le rouge reste à la casquette).
+    const cx = p.x + p.w / 2;
+    const baseY = p.y + p.h;
+    const pulse = 1 + Math.sin(time / 420 + p.x) * 0.03;
+    // pied
+    ctx.fillStyle = "#d6cca9";
+    ctx.beginPath();
+    ctx.moveTo(cx - p.w * 0.22, baseY);
+    ctx.quadraticCurveTo(cx - p.w * 0.14, p.y + p.h * 0.4, cx - p.w * 0.16, p.y + 4);
+    ctx.lineTo(cx + p.w * 0.16, p.y + 4);
+    ctx.quadraticCurveTo(cx + p.w * 0.14, p.y + p.h * 0.4, cx + p.w * 0.22, baseY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#8a7e5e";
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    // chapeau (la surface qui rebondit)
+    ctx.fillStyle = "#bf8d2c";
+    ctx.beginPath();
+    ctx.ellipse(cx, p.y + 3, (p.w / 2 + 5) * pulse, 8 * pulse, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#7a5b1e";
+    ctx.stroke();
+    // taches pâles
+    ctx.fillStyle = "rgba(244,236,210,0.8)";
+    ctx.beginPath();
+    ctx.arc(cx - p.w * 0.22, p.y - 1, 2.2, 0, Math.PI * 2);
+    ctx.arc(cx + p.w * 0.12, p.y - 3, 1.8, 0, Math.PI * 2);
+    ctx.arc(cx + p.w * 0.3, p.y, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+  if (p.kind === "mobile") {
+    // Dalle flottante portée par le mycélium : pierre moussue + filaments qui
+    // pendent — lente, prévisible, on lit la trajectoire d'un regard.
+    ctx.fillStyle = "rgba(40,34,24,0.18)";
+    ctx.beginPath();
+    ctx.ellipse(p.x + p.w / 2, p.y + p.h + 8, p.w * 0.4, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const slab = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
+    slab.addColorStop(0, "#b7ac8c");
+    slab.addColorStop(1, "#8c8268");
+    ctx.fillStyle = slab;
+    roundRectPath(ctx, p.x, p.y, p.w, p.h, 6);
+    ctx.fill();
+    ctx.strokeStyle = "#5a523c";
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    ctx.fillStyle = "#5f874c";
+    roundRectPath(ctx, p.x, p.y, p.w, 6, 5);
+    ctx.fill();
+    // filaments dorés qui pendent (signature mycélienne)
+    ctx.strokeStyle = "rgba(191,141,44,0.5)";
+    ctx.lineWidth = 1;
+    const sway = Math.sin(time / 800 + p.x * 0.01) * 2;
+    for (let i = 0; i < 3; i++) {
+      const fx = p.x + p.w * (0.25 + i * 0.25);
+      ctx.beginPath();
+      ctx.moveTo(fx, p.y + p.h);
+      ctx.quadraticCurveTo(fx + sway, p.y + p.h + 7, fx + sway * 1.6, p.y + p.h + 13 + i * 2);
+      ctx.stroke();
+    }
+    return;
+  }
+  if (p.kind === "friable") {
+    // Planche vermoulue : fissures visibles ; tremble quand elle va céder,
+    // disparaît, puis repousse. L'effritement est annoncé, jamais surprise.
+    if (p.gone) {
+      // pendant la repousse : esquisse fantôme en pointillés
+      ctx.strokeStyle = "rgba(138,123,92,0.3)";
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.2;
+      roundRectPath(ctx, p.x, p.y, p.w, p.h, 4);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      return;
+    }
+    let shakeX = 0;
+    let crumbleK = 0;
+    if (p.crumbleAt) {
+      crumbleK = Math.min(1, (time - p.crumbleAt) / 600);
+      shakeX = Math.sin(time / 26) * 1.6 * crumbleK;
+    }
+    ctx.save();
+    ctx.translate(shakeX, crumbleK * 2);
+    ctx.globalAlpha = 1 - crumbleK * 0.35;
+    const wood = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
+    wood.addColorStop(0, "#9c8a66");
+    wood.addColorStop(1, "#6f6147");
+    ctx.fillStyle = wood;
+    roundRectPath(ctx, p.x, p.y, p.w, p.h, 4);
+    ctx.fill();
+    ctx.strokeStyle = "#4f4633";
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    // fissures (signal « friable »)
+    ctx.strokeStyle = "rgba(40,32,20,0.55)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(p.x + p.w * 0.3, p.y);
+    ctx.lineTo(p.x + p.w * 0.36, p.y + p.h);
+    ctx.moveTo(p.x + p.w * 0.66, p.y);
+    ctx.lineTo(p.x + p.w * 0.58, p.y + p.h);
+    ctx.stroke();
+    ctx.restore();
+    ctx.globalAlpha = 1;
+    return;
+  }
   if (p.kind === "sol") {
     // Terre + bande de mousse au sommet
     const grad = ctx.createLinearGradient(0, p.y, 0, p.y + Math.min(p.h, 200));
@@ -1419,6 +1637,38 @@ function drawHazard(ctx: CanvasRenderingContext2D, hz: Hazard, time: number) {
     }
     return;
   }
+  if (hz.kind === "ronces") {
+    // Ronces : tangle d'épines brun-vert sourd. Danger DOUX et lisible —
+    // on saute par-dessus, on ne les coupe pas (c'est du vivant).
+    const baseY = hz.y + hz.h;
+    ctx.strokeStyle = "#3d3a22";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    const sway = Math.sin(time / 1100 + hz.x) * 1.2;
+    for (let i = 0; i < Math.floor(hz.w / 14); i++) {
+      const bx = hz.x + 6 + i * 14;
+      ctx.beginPath();
+      ctx.moveTo(bx, baseY);
+      ctx.quadraticCurveTo(bx + 8 + sway, baseY - hz.h * 0.9, bx + 2 + sway, baseY - hz.h - 4);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(bx + 4, baseY);
+      ctx.quadraticCurveTo(bx - 6 + sway, baseY - hz.h * 0.7, bx - 1 + sway, baseY - hz.h + 2);
+      ctx.stroke();
+    }
+    // épines pâles (lisibilité : forme + valeur, pas la couleur seule)
+    ctx.strokeStyle = "rgba(230,222,197,0.8)";
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < Math.floor(hz.w / 11); i++) {
+      const tx = hz.x + 4 + i * 11;
+      const ty = baseY - 4 - ((i * 7) % (hz.h - 6));
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(tx + 3, ty - 3);
+      ctx.stroke();
+    }
+    return;
+  }
   // tondeuse
   const dir = (hz.vx ?? 0) >= 0 ? 1 : -1;
   ctx.save();
@@ -1501,6 +1751,36 @@ function drawCollectible(ctx: CanvasRenderingContext2D, c: Collectible, time: nu
     ctx.fill();
     return;
   }
+  if (c.kind === "spore") {
+    // Spore dorée : mote lumineuse qui respire, plus précieuse que la graine.
+    const pulse = 0.75 + 0.25 * Math.sin(time / 300 + c.bobPhase);
+    const glow = ctx.createRadialGradient(cx, cy, 1, cx, cy, c.w * 1.6);
+    glow.addColorStop(0, `rgba(241,213,108,${0.8 * pulse})`);
+    glow.addColorStop(0.5, `rgba(241,213,108,${0.25 * pulse})`);
+    glow.addColorStop(1, "rgba(241,213,108,0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(cx - c.w * 1.6, cy - c.w * 1.6, c.w * 3.2, c.w * 3.2);
+    ctx.fillStyle = "#f1d56c";
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3.4 * pulse + 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,250,230,0.9)";
+    ctx.beginPath();
+    ctx.arc(cx - 1, cy - 1, 1.3, 0, Math.PI * 2);
+    ctx.fill();
+    // étincelles en croix, tournantes
+    ctx.strokeStyle = `rgba(241,213,108,${0.6 * pulse})`;
+    ctx.lineWidth = 1;
+    const a = time / 900 + c.bobPhase;
+    for (let i = 0; i < 4; i++) {
+      const ang = a + (i * Math.PI) / 2;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(ang) * 5, cy + Math.sin(ang) * 5);
+      ctx.lineTo(cx + Math.cos(ang) * 8, cy + Math.sin(ang) * 8);
+      ctx.stroke();
+    }
+    return;
+  }
   // pollinisateur : halo doré + ailes
   const glow = ctx.createRadialGradient(cx, cy, 1, cx, cy, c.w * 1.3);
   glow.addColorStop(0, "rgba(244,211,94,0.75)");
@@ -1563,6 +1843,97 @@ function drawFlower(ctx: CanvasRenderingContext2D, f: Flower, time: number) {
   ctx.arc(f.x, f.y - stem, pr * 0.7, 0, Math.PI * 2);
   ctx.fill();
   ctx.globalAlpha = 1;
+}
+
+// Lanterne-checkpoint : borne de pierre moussue à fenêtre chaude. Éteinte =
+// sourde ; allumée = halo doré + flamme. Le « dernier point sûr » se VOIT.
+function drawCheckpoint(ctx: CanvasRenderingContext2D, cp: Checkpoint, time: number) {
+  const x = cp.x;
+  const base = cp.baseY;
+  // ombre
+  ctx.fillStyle = "rgba(40,34,24,0.2)";
+  ctx.beginPath();
+  ctx.ellipse(x, base + 1, 14, 3.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // halo si allumée
+  if (cp.lit) {
+    const pulse = 0.7 + 0.3 * Math.sin(time / 500 + cp.id);
+    const glow = ctx.createRadialGradient(x, base - 34, 4, x, base - 34, 46);
+    glow.addColorStop(0, `rgba(255,233,176,${0.5 * pulse})`);
+    glow.addColorStop(1, "rgba(255,233,176,0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(x - 46, base - 80, 92, 92);
+  }
+  // fût de pierre
+  const stone = ctx.createLinearGradient(x - 7, 0, x + 7, 0);
+  stone.addColorStop(0, "#d6cca9");
+  stone.addColorStop(1, "#a89c78");
+  ctx.fillStyle = stone;
+  ctx.fillRect(x - 6, base - 26, 12, 26);
+  ctx.strokeStyle = "#5a523c";
+  ctx.lineWidth = 1.4;
+  ctx.strokeRect(x - 6, base - 26, 12, 26);
+  // loge de la flamme
+  ctx.fillStyle = stone;
+  ctx.fillRect(x - 9, base - 44, 18, 18);
+  ctx.strokeRect(x - 9, base - 44, 18, 18);
+  // fenêtre
+  ctx.fillStyle = cp.lit ? "#ffd98a" : "#3d3829";
+  ctx.fillRect(x - 5, base - 41, 10, 12);
+  if (cp.lit) {
+    // flamme qui danse
+    const f = Math.sin(time / 160 + cp.id * 2) * 1.4;
+    ctx.fillStyle = "#e8a33c";
+    ctx.beginPath();
+    ctx.ellipse(x + f * 0.4, base - 36, 2.4, 4 + f * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fff3d0";
+    ctx.beginPath();
+    ctx.ellipse(x + f * 0.3, base - 35, 1, 1.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // toit
+  ctx.fillStyle = "#8a7e5e";
+  ctx.beginPath();
+  ctx.moveTo(x - 12, base - 44);
+  ctx.lineTo(x, base - 54);
+  ctx.lineTo(x + 12, base - 44);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#5a523c";
+  ctx.stroke();
+  // mousse au pied
+  ctx.fillStyle = "rgba(95,135,76,0.7)";
+  ctx.beginPath();
+  ctx.ellipse(x - 4, base - 1, 7, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Papillons du final : montent en spirale douce au-dessus du Sanctuaire.
+function drawButterflies(ctx: CanvasRenderingContext2D, list: ButterflyFx[], time: number) {
+  for (let i = list.length - 1; i >= 0; i--) {
+    const b = list[i];
+    const age = time - b.born;
+    if (age < 0) continue;
+    if (age > 6000) {
+      list.splice(i, 1);
+      continue;
+    }
+    const k = age / 1000;
+    const x = b.x + b.vx * k + Math.sin(time / 700 + b.phase) * 14;
+    const y = b.y + b.vy * k;
+    const flap = Math.abs(Math.sin(time / 80 + b.phase));
+    const alpha = age > 4800 ? 1 - (age - 4800) / 1200 : 1;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = b.hue > 0.5 ? "#f4d35e" : "#e9c8d8";
+    ctx.beginPath();
+    ctx.ellipse(x - 3, y, 4 * (0.4 + flap * 0.6), 4.6, -0.5, 0, Math.PI * 2);
+    ctx.ellipse(x + 3, y, 4 * (0.4 + flap * 0.6), 4.6, 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#7a5b1e";
+    ctx.fillRect(x - 0.8, y - 4, 1.6, 8);
+    ctx.globalAlpha = 1;
+  }
 }
 
 function drawParticles(ctx: CanvasRenderingContext2D, particles: Particle[], time: number) {
@@ -1807,6 +2178,7 @@ function drawHUD(ctx: CanvasRenderingContext2D, s: TraverseeState, cssW: number)
   const items = [
     `⏱ ${formatTime(s.stats.elapsedMs)}`,
     `🦋 ${s.stats.pollinisateursCaught}/${s.stats.pollinisateursTotal}`,
+    `✨ ${s.stats.sporesCaught}/${s.stats.sporesTotal}`,
     `🌱 ${s.stats.grainesCaught}`,
   ];
   let x = pad;

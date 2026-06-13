@@ -52,7 +52,7 @@ export default function AlmanachPage() {
       <section className="mb-7">
         <h2 className="titre-liturgique text-xl text-mousse-800 dark:text-parchemin-100">Les Pollinisateurs</h2>
         <p className="mb-3 font-serif text-sm italic text-mousse-700 dark:text-parchemin-200/70">
-          Ceux qu'Olivia poursuit du filet dans la Chasse aux Pollinisateurs. Recense-les ici, en paix, sans fantôme aux trousses.
+          Ceux que la Marcheuse poursuit du filet dans la Chasse aux Pollinisateurs. Recense-les ici, en paix, sans fantôme aux trousses.
         </p>
         <div className="grid gap-3 md:grid-cols-2">
           {pollinisateurs.map((f) => (

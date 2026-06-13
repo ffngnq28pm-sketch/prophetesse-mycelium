@@ -138,7 +138,7 @@ export interface ProphetesseActions {
   enregistrerScorePac: (score: number, niveauAtteint: number, fantomes: number, pollinisateurs: number) => void;
   enregistrerScoreEmpreintes: (score: number, mammiferes: number) => void;
   setTutoEmpreintesFait: (b: boolean) => void;
-  enregistrerScoreTraversee: (tempsMs: number, pollinisateurs: number, sansDosette: boolean) => void;
+  enregistrerScoreTraversee: (tempsMs: number, pollinisateurs: number, sansDosette: boolean, score: number) => void;
   setTutoTraverseeFait: (b: boolean) => void;
   verbeAjouterEssai: (cle: string, mot: string) => void;
   verbeTerminer: (cle: string, statut: StatutPartieVerbe) => void;
@@ -286,10 +286,11 @@ export const useStore = create<ProphetesseState>()(
           ].slice(-60),
         })),
       setTutoEmpreintesFait: (b) => set({ tutoEmpreintesFait: b }),
-      enregistrerScoreTraversee: (tempsMs, pollinisateurs, sansDosette) =>
+      enregistrerScoreTraversee: (tempsMs, pollinisateurs, sansDosette, score) =>
         set((s) => ({
           partiesTraversee: s.partiesTraversee + 1,
           traverseeTerminee: true,
+          meilleurScoreTraversee: Math.max(s.meilleurScoreTraversee, score),
           // meilleur temps = le plus court (0 signifie « jamais terminé »)
           meilleurTempsTraversee:
             s.meilleurTempsTraversee === 0 ? tempsMs : Math.min(s.meilleurTempsTraversee, tempsMs),

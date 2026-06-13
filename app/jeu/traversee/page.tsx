@@ -44,14 +44,19 @@ const TUTO: Etape[] = [
       "Touche « filet » (K au clavier, 🥅 sur mobile) pour balayer devant toi : tu attrapes les pollinisateurs (Halictes dorés, papillons) et tu neutralises en douceur les pièges — une dosette devient compost, une flaque de pesticide reverdit. On convertit, on ne détruit pas.",
   },
   {
-    titre: "4 · Évite la modernité",
+    titre: "4 · Évite la modernité (et les ronces)",
     texte:
-      "Dosettes qui roulent, flaques de pesticide, tondeuses en patrouille : saute par-dessus ou neutralise-les au filet. Si tu trébuches ou tombes, pas de game over : le mycélium te redonne pied au dernier point sûr.",
+      "Dosettes qui roulent, flaques de pesticide, tondeuses en patrouille : saute par-dessus ou neutralise-les au filet. Les ronces, elles, sont du vivant : on les enjambe, on ne les coupe pas. Si tu trébuches ou tombes, pas de game over : le mycélium te redonne pied au dernier point sûr.",
   },
   {
-    titre: "5 · Le Sanctuaire",
+    titre: "5 · Lanternes, tremplins et ponts friables",
     texte:
-      "Au bout du sentier t'attend le grand If sacré. L'atteindre clôt la traversée. On retient ton temps et le nombre de pollinisateurs sauvés. Chaque pollinisateur et chaque graine ramassée nourrissent ton Jardin.",
+      "Les lanternes moussues s'allument à ton passage : ce sont tes points de reprise. Les champignons-tremplins te projettent vers les corniches hautes. Les planches fissurées cèdent peu après ton passage — traverse-les d'un pas décidé. Des spores dorées brillent sur les chemins de traverse.",
+  },
+  {
+    titre: "6 · Le Sanctuaire",
+    texte:
+      "Au bout de l'Ascension t'attend le grand If sacré. L'atteindre clôt la traversée. Ton score retient pollinisateurs, spores, graines et promptitude — sans jamais punir la lenteur. Chaque pollinisateur, graine et spore nourrit ton Jardin.",
   },
 ];
 
@@ -90,6 +95,7 @@ function Contenu() {
   const enregistrer = useStore((s) => s.enregistrerScoreTraversee);
   const ajouterGraines = useStore((s) => s.ajouterGraines);
   const meilleurTemps = useStore((s) => s.meilleurTempsTraversee);
+  const meilleurScore = useStore((s) => s.meilleurScoreTraversee);
   const meilleursPoll = useStore((s) => s.meilleursPollinisateursTraversee);
   const parties = useStore((s) => s.partiesTraversee);
   const sansDosette = useStore((s) => s.traverseeSansDosette);
@@ -98,8 +104,9 @@ function Contenu() {
   const [showTuto, setShowTuto] = useState(!tutoFait);
 
   const onWin = (r: TraverseeResult) => {
-    enregistrer(r.tempsMs, r.pollinisateurs, r.sansDosette);
-    if (r.graines > 0) ajouterGraines(r.graines);
+    enregistrer(r.tempsMs, r.pollinisateurs, r.sansDosette, r.score);
+    const gain = r.graines + r.spores;
+    if (gain > 0) ajouterGraines(gain);
   };
 
   const tempsLabel =
@@ -128,8 +135,9 @@ function Contenu() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
-          <Badge variant="grace">Meilleur temps : {tempsLabel}</Badge>
-          <Badge variant="outline">Record pollinisateurs : {meilleursPoll}/10</Badge>
+          <Badge variant="grace">Meilleur score : {meilleurScore || "—"}</Badge>
+          <Badge variant="outline">Meilleur temps : {tempsLabel}</Badge>
+          <Badge variant="outline">Record pollinisateurs : {meilleursPoll}/16</Badge>
           <Badge variant="outline">Traversées : {parties}</Badge>
           {sansDosette && <Badge variant="grace">Déjà réussi sans dosette ☕</Badge>}
         </div>
@@ -158,16 +166,16 @@ function Contenu() {
         <CardTitle>
           {parties === 0
             ? "Le sentier t'attend"
-            : meilleursPoll >= 10
+            : meilleursPoll >= 16
             ? "Tous les pollinisateurs sauvés"
-            : `${meilleursPoll}/10 pollinisateurs au mieux`}
+            : `${meilleursPoll}/16 pollinisateurs au mieux`}
         </CardTitle>
         <p className="mt-2 font-serif text-sm italic text-mousse-700 dark:text-parchemin-200/80">
           {parties === 0
             ? "Frère Lichen a balisé le chemin de fleurs invisibles. Elles n'apparaissent que sous tes pas."
-            : meilleursPoll >= 10
+            : meilleursPoll >= 16
             ? "Sœur Halicte a posé ton nom sur un nid, là où personne ne le verra. C'est la plus haute distinction de l'Ordre."
-            : "Le sentier se rejoue. Chaque traversée, quelques pollinisateurs de plus, quelques secondes de moins."}
+            : "Le sentier se rejoue. Chaque traversée, quelques pollinisateurs de plus, quelques spores de mieux."}
         </p>
       </Card>
     </div>
