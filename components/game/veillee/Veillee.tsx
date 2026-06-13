@@ -6,6 +6,7 @@ import { useVeillee } from "@/lib/veillee-store";
 import { SCEAUX, SCEAUX_ACTIFS, getSceau } from "@/data/veillee";
 import { SceneFond } from "./SceneFond";
 import { CadranLichen } from "./CadranLichen";
+import { HorlogeFlorale } from "./HorlogeFlorale";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { BookOpen, X, ChevronLeft, Lock, Check } from "lucide-react";
@@ -78,9 +79,9 @@ export function Veillee() {
               }}
               onOuvrir={ouvrirPortail}
             />
-          ) : sceauCourant?.id === "cadran" ? (
+          ) : sceauCourant?.actif ? (
             <SceneSceau onRetour={() => setScene("portail")}>
-              <CadranLichen onResolu={() => setScene("portail")} />
+              <InteractionSceau id={sceauCourant.id} onResolu={() => setScene("portail")} />
             </SceneSceau>
           ) : (
             <SceneSceau onRetour={() => setScene("portail")}>
@@ -207,6 +208,18 @@ export function Veillee() {
       </AnimatePresence>
     </div>
   );
+}
+
+// Aiguille les sceaux actifs vers leur interaction propre.
+function InteractionSceau({ id, onResolu }: { id: string; onResolu: () => void }) {
+  switch (id) {
+    case "cadran":
+      return <CadranLichen onResolu={onResolu} />;
+    case "horloge":
+      return <HorlogeFlorale onResolu={onResolu} />;
+    default:
+      return null;
+  }
 }
 
 // Wrapper d'une scène de sceau : bouton retour + contenu.

@@ -30,7 +30,7 @@ export const SCEAUX: Sceau[] = [
     numero: "II",
     titre: "L'Horloge Florale",
     fond: "parterre",
-    actif: false,
+    actif: true,
     resume:
       "Un parterre de fleurs sauvages — certaines ouvertes, d'autres closes. L'horloge de Flore de Linné : lire l'heure de la nuit aux fleurs éveillées.",
     defunt: "Dame Précieuse s'offusque qu'on la fasse poireauter à une heure pareille.",
