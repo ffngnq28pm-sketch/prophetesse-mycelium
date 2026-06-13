@@ -891,6 +891,41 @@ function topLight(ctx: CanvasRenderingContext2D, x: number, topY: number, w: num
   ctx.stroke();
 }
 
+function texW(t: Tex): number {
+  return ("naturalWidth" in t ? t.naturalWidth : t.width) || 1024;
+}
+function texH(t: Tex): number {
+  return ("naturalHeight" in t ? t.naturalHeight : t.height) || 1024;
+}
+
+// Tuile de terre avec le bas fondu vers la transparence (cache one-time, isolée
+// sur son propre canvas via destination-in → ne touche JAMAIS la scène déjà
+// dessinée dessous). Réutilisée à chaque frame ; rebâtie si la source ou le
+// fondu changent.
+let terreFadedCache: { src: Tex; fondu: number; cv: HTMLCanvasElement } | null = null;
+function getTerreFaded(terre: Tex): HTMLCanvasElement {
+  if (terreFadedCache && terreFadedCache.src === terre && terreFadedCache.fondu === SKIN.SOL_FONDU) {
+    return terreFadedCache.cv;
+  }
+  const w = texW(terre);
+  const h = texH(terre);
+  const cv = document.createElement("canvas");
+  cv.width = w;
+  cv.height = h;
+  const c = cv.getContext("2d")!;
+  c.drawImage(terre, 0, 0, w, h);
+  c.globalCompositeOperation = "destination-in"; // sur le scratch, pas la scène
+  const g = c.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, "rgba(0,0,0,1)");
+  g.addColorStop(1 - SKIN.SOL_FONDU, "rgba(0,0,0,1)");
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  c.fillStyle = g;
+  c.fillRect(0, 0, w, h);
+  c.globalCompositeOperation = "source-over";
+  terreFadedCache = { src: terre, fondu: SKIN.SOL_FONDU, cv };
+  return cv;
+}
+
 // Ombre portée douce sous la plateforme : la fait lire comme un bloc solide.
 function dropShadow(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
   const sh = 11;
@@ -1024,28 +1059,27 @@ function drawPlatform(
   }
   if (p.kind === "sol") {
     if (skin.terre) {
-      // Terre peinte tuilée sur la frange visible + assombrissement vers le bas
-      // (on ne tuile pas les 300 u de profondeur, inutiles à l'écran).
-      const topDepth = Math.min(p.h, 200);
+      // Bande de terre FINE sous l'arête, fondue en bas pour révéler la
+      // parallaxe peinte déjà dessinée dessous (le fond possède le cadre).
+      // La collision garde toute la hauteur p.h ; on ne change que le dessin.
+      const band = SKIN.SOL_BANDE;
+      const tile = getTerreFaded(skin.terre);
       const T = SKIN.TILE;
+      const ox = (((p.x * 0.37) % T) + T) % T;
       ctx.save();
       ctx.beginPath();
-      ctx.rect(p.x, p.y, p.w, p.h);
+      ctx.rect(p.x, p.y, p.w, band + 4); // clip horizontal : ne déborde pas dans les trous
       ctx.clip();
-      ctx.fillStyle = "#241910"; // base sombre du dessous
-      ctx.fillRect(p.x, p.y, p.w, p.h);
-      const ox = (((p.x * 0.37) % T) + T) % T;
       for (let tx = p.x - ox; tx < p.x + p.w; tx += T) {
-        for (let ty = p.y; ty < p.y + topDepth; ty += T) {
-          ctx.drawImage(skin.terre, tx, ty, T, T);
-        }
+        ctx.drawImage(tile, tx, p.y, T, band);
       }
-      const g = ctx.createLinearGradient(0, p.y, 0, p.y + topDepth);
-      g.addColorStop(0, "rgba(20,14,8,0)");
-      g.addColorStop(1, "rgba(20,14,8,0.6)");
-      ctx.fillStyle = g;
-      ctx.fillRect(p.x, p.y, p.w, topDepth);
       ctx.restore();
+      // Ombre de contact : ancre le chemin sous la frange (qu'il ne flotte pas).
+      const ash = ctx.createLinearGradient(0, p.y, 0, p.y + 16);
+      ash.addColorStop(0, `rgba(8,12,6,${SKIN.SOL_ANCRAGE})`);
+      ash.addColorStop(1, "rgba(8,12,6,0)");
+      ctx.fillStyle = ash;
+      ctx.fillRect(p.x, p.y, p.w, 16);
       mossFringe(ctx, p.x, p.w, p.y, skin.mousse, quality);
       topLight(ctx, p.x, p.y, p.w);
       return;

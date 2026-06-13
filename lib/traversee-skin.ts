@@ -18,6 +18,11 @@ export const SKIN = {
   TILE: 96,
   // Frange de mousse sur l'arête haute (unités monde à l'échelle de base).
   FRANGE: 13,
+  // Sol en bande fine : une lèvre de chemin sous l'arête, puis la terre se fond
+  // pour révéler la parallaxe peinte dessous (le fond possède le cadre).
+  SOL_BANDE: 90, // hauteur visible de terre sous l'arête (unités monde)
+  SOL_FONDU: 0.45, // fraction basse de la bande qui se fond vers la transparence
+  SOL_ANCRAGE: 0.5, // alpha de l'ombre de contact sous l'arête
 } as const;
 
 function loadImage(src: string): Promise<HTMLImageElement | null> {
