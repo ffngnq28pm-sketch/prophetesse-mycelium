@@ -18,7 +18,7 @@ const OUT_ROOT = join(ROOT, "public", "banque");
 // Réglages par rôle : largeur max + qualité WebP. (cf. docs/BANQUE-VISUELLE.md)
 const ROLES = {
   heros: { maxW: 1920, quality: 72 },
-  fonds: { maxW: 1600, quality: 70 },
+  fonds: { maxW: 2000, quality: 72 }, // fonds d'écran ambiants (< 320 Ko visés)
   illustrations: { maxW: 1280, quality: 75 },
   textures: { maxW: 1280, quality: 68 },
 };
@@ -98,8 +98,37 @@ async function processDir(srcDir, outDir, label, cfg) {
   }
 }
 
+// Normalise les noms des fonds : les exports Midjourney ont des espaces + UUID,
+// or Vercel build sur Linux est sensible à la casse → on renomme tout fichier
+// non conforme en fond-NN.<ext> (minuscules, sans espace), en remplissant les
+// numéros libres dans l'ordre alphabétique. Idempotent.
+async function normaliserFonds() {
+  const dir = join(SRC_ROOT, "fonds");
+  await ensureDir(dir);
+  let entries;
+  try { entries = await fs.readdir(dir); } catch { return; }
+  const imgs = entries.filter((f) => EXT_IN.has(extname(f).toLowerCase()));
+  const conforme = (f) => /^fond-\d{2}\./i.test(f);
+  const messy = imgs.filter((f) => !conforme(f)).sort();
+  if (messy.length === 0) return;
+  const used = new Set(
+    imgs.filter(conforme).map((f) => parseInt(f.match(/^fond-(\d{2})/i)[1], 10))
+  );
+  let n = 1;
+  for (const f of messy) {
+    while (used.has(n)) n++;
+    used.add(n);
+    const target = `fond-${String(n).padStart(2, "0")}${extname(f).toLowerCase()}`;
+    await fs.rename(join(dir, f), join(dir, target));
+    console.log(`  renommé : ${f} → ${target}`);
+    n++;
+  }
+}
+
 async function run() {
   console.log("🍄 Optimisation des images (banque + décors de jeux)\n");
+
+  await normaliserFonds();
 
   // —— Banque visuelle (par rôle) ——
   for (const [role, cfg] of Object.entries(ROLES)) {
