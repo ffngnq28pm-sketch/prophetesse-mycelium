@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   ActivePiece,
   Board,
@@ -140,7 +140,10 @@ export function Tetris({
   const setAudioOn = useStore((s) => s.setAudioActif);
   const [held, setHeld] = useState<{ shapes: Shape[]; dechetId: string } | null>(null);
   const [canHold, setCanHold] = useState(true);
+  // Lignes en cours d'effacement : flash bref avant le retrait (lisibilité).
+  const [clearingRows, setClearingRows] = useState<number[]>([]);
   const audioRef = useRef<TetrisAudio>(new TetrisAudio());
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     audioRef.current.enabled = audioOn;
@@ -155,6 +158,8 @@ export function Tetris({
     stateRef.current = { board, piece, score, lignes, level, curses };
   });
 
+  const [paused, setPaused] = useState(false);
+
   const start = useCallback(() => {
     setBoard(createBoard());
     setScore(0);
@@ -166,16 +171,37 @@ export function Tetris({
     setNextDechetId(DECHETS[Math.floor(Math.random() * DECHETS.length)].id);
     setHeld(null);
     setCanHold(true);
+    setClearingRows([]);
+    setPaused(false);
     setRunning(true);
     if (audioRef.current.enabled) audioRef.current.resume();
   }, []);
 
-  const stop = useCallback(() => setRunning(false), []);
-
   const lock = useCallback((b: Board, p: ActivePiece) => {
     const merged = mergePiece(b, p);
     const result = clearLines(merged);
-    setBoard(result.board);
+    const finalScore = stateRef.current.score + result.score - result.malus;
+    const newLignes = stateRef.current.lignes + result.linesCleared;
+
+    // Pose la pièce suivante (et détecte la fin de partie) — partagé entre le
+    // chemin immédiat et le chemin différé (flash d'effacement).
+    const applyResult = () => {
+      setBoard(result.board);
+      setClearingRows([]);
+      const newPiece = spawnPiece(nextDechetId);
+      setNextDechetId(DECHETS[Math.floor(Math.random() * DECHETS.length)].id);
+      setCanHold(true);
+      if (checkCollision(result.board, newPiece)) {
+        setRunning(false);
+        setGameOver(true);
+        audioRef.current.gameOver();
+        onGameOver(finalScore, newLignes);
+        setPiece(null);
+        return;
+      }
+      setPiece(newPiece);
+    };
+
     if (result.linesCleared > 0) {
       setScore((s) => s + result.score - result.malus);
       setLignes((l) => l + result.linesCleared);
@@ -193,7 +219,7 @@ export function Tetris({
             ? "Ligne sainte. Le compost vibre."
             : `${lignesSaintes} lignes saintes ! Le compost chante.`
         );
-        setSaintBurst({ id: Date.now(), lines: lignesSaintes });
+        if (!reduceMotion) setSaintBurst({ id: Date.now(), lines: lignesSaintes });
         audioRef.current.clearGood(Math.max(4, lignesSaintes + 3));
       } else if (result.linesCleared >= 2) {
         setFlash(`+${result.linesCleared} lignes compostées.`);
@@ -203,9 +229,25 @@ export function Tetris({
         audioRef.current.clearGood(1);
       }
       setTimeout(() => setFlash(null), 1400);
+      if (Math.floor(newLignes / 8) + 1 > stateRef.current.level) setLevel((lv) => lv + 1);
+
+      if (!reduceMotion) {
+        // Flash bref des lignes pleines avant leur retrait : on voit CE QUI part.
+        const fullRows: number[] = [];
+        for (let r = 0; r < BOARD_HEIGHT; r++) {
+          if (merged[r].every((cell) => cell !== null)) fullRows.push(r);
+        }
+        setBoard(merged);
+        setClearingRows(fullRows);
+        setTimeout(applyResult, 300);
+        return null; // la pièce disparaît pendant le flash
+      }
+      applyResult();
+      return null;
     }
-    const newLignes = stateRef.current.lignes + result.linesCleared;
-    if (Math.floor(newLignes / 8) + 1 > stateRef.current.level) setLevel((lv) => lv + 1);
+
+    // Pas de ligne : chemin direct.
+    setBoard(result.board);
     const newPiece = spawnPiece(nextDechetId);
     setNextDechetId(DECHETS[Math.floor(Math.random() * DECHETS.length)].id);
     setCanHold(true);
@@ -213,11 +255,11 @@ export function Tetris({
       setRunning(false);
       setGameOver(true);
       audioRef.current.gameOver();
-      onGameOver(stateRef.current.score + result.score - result.malus, newLignes);
+      onGameOver(finalScore, newLignes);
       return null;
     }
     return newPiece;
-  }, [nextDechetId, onGameOver]);
+  }, [nextDechetId, onGameOver, reduceMotion]);
 
   const tick = useCallback(() => {
     setPiece((current) => {
@@ -232,10 +274,10 @@ export function Tetris({
   }, [lock]);
 
   useEffect(() => {
-    if (!running) return;
+    if (!running || paused) return;
     const id = setInterval(tick, tickSpeed(level));
     return () => clearInterval(id);
-  }, [running, level, tick]);
+  }, [running, paused, level, tick]);
 
   const move = useCallback((dx: number) => {
     setPiece((p) => {
@@ -314,6 +356,11 @@ export function Tetris({
     if (!running) return;
     const onKey = (e: KeyboardEvent) => {
       if (["ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp", " "].includes(e.key)) e.preventDefault();
+      if (e.key === "p" || e.key === "P") {
+        setPaused((p) => !p);
+        return;
+      }
+      if (paused) return;
       if (e.key === "ArrowLeft") move(-1);
       else if (e.key === "ArrowRight") move(1);
       else if (e.key === "ArrowDown") softDrop();
@@ -323,7 +370,7 @@ export function Tetris({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [running, move, softDrop, rotate, hardDrop, hold]);
+  }, [running, paused, move, softDrop, rotate, hardDrop, hold]);
 
   // Touch
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
@@ -336,7 +383,7 @@ export function Tetris({
     touchRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
   };
   const onTouchEnd = (e: React.TouchEvent) => {
-    if (!touchRef.current) return;
+    if (!touchRef.current || paused) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - touchRef.current.x;
     const dy = t.clientY - touchRef.current.y;
@@ -439,17 +486,24 @@ export function Tetris({
                   const d = cell ? getDechet(cell) : null;
                   const cs = d ? CAT_STYLE[d.categorie] : null;
                   const isGhost = !d && ghostCells.has(`${r}-${c}`);
+                  const isClearing = !!cs && clearingRows.includes(r);
                   return (
                     <div
                       key={`${r}-${c}`}
                       className="aspect-square"
                       style={{
-                        backgroundColor: cs?.fill ?? (isGhost ? `${ghostColor}26` : "rgba(255,255,255,0.04)"),
+                        backgroundColor: isClearing
+                          ? "#f1d56c"
+                          : cs?.fill ?? (isGhost ? `${ghostColor}26` : "rgba(255,255,255,0.04)"),
                         border: cs
                           ? "1px solid rgba(255,255,255,0.22)"
                           : isGhost
                           ? `1px dashed ${ghostColor}cc`
                           : "1px solid rgba(255,255,255,0.03)",
+                        // léger relief des tuiles posées (lumière en haut, ombre en bas)
+                        boxShadow: cs
+                          ? "inset 0 1.5px 0 rgba(255,255,255,0.25), inset 0 -2px 0 rgba(0,0,0,0.28)"
+                          : undefined,
                         borderRadius: 3,
                         display: "flex",
                         alignItems: "center",
@@ -459,7 +513,11 @@ export function Tetris({
                         transition: "background-color 0.08s linear",
                       }}
                     >
-                      {cs && <span style={{ color: cs.ink, opacity: 0.92 }}>{cs.glyph}</span>}
+                      {cs && (
+                        <span style={{ color: isClearing ? "#5a3a08" : cs.ink, opacity: 0.92 }}>
+                          {cs.glyph}
+                        </span>
+                      )}
                     </div>
                   );
                 })
@@ -513,13 +571,34 @@ export function Tetris({
                 className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-mousse-950/90 p-6 text-center text-parchemin-50 backdrop-blur"
               >
                 <p className="text-xs uppercase tracking-[0.3em] text-ocre-400">Verdict de l'Ordre</p>
-                <h2 className="titre-liturgique mt-2 text-3xl">Game Over</h2>
+                <h2 className="titre-liturgique mt-2 text-3xl">La pile s'incline</h2>
                 <div className="ornement" />
                 <p className="font-serif italic">« {juger(score, curses)} »</p>
-                <p className="mt-4 font-serif">Score : <strong>{score}</strong></p>
+                <p className="mt-4 font-serif">
+                  Score : <strong>{score}</strong>
+                  {score > meilleurScore && meilleurScore > 0 && (
+                    <span className="text-ocre-300"> ✦ nouveau record</span>
+                  )}
+                </p>
+                <p className="font-serif text-sm text-parchemin-200/80">
+                  Meilleur : {Math.max(score, meilleurScore)}
+                </p>
                 <p className="font-serif">Lignes : {lignes}</p>
                 <p className="font-serif">Malédictions : {curses}</p>
                 <Button onClick={start} className="mt-4">Recommencer</Button>
+              </motion.div>
+            )}
+            {paused && running && !gameOver && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 flex items-center justify-center rounded-lg bg-mousse-950/70 backdrop-blur"
+              >
+                <div className="rounded-md bg-mousse-950/80 px-4 py-3 text-center font-serif text-parchemin-50">
+                  <p>Pause</p>
+                  <p className="text-xs text-parchemin-200/70">P ou le bouton pour reprendre</p>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -527,11 +606,11 @@ export function Tetris({
 
         {/* Pavé tactile — alternative aux touches, visible sur tous les écrans */}
         <div className="mx-auto mt-3 grid w-full max-w-md grid-cols-5 gap-2">
-          <button className="btn-ghost py-3 text-lg" onClick={() => move(-1)} disabled={!running} aria-label="Déplacer à gauche">◀</button>
-          <button className="btn-ghost py-3 text-lg" onClick={() => move(1)} disabled={!running} aria-label="Déplacer à droite">▶</button>
-          <button className="btn-ghost py-3 text-lg" onClick={rotate} disabled={!running} aria-label="Rotation">↻</button>
-          <button className="btn-ghost py-3 text-lg" onClick={softDrop} disabled={!running} aria-label="Descendre">▼</button>
-          <button className="btn-ghost py-3 text-lg" onClick={hardDrop} disabled={!running} aria-label="Chute rapide">⇊</button>
+          <button className="btn-ghost py-3 text-lg" onClick={() => move(-1)} disabled={!running || paused} aria-label="Déplacer à gauche">◀</button>
+          <button className="btn-ghost py-3 text-lg" onClick={() => move(1)} disabled={!running || paused} aria-label="Déplacer à droite">▶</button>
+          <button className="btn-ghost py-3 text-lg" onClick={rotate} disabled={!running || paused} aria-label="Rotation">↻</button>
+          <button className="btn-ghost py-3 text-lg" onClick={softDrop} disabled={!running || paused} aria-label="Descendre">▼</button>
+          <button className="btn-ghost py-3 text-lg" onClick={hardDrop} disabled={!running || paused} aria-label="Chute rapide">⇊</button>
         </div>
       </div>
 
@@ -625,6 +704,7 @@ export function Tetris({
             <li>▼ : descendre</li>
             <li>espace : chute rapide</li>
             <li>C : garder / échanger</li>
+            <li>P : pause</li>
             <li>Mobile : swipe + tap rotation</li>
           </ul>
           <label className="mt-3 flex items-center gap-2 font-serif text-xs text-mousse-700 dark:text-parchemin-200/80">
@@ -639,7 +719,11 @@ export function Tetris({
         </Card>
         <div className="flex gap-2">
           {!running && !gameOver && <Button onClick={start} className="w-full">Commencer</Button>}
-          {running && <Button variant="ghost" onClick={stop} className="w-full">Pause</Button>}
+          {running && (
+            <Button variant="ghost" onClick={() => setPaused((p) => !p)} className="w-full">
+              {paused ? "Reprendre" : "Pause (P)"}
+            </Button>
+          )}
           {gameOver && <Button onClick={start} className="w-full">Rejouer</Button>}
         </div>
       </aside>
