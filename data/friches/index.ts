@@ -22,8 +22,9 @@ export interface Faculte {
 }
 
 import { peupleSouterrain } from "./peuple-souterrain";
+import { pollinisateurs } from "./pollinisateurs";
 
-export const FACULTES: Faculte[] = [peupleSouterrain];
+export const FACULTES: Faculte[] = [peupleSouterrain, pollinisateurs];
 
 // Nombre total de leçons PUBLIÉES (sert au calcul du grade global).
 export const TOTAL_LECONS = FACULTES.reduce((n, f) => n + f.lecons.length, 0);
