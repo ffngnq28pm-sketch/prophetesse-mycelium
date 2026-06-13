@@ -202,7 +202,7 @@ export function NuitDesEmpreintes({
   };
 
   return (
-    <div className="overflow-hidden rounded-lg border-2 border-ocre-500/40 bg-gradient-to-br from-mousse-950 via-black to-mousse-900 p-4 text-parchemin-100 shadow-xl md:p-6">
+    <div className="overflow-hidden rounded-lg border-2 border-ocre-500/40 bg-gradient-to-br from-mousse-950 via-[#100b07] to-terre-900 p-4 text-parchemin-100 shadow-xl md:p-6">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 font-serif text-sm">
         <div className="flex flex-wrap gap-2">
           <Badge variant="grace">Score : {score}</Badge>
@@ -494,8 +494,10 @@ function CelluleBtn({
   const estFaune = c.contenu === "herisson" || c.contenu === "micromammifere" || c.contenu === "fouine";
 
   let contenu: React.ReactNode = null;
-  let bg = "rgba(255,255,255,0.06)";
-  let border = "1px solid rgba(255,255,255,0.10)";
+  let bg = "rgba(120,140,90,0.16)";
+  let border = "1px solid rgba(201,162,39,0.22)";
+  // tuile non sondée = motte en relief ; tuile révélée = terre creusée (enfoncée)
+  let shadow = "inset 1px 1px 0 rgba(214,203,178,0.10), inset -1px -1px 0 rgba(0,0,0,0.34)";
 
   if (!c.revelee) {
     if (c.marquee) contenu = <span style={{ fontSize: "0.8em" }}>🚩</span>;
@@ -505,13 +507,16 @@ function CelluleBtn({
     contenu = <span style={{ fontSize: "0.8em" }}>🐈</span>;
     bg = "rgba(130,40,40,0.4)";
     border = "1px solid rgba(180,70,70,0.4)";
+    shadow = "inset 1px 1px 3px rgba(0,0,0,0.5)";
   } else if (estFaune) {
-    contenu = <span style={{ fontSize: "0.8em" }}>{FAUNE[c.contenu as keyof typeof FAUNE].embleme}</span>;
+    contenu = <span style={{ fontSize: "0.8em", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.6))" }}>{FAUNE[c.contenu as keyof typeof FAUNE].embleme}</span>;
     bg = "rgba(201,162,39,0.16)";
     border = "1px solid rgba(201,162,39,0.3)";
+    shadow = "inset 1px 1px 3px rgba(0,0,0,0.42)";
   } else {
-    bg = "rgba(0,0,0,0.35)";
-    border = "1px solid rgba(255,255,255,0.04)";
+    bg = "rgba(26,19,11,0.46)";
+    border = "1px solid rgba(214,203,178,0.06)";
+    shadow = "inset 1px 1px 3px rgba(0,0,0,0.45)";
     if (c.chatsVoisins > 0) {
       contenu = (
         <span
@@ -520,7 +525,7 @@ function CelluleBtn({
             fontWeight: 700,
             // les grands chiffres pèsent plus lourd à l'œil (info ≠ couleur seule)
             fontSize: c.chatsVoisins >= 4 ? "1.06em" : "1em",
-            textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+            textShadow: "0 1px 2px rgba(0,0,0,0.75), 0 0 1px rgba(0,0,0,0.9)",
           }}
         >
           {c.chatsVoisins}
@@ -546,6 +551,7 @@ function CelluleBtn({
       style={{
         background: bg,
         border,
+        boxShadow: shadow,
         fontSize: "min(4.2vw, 1.05rem)",
         cursor: fige ? "default" : "pointer",
         touchAction: "manipulation",
