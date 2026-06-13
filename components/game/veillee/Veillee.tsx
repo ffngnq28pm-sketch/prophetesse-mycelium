@@ -171,8 +171,8 @@ export function Veillee() {
                 })}
               </ul>
               <p className="mt-3 font-serif text-xs italic text-mousse-700 dark:text-parchemin-200/70">
-                Les indices des sceaux actifs, réunis, ouvrent le Portail. Les quatre autres sceaux
-                s'éveilleront à une prochaine veillée.
+                Les cinq indices, réunis, forment la combinaison du Portail. Rassemble-les tous,
+                puis tente l'ouverture — l'aube ne se force pas, elle se mérite.
               </p>
             </div>
           </motion.div>
@@ -294,10 +294,34 @@ function Accueil({
         })}
       </div>
 
-      <div className="mt-auto pt-4 text-center">
-        <Button onClick={onOuvrir} disabled={!tousActifsResolus}>
-          {tousActifsResolus ? "Tenter l'ouverture du Portail" : "Le Portail attend les sceaux actifs"}
-        </Button>
+      {/* Serrure à cinq crans : un cran s'aligne par sceau résolu. */}
+      <div className="mt-auto pt-4">
+        <div className="mb-2 flex items-center justify-center gap-2">
+          {SCEAUX.map((s) => {
+            const aligne = sceauxResolus.includes(s.id);
+            return (
+              <span
+                key={s.id}
+                aria-hidden
+                className={`h-2.5 w-6 rounded-full transition-all ${
+                  aligne
+                    ? "bg-ocre-300 shadow-[0_0_8px_rgba(201,162,39,0.55)]"
+                    : "bg-mousse-700/60 ring-1 ring-parchemin-200/15"
+                }`}
+              />
+            );
+          })}
+        </div>
+        <p className="mb-2 text-center font-serif text-[0.7rem] italic text-parchemin-200/70">
+          {tousActifsResolus
+            ? "Les cinq crans sont alignés. La serrure attend ta main."
+            : `Serrure à cinq crans — ${sceauxResolus.length} alignés sur 5.`}
+        </p>
+        <div className="text-center">
+          <Button onClick={onOuvrir} disabled={!tousActifsResolus}>
+            {tousActifsResolus ? "Tenter l'ouverture du Portail" : "Le Portail attend les cinq sceaux"}
+          </Button>
+        </div>
       </div>
     </div>
   );
