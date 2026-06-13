@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { useStore } from "@/lib/store";
 import { useShallow } from "zustand/react/shallow";
 import { Fond } from "@/components/banque/Fond";
-import { FondPeint } from "@/components/banque/FondPeint";
+import { FondPeint, ContenuLisible } from "@/components/banque/FondPeint";
 
 /* ------------------------------------------------------------------ */
 /* Racine du site = le Porche (vitrine publique de l'Ordre Vert).      */
@@ -187,10 +187,12 @@ function Porche() {
   return (
     <>
       {/* Fond peint en sibling (hors du breakout overflow-x-clip qui rognerait
-          un enfant fixed). bg du porche en /80 → lavis sobre par-dessus. */}
-      <FondPeint seed="accueil" />
-      {/* Breakout pleine largeur + neutralisation du padding du <main> global. */}
-      <div className="-mb-24 -mt-6 mx-[calc(50%-50vw)] w-screen overflow-x-clip bg-parchemin-50/80 font-sans text-mousse-950">
+          un enfant fixed). Fond forcé « fond-06 » (sombre + structuré → ressort
+          sous la nappe) et voile interne baissé pour le rendre perceptible. */}
+      <FondPeint image="fond-06" voile={0.25} />
+      {/* Breakout pleine largeur. Nappe /55 : le décor peint transparaît
+          nettement (~35-45 %) tout en gardant les sections opaques lisibles. */}
+      <div className="-mb-24 -mt-6 mx-[calc(50%-50vw)] w-screen overflow-x-clip bg-parchemin-50/55 font-sans text-mousse-950">
       {/* ══ HÉRO ══════════════════════════════════════════════ */}
       {/* Surface témoin de la banque visuelle : fond d'ambiance « hero ».
           Tant que public/banque/heros/hero-accueil.webp est absent, le repli
@@ -205,17 +207,21 @@ function Porche() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.95, ease: "easeOut" }}
-          className="mx-auto max-w-3xl text-center"
+          className="mx-auto max-w-3xl"
         >
-          <span className={`${SURTITRE} mb-3 tracking-[0.35em] text-ocre-500`}>
-            ✦ Entrez dans l'Ordre ✦
-          </span>
-          <h1 className="font-serif font-light text-[clamp(2.6rem,7vw,5.5rem)] leading-none tracking-tight text-mousse-950">
-            Prophétesse-Mycélium
-          </h1>
-          <p className="mt-1 font-serif text-[clamp(1.3rem,3.5vw,2.2rem)] font-light italic tracking-wider text-mousse-600">
-            L'Ordre Vert
-          </p>
+          {/* Panneau de lisibilité local : le titre reste net sur le fond dévoilé,
+              sans remonter la nappe globale. */}
+          <ContenuLisible intensite={0.5} className="px-6 py-5 text-center">
+            <span className={`${SURTITRE} mb-3 tracking-[0.35em] text-ocre-500`}>
+              ✦ Entrez dans l'Ordre ✦
+            </span>
+            <h1 className="font-serif font-light text-[clamp(2.6rem,7vw,5.5rem)] leading-none tracking-tight text-mousse-950">
+              Prophétesse-Mycélium
+            </h1>
+            <p className="mt-1 font-serif text-[clamp(1.3rem,3.5vw,2.2rem)] font-light italic tracking-wider text-mousse-600">
+              L'Ordre Vert
+            </p>
+          </ContenuLisible>
         </motion.div>
 
         <div className="mt-14 flex flex-col items-center gap-8">
@@ -229,11 +235,13 @@ function Porche() {
           </motion.div>
 
           <div className="max-w-[520px] px-4 text-center">
-            <p className="font-serif text-[clamp(1.15rem,2.8vw,1.6rem)] italic leading-relaxed text-mousse-900">
-              «&nbsp;Un ordre pour les lents, les patients,
-              <br />
-              et ceux qui laissent un coin de jardin en friche.&nbsp;»
-            </p>
+            <ContenuLisible intensite={0.5} className="px-5 py-3">
+              <p className="font-serif text-[clamp(1.15rem,2.8vw,1.6rem)] italic leading-relaxed text-mousse-900">
+                «&nbsp;Un ordre pour les lents, les patients,
+                <br />
+                et ceux qui laissent un coin de jardin en friche.&nbsp;»
+              </p>
+            </ContenuLisible>
             <Link
               href="/bienvenue"
               className={`mt-8 inline-block border border-mousse-900 px-8 py-3 font-serif text-sm font-medium uppercase tracking-[0.22em] text-mousse-900 transition-colors hover:bg-mousse-900 hover:text-parchemin-50 ${CTA_FOCUS}`}
