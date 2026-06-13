@@ -108,8 +108,9 @@ export function LeVerbe() {
   const premiere = cible[0];
   const cle = useMemo(() => cleDuJour(aujourdhui), [aujourdhui]);
 
-  // État persistant de la partie du jour.
-  const partie = useStore((s) => s.verbeParties[cle]);
+  // État persistant de la partie du jour (et registre complet pour les stats).
+  const verbeParties = useStore((s) => s.verbeParties);
+  const partie = verbeParties[cle];
   const ajouterEssai = useStore((s) => s.verbeAjouterEssai);
   const terminer = useStore((s) => s.verbeTerminer);
   const verbeStreak = useStore((s) => s.verbeStreak);
@@ -423,7 +424,90 @@ export function LeVerbe() {
           </div>
         </Card>
       )}
+
+      <StatsVerbe
+        parties={verbeParties}
+        serieActuelle={streakAffiche}
+        meilleureSerie={meilleurStreak}
+        essaisDuJour={statut === "gagne" ? essais.length : null}
+      />
     </div>
+  );
+}
+
+// Panneau de statistiques : parties, % de victoires, séries, et répartition
+// des essais en barres sobres (la barre du jour est soulignée d'ocre).
+function StatsVerbe({
+  parties,
+  serieActuelle,
+  meilleureSerie,
+  essaisDuJour,
+}: {
+  parties: Record<string, { essais: string[]; statut: string }>;
+  serieActuelle: number;
+  meilleureSerie: number;
+  essaisDuJour: number | null;
+}) {
+  const { jouees, gagnees, repartition } = useMemo(() => {
+    let jouees = 0;
+    let gagnees = 0;
+    const repartition = [0, 0, 0, 0, 0, 0];
+    for (const p of Object.values(parties)) {
+      if (p.statut === "en_cours") continue;
+      jouees++;
+      if (p.statut === "gagne") {
+        gagnees++;
+        const n = Math.min(6, Math.max(1, p.essais.length));
+        repartition[n - 1]++;
+      }
+    }
+    return { jouees, gagnees, repartition };
+  }, [parties]);
+
+  if (jouees === 0) return null;
+  const max = Math.max(1, ...repartition);
+  const pct = Math.round((gagnees / jouees) * 100);
+
+  return (
+    <Card>
+      <CardSubtitle>Registre du Verbe</CardSubtitle>
+      <div className="mt-2 grid grid-cols-4 gap-2 text-center">
+        {[
+          { v: jouees, l: "jouées" },
+          { v: `${pct} %`, l: "victoires" },
+          { v: serieActuelle, l: "série" },
+          { v: meilleureSerie, l: "record" },
+        ].map((s) => (
+          <div key={s.l}>
+            <p className="font-serif text-2xl text-mousse-800 dark:text-parchemin-100">{s.v}</p>
+            <p className="font-serif text-[11px] uppercase tracking-wider text-mousse-600 dark:text-parchemin-200/70">
+              {s.l}
+            </p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 space-y-1">
+        {repartition.map((n, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="w-3 text-right font-serif text-xs text-mousse-700 dark:text-parchemin-200/80">
+              {i + 1}
+            </span>
+            <div className="h-4 flex-1 overflow-hidden rounded-sm bg-mousse-500/10">
+              <div
+                className="flex h-full min-w-[1.4rem] items-center justify-end rounded-sm pr-1 font-serif text-[10px]"
+                style={{
+                  width: `${Math.max(8, (n / max) * 100)}%`,
+                  backgroundColor: n === 0 ? "transparent" : essaisDuJour === i + 1 ? "#c9952f" : "#6f6857",
+                  color: "#f3efe2",
+                }}
+              >
+                {n > 0 ? n : ""}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
