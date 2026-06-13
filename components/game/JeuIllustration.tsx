@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // En-tête illustré d'une carte du hub des jeux.
 // L'image vit dans public/jeux/<segment>.png (source 2:3, cadrée 3:2 sur le
-// tiers supérieur). Tant que le fichier est absent, onError bascule sur un
-// repli parchemin texturé — jamais d'icône d'image cassée. La détection à la
-// compilation est impossible en static export, d'où le repli côté client.
+// tiers supérieur). Elle est posée en background-image CSS et n'est rendue
+// qu'une fois sa présence confirmée par une sonde → JAMAIS d'icône « image
+// cassée », même un instant ; sinon placeholder parchemin texturé.
 export function JeuIllustration({
   segment,
   embleme,
@@ -16,11 +16,35 @@ export function JeuIllustration({
   embleme: string;
   alt: string;
 }) {
-  const [absente, setAbsente] = useState(false);
+  const url = `/jeux/${segment}.png`;
+  const [statut, setStatut] = useState<"loading" | "ok" | "absent">("loading");
+  useEffect(() => {
+    let vivant = true;
+    setStatut("loading");
+    const img = new Image(); // sonde : ne rend jamais d'icône cassée visible
+    img.onload = () => vivant && setStatut("ok");
+    img.onerror = () => vivant && setStatut("absent");
+    img.src = url;
+    return () => {
+      vivant = false;
+    };
+  }, [url]);
 
   return (
     <div className="relative -mx-6 -mt-6 mb-4 aspect-[3/2] overflow-hidden rounded-t-lg">
-      {absente ? (
+      {statut === "ok" ? (
+        <div
+          role="img"
+          aria-label={alt}
+          className="h-full w-full"
+          style={{
+            backgroundImage: `url('${url}')`,
+            backgroundSize: "cover",
+            backgroundPosition: "center 25%",
+          }}
+        />
+      ) : (
+        // Placeholder parchemin (chargement + image absente).
         <div
           aria-hidden
           className="flex h-full w-full items-center justify-center"
@@ -29,12 +53,7 @@ export function JeuIllustration({
               "radial-gradient(circle at 30% 20%, #efe6cb 0%, #e6dec5 45%, #d6cca9 100%)",
           }}
         >
-          {/* filaments discrets du placeholder */}
-          <svg
-            viewBox="0 0 300 200"
-            className="absolute inset-0 h-full w-full opacity-25"
-            aria-hidden
-          >
+          <svg viewBox="0 0 300 200" className="absolute inset-0 h-full w-full opacity-25" aria-hidden>
             <path
               d="M10 180 Q70 150 120 168 Q170 186 220 162 Q260 144 295 165"
               stroke="#bf8d2c"
@@ -54,16 +73,6 @@ export function JeuIllustration({
             {embleme}
           </span>
         </div>
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={`/jeux/${segment}.png`}
-          alt={alt}
-          loading="lazy"
-          className="h-full w-full object-cover"
-          style={{ objectPosition: "center 25%" }}
-          onError={() => setAbsente(true)}
-        />
       )}
       {/* voile dégradé sombre en bas : assoit le titre de la carte */}
       <div

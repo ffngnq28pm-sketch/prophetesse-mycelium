@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { banqueTokens } from "./tokens";
 import { TraitementMycelien, RepliParchemin } from "./Traitement";
@@ -63,46 +63,58 @@ const VARIANTES: Record<
   },
 };
 
-// Calque d'ambiance décoratif derrière du contenu. L'image est aria-hidden et
-// en object-cover ; le contenu (children) passe au-dessus en z-10. Repli
-// parchemin via onError → une image absente ne casse jamais la page.
+// Calque d'ambiance décoratif derrière du contenu. L'image est posée en
+// background-image CSS (JAMAIS d'icône « image cassée », même un instant) et
+// n'est rendue qu'une fois sa présence confirmée par une sonde — sinon repli
+// parchemin. Au premier paint, c'est toujours le repli, jamais une <img>.
 export function Fond({ src, variante, children, position = "center 30%", className }: FondProps) {
-  const [absente, setAbsente] = useState(false);
   const cfg = VARIANTES[variante];
   const url = src.startsWith("/") ? src : `/banque/${src}`;
 
+  // "loading" → repli ; "ok" → image en background-image ; "absent" → repli.
+  const [statut, setStatut] = useState<"loading" | "ok" | "absent">("loading");
+  useEffect(() => {
+    let vivant = true;
+    setStatut("loading");
+    const img = new Image(); // sonde : ne rend jamais d'icône cassée visible
+    img.onload = () => vivant && setStatut("ok");
+    img.onerror = () => vivant && setStatut("absent");
+    img.src = url;
+    return () => {
+      vivant = false;
+    };
+  }, [url]);
+
+  const present = statut === "ok";
+
   return (
     <div className={cn("relative isolate overflow-hidden", className)}>
-      {/* —— Couche image / repli —— */}
-      {absente ? (
-        // Repli discret pour un héros encore sans image : pas de bouleversement.
-        <RepliParchemin subtle={variante === "hero" || variante === "texture"} />
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={url}
-          alt=""
+      {/* —— Repli parchemin (chargement + image absente) —— */}
+      {!present && <RepliParchemin subtle={variante === "hero" || variante === "texture"} />}
+
+      {/* —— Image en background-image (aucune icône cassée possible) —— */}
+      {present && (
+        <div
           aria-hidden
-          loading={cfg.eager ? "eager" : "lazy"}
-          decoding="async"
-          className="absolute inset-0 -z-10 h-full w-full object-cover"
+          className="absolute inset-0 -z-10"
           style={{
-            objectPosition: position,
-            filter: cfg.filter,
+            backgroundImage: `url('${url}')`,
+            backgroundSize: "cover",
+            backgroundPosition: position,
+            filter: cfg.filter === "none" ? undefined : cfg.filter,
             mixBlendMode: (cfg.blend as React.CSSProperties["mixBlendMode"]) ?? "normal",
             opacity: cfg.opacity ?? 1,
           }}
-          onError={() => setAbsente(true)}
         />
       )}
 
       {/* —— Voile de lisibilité (seulement quand une image est présente) —— */}
-      {!absente && cfg.voile && (
+      {present && cfg.voile && (
         <div aria-hidden className={cn("pointer-events-none absolute inset-0", cfg.voile)} />
       )}
 
       {/* —— Traitement commun (cohérence d'univers) —— */}
-      {!absente && cfg.treatment && <TraitementMycelien vignette={cfg.vignette} />}
+      {present && cfg.treatment && <TraitementMycelien vignette={cfg.vignette} />}
 
       {/* —— Contenu —— */}
       <div className="relative z-10">{children}</div>
