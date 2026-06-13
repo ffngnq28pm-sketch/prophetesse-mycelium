@@ -50,7 +50,7 @@ export const SCEAUX: Sceau[] = [
     numero: "IV",
     titre: "La Stratigraphie du Compost",
     fond: "strates",
-    actif: false,
+    actif: true,
     resume:
       "Un bac de compost en coupe. Frais en haut, mûr en bas : ordonner les couches et y lire la saison.",
     defunt: "Une note de la Marcheuse : « Ce qui pourrit n'est pas perdu. C'est patient. »",
