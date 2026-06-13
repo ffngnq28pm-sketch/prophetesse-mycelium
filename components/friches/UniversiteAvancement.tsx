@@ -7,6 +7,7 @@ import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Ornement } from "@/components/liturgical/Ornement";
 import { ChevronRight } from "lucide-react";
+import { PANNEAU_LISIBLE } from "./styles";
 
 export function UniversiteAvancement() {
   const hasHydrated = useFriches((s) => s.hasHydrated);
@@ -28,7 +29,7 @@ export function UniversiteAvancement() {
   return (
     <div className="space-y-5">
       {/* —— Grade actuel + barre vers le suivant —— */}
-      <Card>
+      <Card className={PANNEAU_LISIBLE}>
         <CardSubtitle>Ton grade</CardSubtitle>
         <div className="mt-1 flex items-baseline justify-between gap-3">
           <CardTitle>{actuel.nom}</CardTitle>
@@ -61,7 +62,7 @@ export function UniversiteAvancement() {
           const maitri = f.lecons.filter((l) => maitrisees.includes(l.id)).length;
           return (
             <Link key={f.id} href={`/universite/${f.id}`} className="group block">
-              <Card className="transition hover:border-ocre-500/60 hover:bg-mousse-100/40 dark:hover:bg-mousse-900/40">
+              <Card className={`${PANNEAU_LISIBLE} transition hover:border-ocre-500/60`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <CardTitle className="text-xl">{f.titre}</CardTitle>

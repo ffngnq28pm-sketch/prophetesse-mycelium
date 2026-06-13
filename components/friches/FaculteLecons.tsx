@@ -6,6 +6,7 @@ import { useFriches } from "@/lib/friches-store";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Check, BookOpen, Sprout } from "lucide-react";
+import { PANNEAU_LISIBLE } from "./styles";
 
 // Liste des leçons d'une faculté avec leur statut (à lire / lue / maîtrisée).
 export function FaculteLecons({ faculteId, lecons }: { faculteId: string; lecons: Lecon[] }) {
@@ -20,7 +21,7 @@ export function FaculteLecons({ faculteId, lecons }: { faculteId: string; lecons
         const tentee = hasHydrated && !maitrisee && scores[l.id] != null;
         return (
           <Link key={l.id} href={`/universite/${faculteId}/${l.id}`} className="group block">
-            <Card className="transition hover:border-ocre-500/60 hover:bg-mousse-100/40 dark:hover:bg-mousse-900/40">
+            <Card className={`${PANNEAU_LISIBLE} transition hover:border-ocre-500/60`}>
               <div className="flex items-start gap-4">
                 <span className="mt-1 font-serif text-lg font-light text-ocre-500">{idx + 1}</span>
                 <div className="flex-1">

@@ -9,6 +9,7 @@ import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Ornement } from "@/components/liturgical/Ornement";
 import { Check, Circle } from "lucide-react";
+import { PANNEAU_LISIBLE } from "./styles";
 
 // Bloc interactif d'une leçon : statut de maîtrise + quiz QCM (une question à la
 // fois, révélation de la bonne réponse + explication, score final). Réussir au
@@ -67,7 +68,7 @@ export function LeconQuiz({
   // Avant hydratation : on évite tout décalage SSR/client.
   if (!hasHydrated) {
     return (
-      <Card className="mt-8 text-center">
+      <Card className={`${PANNEAU_LISIBLE} mt-8 text-center`}>
         <p className="font-serif italic text-mousse-700 dark:text-parchemin-200/70">
           « Le mycélium s'éveille… »
         </p>
@@ -79,7 +80,7 @@ export function LeconQuiz({
   if (fini) {
     const reussi = score >= SEUIL_MAITRISE;
     return (
-      <Card className="mt-8 text-center">
+      <Card className={`${PANNEAU_LISIBLE} mt-8 text-center`}>
         <CardSubtitle>Quiz terminé</CardSubtitle>
         <CardTitle className="mt-1">
           {score}/{total}
@@ -106,7 +107,7 @@ export function LeconQuiz({
   if (enCours) {
     const Q = questions[i];
     return (
-      <Card className="mt-8">
+      <Card className={`${PANNEAU_LISIBLE} mt-8`}>
         <div className="flex items-center justify-between">
           <CardSubtitle>
             Question {i + 1} / {total}
@@ -156,7 +157,7 @@ export function LeconQuiz({
 
   // —— Accueil du quiz (statut + bouton) ——
   return (
-    <Card className="mt-8 text-center">
+    <Card className={`${PANNEAU_LISIBLE} mt-8 text-center`}>
       {maitrisee ? (
         <Badge variant="grace">
           <Check size={14} /> Leçon maîtrisée{meilleurScore != null ? ` · ${meilleurScore}/${total}` : ""}

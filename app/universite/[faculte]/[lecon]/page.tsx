@@ -4,7 +4,9 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { FACULTES, getFaculte, getLecon } from "@/data/friches";
 import { Ornement } from "@/components/liturgical/Ornement";
+import { Card } from "@/components/ui/Card";
 import { LeconQuiz } from "@/components/friches/LeconQuiz";
+import { PANNEAU_LISIBLE } from "@/components/friches/styles";
 
 export function generateStaticParams() {
   return FACULTES.flatMap((f) => f.lecons.map((l) => ({ faculte: f.id, lecon: l.id })));
@@ -47,25 +49,27 @@ export default function LeconPage({ params }: { params: { faculte: string; lecon
         <Ornement />
       </header>
 
-      <article className="mx-auto max-w-2xl space-y-4">
-        {l.corps.map((p, i) =>
-          p.startsWith("À retenir") ? (
-            <p
-              key={i}
-              className="rounded-md border-l-2 border-ocre-500/60 bg-ocre-500/5 py-2 pl-4 pr-3 font-serif text-[1.05rem] italic leading-relaxed text-mousse-900 dark:text-parchemin-100"
-            >
-              {p}
-            </p>
-          ) : (
-            <p
-              key={i}
-              className="font-serif text-[1.0625rem] leading-[1.85] text-mousse-900 dark:text-parchemin-100"
-            >
-              {p}
-            </p>
-          )
-        )}
-      </article>
+      <Card className={`${PANNEAU_LISIBLE} mx-auto max-w-2xl`}>
+        <article className="space-y-4">
+          {l.corps.map((p, i) =>
+            p.startsWith("À retenir") ? (
+              <p
+                key={i}
+                className="rounded-md border-l-2 border-ocre-500/60 bg-ocre-500/10 py-2 pl-4 pr-3 font-serif text-[1.05rem] italic leading-relaxed text-mousse-900 dark:text-parchemin-100"
+              >
+                {p}
+              </p>
+            ) : (
+              <p
+                key={i}
+                className="font-serif text-[1.0625rem] leading-[1.85] text-mousse-900 dark:text-parchemin-100"
+              >
+                {p}
+              </p>
+            )
+          )}
+        </article>
+      </Card>
 
       <div className="mx-auto max-w-2xl">
         <LeconQuiz leconId={l.id} faculteId={f.id} questions={l.quiz} />
