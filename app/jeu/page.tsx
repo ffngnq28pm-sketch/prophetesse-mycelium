@@ -8,14 +8,13 @@ import { Ornement } from "@/components/liturgical/Ornement";
 import { Hydrated } from "@/components/liturgical/Hydrated";
 import { HelpButton } from "@/components/liturgical/HelpButton";
 import { JeuIllustration } from "@/components/game/JeuIllustration";
-import { FondPeint, ContenuLisible } from "@/components/banque/FondPeint";
+import { ContenuLisible } from "@/components/banque/FondPeint";
 import { Trees } from "lucide-react";
 
 export default function HubJeux() {
   return (
     <div>
-      {/* Fond peint ambiant : visible dans les marges de la colonne, derrière le contenu. */}
-      <FondPeint seed="jeux" />
+      {/* Fond peint monté globalement par le layout (FondPeintAuto). */}
       <header className="mb-6 text-center">
         <p className="text-xs uppercase tracking-[0.4em] text-ocre-600 dark:text-ocre-400">
           Jeux Liturgiques de l'Ordre

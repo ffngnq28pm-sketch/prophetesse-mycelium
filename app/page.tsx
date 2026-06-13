@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { useStore } from "@/lib/store";
 import { useShallow } from "zustand/react/shallow";
 import { Fond } from "@/components/banque/Fond";
-import { FondPeint, ContenuLisible } from "@/components/banque/FondPeint";
+import { ContenuLisible } from "@/components/banque/FondPeint";
 
 /* ------------------------------------------------------------------ */
 /* Racine du site = le Porche (vitrine publique de l'Ordre Vert).      */
@@ -186,12 +186,9 @@ const CTA_FOCUS =
 function Porche() {
   return (
     <>
-      {/* Fond peint en sibling (hors du breakout overflow-x-clip qui rognerait
-          un enfant fixed). Fond forcé « fond-06 » (sombre + structuré → ressort
-          sous la nappe) et voile interne baissé pour le rendre perceptible. */}
-      <FondPeint image="fond-06" voile={0.25} />
-      {/* Breakout pleine largeur. Nappe /55 : le décor peint transparaît
-          nettement (~35-45 %) tout en gardant les sections opaques lisibles. */}
+      {/* Le fond peint est monté globalement par le layout (FondPeintAuto,
+          override "/" → fond-06 + voile bas). Ici, juste la nappe /55 du porche
+          qui le laisse transparaître (~35-45 %) en gardant les sections lisibles. */}
       <div className="-mb-24 -mt-6 mx-[calc(50%-50vw)] w-screen overflow-x-clip bg-parchemin-50/55 font-sans text-mousse-950">
       {/* ══ HÉRO ══════════════════════════════════════════════ */}
       {/* Surface témoin de la banque visuelle : fond d'ambiance « hero ».

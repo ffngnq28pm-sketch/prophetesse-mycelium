@@ -6,6 +6,7 @@ import { ThemeBootstrap } from "@/components/liturgical/ThemeBootstrap";
 import { Footer } from "@/components/liturgical/Footer";
 import { MotionProvider } from "@/components/liturgical/MotionProvider";
 import { ConsoleGreeting } from "@/components/liturgical/ConsoleGreeting";
+import { FondPeintAuto } from "@/components/banque/FondPeintAuto";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -116,6 +117,8 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${cormorant.variable} ${inter.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased">
+        {/* Fond peint ambiant, monté une seule fois, derrière tout le contenu. */}
+        <FondPeintAuto />
         <ThemeBootstrap />
         <ConsoleGreeting />
         <MotionProvider>
