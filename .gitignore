@@ -37,3 +37,7 @@ ios/DerivedData/
 
 # Dev artefacts (audits, rapports internes)
 AUDIT_*.md
+
+# Banque visuelle : sources brutes (lourdes), non versionnées.
+# Seules les sorties optimisées de public/banque/ sont commitées.
+assets-sources/

@@ -1,0 +1,2 @@
+# Sorties optimisées de la banque (rôle : textures).
+# Déposer les sources dans assets-sources/banque/textures/ puis lancer `npm run banque`.

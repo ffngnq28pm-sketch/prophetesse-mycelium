@@ -1,0 +1,2 @@
+# Sorties optimisées de la banque (rôle : fonds).
+# Déposer les sources dans assets-sources/banque/fonds/ puis lancer `npm run banque`.

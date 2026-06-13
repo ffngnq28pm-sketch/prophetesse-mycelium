@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "build:static": "next build",
     "icons": "node scripts/generate-icons.mjs",
+    "banque": "node scripts/optimiser-banque.mjs",
     "preview": "npx serve out",
     "ios:sync": "npm run build:static && npx cap sync ios",
     "ios:add": "npx cap add ios",

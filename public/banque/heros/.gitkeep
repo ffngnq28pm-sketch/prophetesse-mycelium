@@ -1,0 +1,2 @@
+# Sorties optimisées de la banque (rôle : heros).
+# Déposer les sources dans assets-sources/banque/heros/ puis lancer `npm run banque`.
