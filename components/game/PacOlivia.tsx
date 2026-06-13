@@ -595,11 +595,11 @@ function render(canvas: HTMLCanvasElement | null, state: PacState, time: number,
 
   ctx.clearRect(-4, -4, WIDTH + 8, HEIGHT + 8);
 
-  // —— Fond : nuit végétale profonde ——
+  // —— Fond : nuit de terre et de mousse, plus profonde ——
   const bg = ctx.createRadialGradient(WIDTH / 2, HEIGHT * 0.42, 40, WIDTH / 2, HEIGHT / 2, WIDTH * 0.85);
-  bg.addColorStop(0, "#1c2912");
-  bg.addColorStop(0.65, "#101b09");
-  bg.addColorStop(1, "#070c03");
+  bg.addColorStop(0, "#19220f");
+  bg.addColorStop(0.65, "#0e1207");
+  bg.addColorStop(1, "#050803");
   ctx.fillStyle = bg;
   ctx.fillRect(-4, -4, WIDTH + 8, HEIGHT + 8);
 
@@ -706,19 +706,19 @@ function drawHedge(ctx: CanvasRenderingContext2D, state: PacState, x: number, y:
   const grid = state.grid;
   const isWall = (xx: number, yy: number) => yy >= 0 && yy < ROWS && xx >= 0 && xx < COLS && grid[yy][xx].wall;
 
-  // masse de base
-  ctx.fillStyle = "#22361a";
+  // masse de base : haie sur terre — mousse sourde, plus brune que verte
+  ctx.fillStyle = "#2e3322";
   ctx.fillRect(px, py, CELL_PX, CELL_PX);
 
-  // feuillage : 3 touches déterministes, deux verts
+  // feuillage : 3 touches déterministes — mousse claire + ombre de terreau
   const h1 = hash2(x * 3 + 1, y * 5 + 2);
   const h2 = hash2(x * 7 + 3, y * 11 + 1);
   const h3 = hash2(x * 13 + 5, y * 17 + 7);
-  ctx.fillStyle = "#2c4421";
+  ctx.fillStyle = "#4a5436";
   ctx.beginPath();
   ctx.arc(px + 4 + h1 * 14, py + 4 + h2 * 14, 2.6 + h3 * 2, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = "#1a2a12";
+  ctx.fillStyle = "#241d12";
   ctx.beginPath();
   ctx.arc(px + 4 + h2 * 14, py + 4 + h3 * 14, 2 + h1 * 2, 0, Math.PI * 2);
   ctx.fill();
@@ -727,14 +727,14 @@ function drawHedge(ctx: CanvasRenderingContext2D, state: PacState, x: number, y:
   ctx.lineWidth = 1.6;
   ctx.lineCap = "round";
   if (!isWall(x, y - 1)) {
-    ctx.strokeStyle = "#5d7f43";
+    ctx.strokeStyle = "#7a8456";
     ctx.beginPath();
     ctx.moveTo(px + 2, py + 1.6);
     ctx.lineTo(px + CELL_PX - 2, py + 1.6);
     ctx.stroke();
     // quelques brins qui dépassent
     if (h1 > 0.55) {
-      ctx.strokeStyle = "#6f8f55";
+      ctx.strokeStyle = "#8b9466";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(px + 5 + h2 * 10, py + 1);
@@ -744,21 +744,21 @@ function drawHedge(ctx: CanvasRenderingContext2D, state: PacState, x: number, y:
     }
   }
   if (!isWall(x - 1, y)) {
-    ctx.strokeStyle = "#4a6c39";
+    ctx.strokeStyle = "#5e6541";
     ctx.beginPath();
     ctx.moveTo(px + 1.6, py + 2);
     ctx.lineTo(px + 1.6, py + CELL_PX - 2);
     ctx.stroke();
   }
   if (!isWall(x, y + 1)) {
-    ctx.strokeStyle = "#15230e";
+    ctx.strokeStyle = "#161009";
     ctx.beginPath();
     ctx.moveTo(px + 2, py + CELL_PX - 1.6);
     ctx.lineTo(px + CELL_PX - 2, py + CELL_PX - 1.6);
     ctx.stroke();
   }
   if (!isWall(x + 1, y)) {
-    ctx.strokeStyle = "#2c4421";
+    ctx.strokeStyle = "#3a3320";
     ctx.beginPath();
     ctx.moveTo(px + CELL_PX - 1.6, py + 2);
     ctx.lineTo(px + CELL_PX - 1.6, py + CELL_PX - 2);
