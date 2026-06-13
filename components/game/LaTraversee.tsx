@@ -740,6 +740,19 @@ function render(
   drawWalkerBacking(ctx, s.olivia);
   drawOlivia(ctx, s.olivia, time);
 
+  // Grade peint commun (subtil) : tiédeur en soft-light sur la moitié basse,
+  // soude sol/plateformes/Marcheuse/collectibles au fond peint sans retoucher
+  // le ciel et sans assombrir (le post fait déjà le grade global).
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.save();
+  ctx.globalCompositeOperation = "soft-light";
+  const unify = ctx.createLinearGradient(0, ch * 0.45, 0, ch);
+  unify.addColorStop(0, "rgba(214,150,70,0)");
+  unify.addColorStop(1, "rgba(214,150,70,0.14)");
+  ctx.fillStyle = unify;
+  ctx.fillRect(0, ch * 0.45, cw, ch * 0.55);
+  ctx.restore();
+
   // ══ Composite vers le canvas visible + post (bloom, grade, vignette, grain) ══
   peinture.present(visible, cw, ch, time, reduce);
 
@@ -1447,20 +1460,32 @@ function drawCollectible(ctx: CanvasRenderingContext2D, c: Collectible, time: nu
   ctx.fillRect(cx - c.w * 1.3, cy - c.w * 1.3, c.w * 2.6, c.w * 2.6);
   const flap = Math.sin(time / 90 + c.bobPhase) * 0.5 + 0.6;
   if (c.espece === "papillon") {
-    ctx.fillStyle = "#f4d35e";
+    // ailes peintes : dégradé haut clair → bas ombré (volume, moins criard que
+    // l'aplat ; reste sous la saturation de la casquette rouge)
+    const wg = ctx.createLinearGradient(cx, cy - 6, cx, cy + 6);
+    wg.addColorStop(0, "#f0cf63");
+    wg.addColorStop(1, "#c8a03c");
+    ctx.fillStyle = wg;
     ctx.beginPath();
     ctx.ellipse(cx - 4, cy - 1, 5 * flap, 6, -0.5, 0, Math.PI * 2);
     ctx.ellipse(cx + 4, cy - 1, 5 * flap, 6, 0.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#a0721f";
+    ctx.fillStyle = "#7a5418";
     ctx.fillRect(cx - 1, cy - 6, 2, 12);
+    ctx.fillStyle = "rgba(255,245,210,0.6)"; // reflet
+    ctx.beginPath();
+    ctx.arc(cx - 4, cy - 3, 1, 0, Math.PI * 2);
+    ctx.fill();
   } else {
-    // halicte : corps rond doré rayé
-    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    // halicte : ailes pâles + corps doré ombré
+    ctx.fillStyle = "rgba(255,255,255,0.62)";
     ctx.beginPath();
     ctx.ellipse(cx, cy - 2, 7 * flap, 4, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#d4a747";
+    const bg = ctx.createLinearGradient(cx, cy - 2, cx, cy + 5);
+    bg.addColorStop(0, "#dcb152");
+    bg.addColorStop(1, "#b2842f");
+    ctx.fillStyle = bg;
     ctx.beginPath();
     ctx.ellipse(cx, cy + 1, 5, 4, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -1479,6 +1504,11 @@ function drawFlower(ctx: CanvasRenderingContext2D, f: Flower, time: number) {
   const grow = age < 0.25 ? age / 0.25 : 1;
   const fade = age > 0.7 ? 1 - (age - 0.7) / 0.3 : 1;
   ctx.globalAlpha = fade;
+  // petite ombre de pied (ancre la fleur au sol, touche peinte)
+  ctx.fillStyle = `rgba(20,30,16,${0.12 * fade})`;
+  ctx.beginPath();
+  ctx.ellipse(f.x, f.y, 4 * grow, 1.4, 0, 0, Math.PI * 2);
+  ctx.fill();
   const stem = 12 * grow;
   ctx.strokeStyle = "#5f874c";
   ctx.lineWidth = 1.5;
