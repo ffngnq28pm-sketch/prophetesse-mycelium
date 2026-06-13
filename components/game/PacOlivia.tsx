@@ -381,7 +381,7 @@ export function PacOlivia({ onLevelComplete, onGameOver }: Props) {
                 <h2 className="titre-liturgique mt-2 text-3xl">Recense les insectes</h2>
                 <div className="ornement" />
                 <p className="mx-auto max-w-md font-serif italic">
-                  Une disciple entre dans les cimetières, filet à la main. Sa mission : recenser tous les insectes,
+                  La Marcheuse entre dans les cimetières, filet à la main. Sa mission : recenser tous les insectes,
                   éviter les fantômes, et boire des Gorgées de Café Filtre pour entrer en Sainte Colère.
                 </p>
                 <p className="mt-2 font-serif text-xs text-parchemin-200/70">

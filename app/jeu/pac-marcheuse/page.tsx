@@ -58,7 +58,7 @@ export default function PacOliviaPage() {
         </h1>
         <Ornement />
         <p className="mx-auto max-w-2xl font-serif italic text-mousse-700 dark:text-parchemin-200/80">
-          « Une disciple entre dans les cimetières d'Île-de-France pour recenser les pollinisateurs (et accessoirement éviter d'être attrapée par les défunts marris). Elle ne les tue jamais. Elle les recense, ce qui est une posture beaucoup plus saine, et accessoirement gratifiante au sens du score. »
+          « La Marcheuse entre dans les cimetières d'Île-de-France pour recenser les pollinisateurs (et accessoirement éviter d'être attrapée par les défunts marris). Elle ne les tue jamais. Elle les recense, ce qui est une posture beaucoup plus saine, et accessoirement gratifiante au sens du score. »
         </p>
       </header>
 
