@@ -16,7 +16,8 @@ export const PEINTURE = {
   // Post-traitement.
   BLOOM_STRENGTH: 0.35, // alpha de la passe additive (proto : 0.35)
   BLOOM_BLUR: 13, // flou px sur le buffer demi-résolution
-  RAYS_INTENSITY: 0.07, // god rays (proto : 0.07)
+  BLOOM_SEUIL: 0.72, // ne bloomer que les vraies hautes lumières (plus haut = plus sélectif)
+  RAYS_INTENSITY: 0.05, // god rays — baissé pour ne plus cramer le centre clair
   RAYS_COUNT: 5,
   RAYS_LENGTH: 0.62, // fraction de hauteur où le rai s'éteint (avant le sol)
   RAYS_DRIFT: 22,
@@ -29,15 +30,14 @@ export const PEINTURE = {
   SPORE_RISE: 15,
   SPORE_DRIFT: 11,
   // Couture fondue au bake (fraction de largeur de tuile), sans flip miroir.
-  // Cross-dissolve large + fondu des bords vers la couleur atmosphérique de la
-  // couche → aucune ligne verticale visible quelle que soit la position caméra.
   couture: 0.3,
+  // Re-structuration de la couche lointaine au bake (anti voile blanc / bouillie) :
+  // on lui rend du contraste/définition pour qu'elle appartienne à la même
+  // peinture que le premier plan. Plein effet sur n===0, moitié sur n===1.
+  FOND_LUM: 0.92,
+  FOND_CONTRASTE: 1.12,
+  FOND_SAT: 1.08,
 } as const;
-
-// Couleur atmosphérique par couche (vers laquelle on fond les bords pour assurer
-// la continuité de valeur au raccord). c0 = ciel/brume chaude, c1 = brume verte
-// sourde, c2 = premier plan sombre.
-const ATMO = ["230,216,182", "150,160,128", "26,32,18"];
 
 export type ActeNom = "porche" | "allees" | "ascension";
 const ACTES: ActeNom[] = ["porche", "allees", "ascension"];
@@ -81,14 +81,28 @@ function rngFrom(seed: number) {
 //   2) fondu des deux bords vers la couleur atmosphérique de la couche (en
 //      source-atop pour préserver le sommet transparent) → continuité de valeur,
 //      aucune ligne verticale même si la peinture est plus claire d'un côté.
-function bakeLayer(source: HTMLImageElement, fadeTop: boolean, atmo: string): HTMLCanvasElement {
+function bakeLayer(source: HTMLImageElement, n: number): HTMLCanvasElement {
+  const fadeTop = n > 0;
   const w = source.naturalWidth || 1920;
   const h = source.naturalHeight || 819;
   const cv = document.createElement("canvas");
   cv.width = w;
   cv.height = h;
   const c = cv.getContext("2d")!;
+
+  // Re-structuration de la couche lointaine (one-time, AUCUNE lecture de pixels) :
+  // sur les fonds clairs/brumeux, la lointaine partait en voile blanc et mou ;
+  // on lui rend brillance↓/contraste↑/saturation↑ pour qu'elle redevienne une
+  // forêt distante définie. Plein effet n===0, demi n===1, rien n===2.
+  const fStr = n === 0 ? 1 : n === 1 ? 0.5 : 0;
+  if (fStr > 0) {
+    const lum = 1 + (PEINTURE.FOND_LUM - 1) * fStr;
+    const con = 1 + (PEINTURE.FOND_CONTRASTE - 1) * fStr;
+    const sat = 1 + (PEINTURE.FOND_SAT - 1) * fStr;
+    c.filter = `brightness(${lum}) contrast(${con}) saturate(${sat})`;
+  }
   c.drawImage(source, 0, 0, w, h);
+  c.filter = "none";
 
   if (fadeTop) {
     const g = c.createLinearGradient(0, 0, 0, h * 0.5);
@@ -121,7 +135,6 @@ function bakeLayer(source: HTMLImageElement, fadeTop: boolean, atmo: string): HT
   // vers la couleur atmosphérique (ancien essai) créait une bande verticale
   // périodique sombre à chaque jointure → retiré. La ligne dure résiduelle est
   // un joint sous-pixel, corrigé par le chevauchement de 1 px dans drawLayer.
-  void atmo;
   return cv;
 }
 
@@ -252,7 +265,7 @@ export class PeintureDecor {
     const present = imgs.filter((x): x is HTMLImageElement => !!x);
     if (present.length === 0) return null;
     const chosen = present[Math.floor(Math.random() * present.length)];
-    return bakeLayer(chosen, n > 0, ATMO[n] ?? ATMO[0]);
+    return bakeLayer(chosen, n);
   }
 
   // Précharge porche au démarrage (set par défaut + repli universel).
@@ -486,7 +499,16 @@ export class PeintureDecor {
       if (this.hasFilter) {
         bc.setTransform(1, 0, 0, 1, 0, 0);
         bc.clearRect(0, 0, bw, bh);
-        bc.filter = `blur(${Math.round(PEINTURE.BLOOM_BLUR * this.quality)}px)`;
+        // Seuil de bloom : on isole les VRAIES hautes lumières AVANT le flou
+        // (brightness↓ puis contrast↑ écrase les tons moyens/le fond pâle, garde
+        // le haut) → plus de voile blanc sur les fonds clairs, l'« éblouissant »
+        // des variantes sombres est conservé. Le seuil suit visuellement
+        // ≈ BLOOM_SEUIL. Tout via ctx.filter (zéro lecture de pixels).
+        const con = 3 + PEINTURE.BLOOM_SEUIL * 2;
+        const br = Math.max(0.3, Math.min(1, (0.5 - 0.5 / con) / PEINTURE.BLOOM_SEUIL));
+        bc.filter = `brightness(${br.toFixed(3)}) contrast(${con.toFixed(2)}) blur(${Math.round(
+          PEINTURE.BLOOM_BLUR * this.quality
+        )}px)`;
         bc.drawImage(this.scene!, 0, 0, bw, bh);
         bc.filter = "none";
         visible.globalCompositeOperation = "lighter";
