@@ -1733,6 +1733,7 @@ function drawParticles(ctx: CanvasRenderingContext2D, particles: Particle[], tim
 const MARCHEUSE = {
   ECHELLE: 1.5, // échelle VISUELLE vs hitbox, ancrée aux pieds (le visuel déborde, voulu)
   LISSAGE: 0.18, // facteur de lerp de l'anim amortie (Phase 2)
+  CADENCE: 0.5, // fréquence VISUELLE du cycle de marche (0.4 = posé, 0.6 = vif)
   // Tenue naturaliste casual : tee rouge vif (grande masse de couleur), casquette
   // rouge FONCÉ, le reste sourd pour que le rouge ressorte.
   TEE: "#d23a26",
@@ -1809,7 +1810,11 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   // (A.move/A.speed) : elles montent/descendent en douceur, jamais de claquage.
   const lean = A.move * A.speed * 0.12;
   if (lean) ctx.transform(1, 0, -lean, 1, 0, 0);
-  const bob = -A.move * Math.abs(Math.sin(o.walkPhase)) * 0.7;
+  // Phase visuelle RALENTIE du cycle de marche (le moteur n'est pas touché ;
+  // o.walkPhase reste lu seul). Une seule phase dérivée, réutilisée partout →
+  // jambes, levée de pied, bras, bob et filet restent en phase entre eux.
+  const wpv = o.walkPhase * M.CADENCE;
+  const bob = -A.move * Math.abs(Math.sin(wpv)) * 0.7;
   if (bob) ctx.translate(0, bob);
 
   const breath = (1 - A.move) * (o.onGround ? Math.sin(time / 900) * 0.4 : 0);
@@ -1818,7 +1823,7 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   const neckY = -H * 0.74 - breath;
   const headY = -H * 0.9 - breath;
   const headR = H * 0.155;
-  const wp = o.walkPhase;
+  const wp = wpv; // jambes / bras / filet : tous sur la phase visuelle ralentie
   const stride = A.move * 6; // foulée continue (0 → pleine)
   const armAmp = A.move * 4;
 
