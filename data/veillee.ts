@@ -60,7 +60,7 @@ export const SCEAUX: Sceau[] = [
     numero: "V",
     titre: "Les Empreintes",
     fond: "empreintes",
-    actif: false,
+    actif: true,
     resume:
       "Un sentier de boue, des empreintes nettes. Déduire quel passant nocturne est venu cette nuit.",
     defunt: "Les trois spectres parient sur l'animal. Tous se trompent.",

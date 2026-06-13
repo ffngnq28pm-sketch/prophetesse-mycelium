@@ -9,6 +9,7 @@ import { CadranLichen } from "./CadranLichen";
 import { HorlogeFlorale } from "./HorlogeFlorale";
 import { Pollinisateurs } from "./Pollinisateurs";
 import { Stratigraphie } from "./Stratigraphie";
+import { Empreintes } from "./Empreintes";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { BookOpen, X, ChevronLeft, Lock, Check } from "lucide-react";
@@ -223,6 +224,8 @@ function InteractionSceau({ id, onResolu }: { id: string; onResolu: () => void }
       return <Pollinisateurs onResolu={onResolu} />;
     case "compost":
       return <Stratigraphie onResolu={onResolu} />;
+    case "empreintes":
+      return <Empreintes onResolu={onResolu} />;
     default:
       return null;
   }
