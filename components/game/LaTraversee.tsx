@@ -1456,60 +1456,112 @@ function drawCollectible(ctx: CanvasRenderingContext2D, c: Collectible, time: nu
     return;
   }
   if (c.kind === "spore") {
-    // Spore dorée : mote lumineuse qui respire, plus précieuse que la graine.
-    const pulse = 0.75 + 0.25 * Math.sin(time / 300 + c.bobPhase);
-    const glow = ctx.createRadialGradient(cx, cy, 1, cx, cy, c.w * 1.6);
-    glow.addColorStop(0, `rgba(241,213,108,${0.8 * pulse})`);
-    glow.addColorStop(0.5, `rgba(241,213,108,${0.25 * pulse})`);
-    glow.addColorStop(1, "rgba(241,213,108,0)");
+    // Spore-mote de lumière (thème mycélium) : orbe doux à halo plumeux +
+    // aigrette type pissenlit qui flotte, particules dérivantes. Éthéré, aucun
+    // contour dur. Or chaud viré blanc-vert pâle.
+    const pulse = 0.78 + 0.22 * Math.sin(time / 320 + c.bobPhase);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    // halo plumeux
+    const glow = ctx.createRadialGradient(cx, cy, 1, cx, cy, c.w * 2);
+    glow.addColorStop(0, `rgba(245,240,205,${0.65 * pulse})`);
+    glow.addColorStop(0.5, `rgba(206,224,180,${0.22 * pulse})`);
+    glow.addColorStop(1, "rgba(206,224,180,0)");
     ctx.fillStyle = glow;
-    ctx.fillRect(cx - c.w * 1.6, cy - c.w * 1.6, c.w * 3.2, c.w * 3.2);
-    ctx.fillStyle = "#f1d56c";
-    ctx.beginPath();
-    ctx.arc(cx, cy, 3.4 * pulse + 1, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "rgba(255,250,230,0.9)";
-    ctx.beginPath();
-    ctx.arc(cx - 1, cy - 1, 1.3, 0, Math.PI * 2);
-    ctx.fill();
-    // étincelles en croix, tournantes
-    ctx.strokeStyle = `rgba(241,213,108,${0.6 * pulse})`;
-    ctx.lineWidth = 1;
-    const a = time / 900 + c.bobPhase;
-    for (let i = 0; i < 4; i++) {
-      const ang = a + (i * Math.PI) / 2;
+    ctx.fillRect(cx - c.w * 2, cy - c.w * 2, c.w * 4, c.w * 4);
+    // aigrette : filaments soyeux rayonnants, chacun terminé d'une houppe
+    const rot = time * 0.0003 + c.bobPhase;
+    const fils = 9;
+    ctx.strokeStyle = `rgba(245,241,212,${0.5 * pulse})`;
+    ctx.lineWidth = 0.7;
+    for (let i = 0; i < fils; i++) {
+      const ang = rot + (i / fils) * Math.PI * 2;
+      const inner = 2.2;
+      const outer = 6.2 + Math.sin(time * 0.0022 + i * 1.3) * 0.9;
+      const ix = cx + Math.cos(ang) * inner;
+      const iy = cy + Math.sin(ang) * inner;
+      const ox = cx + Math.cos(ang) * outer;
+      const oy = cy + Math.sin(ang) * outer;
       ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(ang) * 5, cy + Math.sin(ang) * 5);
-      ctx.lineTo(cx + Math.cos(ang) * 8, cy + Math.sin(ang) * 8);
+      ctx.moveTo(ix, iy);
+      ctx.lineTo(ox, oy);
       ctx.stroke();
+      ctx.fillStyle = `rgba(255,252,232,${0.5 * pulse})`; // houppe au bout
+      ctx.beginPath();
+      ctx.arc(ox, oy, 0.9, 0, Math.PI * 2);
+      ctx.fill();
     }
+    // cœur de spore
+    ctx.fillStyle = `rgba(255,250,224,${0.95 * pulse})`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 2.1 * pulse + 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    // particules qui dérivent doucement vers le haut
+    for (let k = 0; k < 3; k++) {
+      const ph = c.bobPhase + k * 2.1;
+      const drift = (time * 0.012 + k * 9) % 18;
+      const px = cx + Math.cos(time * 0.0009 + ph) * (4 + k);
+      const py = cy - drift + 2;
+      ctx.fillStyle = `rgba(245,240,210,${0.5 * (1 - drift / 18)})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 0.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
     return;
   }
-  // pollinisateur : halo doré + ailes
-  const glow = ctx.createRadialGradient(cx, cy, 1, cx, cy, c.w * 1.3);
-  glow.addColorStop(0, "rgba(244,211,94,0.75)");
-  glow.addColorStop(1, "rgba(244,211,94,0)");
-  ctx.fillStyle = glow;
-  ctx.fillRect(cx - c.w * 1.3, cy - c.w * 1.3, c.w * 2.6, c.w * 2.6);
-  const flap = Math.sin(time / 90 + c.bobPhase) * 0.5 + 0.6;
   if (c.espece === "papillon") {
-    // ailes peintes : dégradé haut clair → bas ombré (volume, moins criard que
-    // l'aplat ; reste sous la saturation de la casquette rouge)
-    const wg = ctx.createLinearGradient(cx, cy - 6, cx, cy + 6);
-    wg.addColorStop(0, "#f0cf63");
-    wg.addColorStop(1, "#c8a03c");
-    ctx.fillStyle = wg;
+    // ════ Morpho bleu iridescent ════
+    // halo frais, discret (pas plus lumineux que le tee rouge)
+    const halo = ctx.createRadialGradient(cx, cy, 1, cx, cy, c.w * 1.4);
+    halo.addColorStop(0, "rgba(150,200,255,0.4)");
+    halo.addColorStop(1, "rgba(150,200,255,0)");
+    ctx.fillStyle = halo;
+    ctx.fillRect(cx - c.w * 1.4, cy - c.w * 1.4, c.w * 2.8, c.w * 2.8);
+    // battement ASYMÉTRIQUE (ailes déphasées)
+    const flapL = Math.abs(Math.sin(time / 85 + c.bobPhase)) * 0.6 + 0.45;
+    const flapR = Math.abs(Math.sin(time / 85 + c.bobPhase + 0.6)) * 0.6 + 0.45;
+    const wing = (side: number, fl: number) => {
+      // dégradé radial depuis le corps : bleu profond → cyan iridescent au bord
+      const g = ctx.createRadialGradient(cx, cy, 0.5, cx + side * 4, cy, 7);
+      g.addColorStop(0, "#21318f");
+      g.addColorStop(0.6, "#2f5fce");
+      g.addColorStop(1, "#62d2ff");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(cx + side * 3.5, cy - 1.5, 5 * fl, 5.2, side * 0.5, 0, Math.PI * 2); // aile haute
+      ctx.ellipse(cx + side * 3, cy + 2.5, 3.6 * fl, 3.6, side * 0.4, 0, Math.PI * 2); // aile basse
+      ctx.fill();
+      // liseré clair iridescent sur le bord
+      ctx.strokeStyle = "rgba(180,240,255,0.55)";
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.ellipse(cx + side * 3.5, cy - 1.5, 5 * fl, 5.2, side * 0.5, 0, Math.PI * 2);
+      ctx.stroke();
+    };
+    wing(-1, flapL);
+    wing(1, flapR);
+    // corps sombre + antennes
+    ctx.fillStyle = "#1a1a22";
     ctx.beginPath();
-    ctx.ellipse(cx - 4, cy - 1, 5 * flap, 6, -0.5, 0, Math.PI * 2);
-    ctx.ellipse(cx + 4, cy - 1, 5 * flap, 6, 0.5, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy, 1.3, 6, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#7a5418";
-    ctx.fillRect(cx - 1, cy - 6, 2, 12);
-    ctx.fillStyle = "rgba(255,245,210,0.6)"; // reflet
+    ctx.strokeStyle = "rgba(26,26,34,0.8)";
+    ctx.lineWidth = 0.6;
     ctx.beginPath();
-    ctx.arc(cx - 4, cy - 3, 1, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(cx, cy - 5);
+    ctx.lineTo(cx - 1.6, cy - 8);
+    ctx.moveTo(cx, cy - 5);
+    ctx.lineTo(cx + 1.6, cy - 8);
+    ctx.stroke();
   } else {
+    // halo doré pour l'halicte
+    const glow = ctx.createRadialGradient(cx, cy, 1, cx, cy, c.w * 1.3);
+    glow.addColorStop(0, "rgba(244,211,94,0.7)");
+    glow.addColorStop(1, "rgba(244,211,94,0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(cx - c.w * 1.3, cy - c.w * 1.3, c.w * 2.6, c.w * 2.6);
+    const flap = Math.sin(time / 90 + c.bobPhase) * 0.5 + 0.6;
     // halicte : ailes pâles + corps doré ombré
     ctx.fillStyle = "rgba(255,255,255,0.62)";
     ctx.beginPath();
