@@ -92,13 +92,11 @@ function Filaments({ className }: { className?: string }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* L'illustration de la Marcheuse.                                     */
-/* Décor complet (cimetière reverdi, stèles, fleurs, filaments de      */
-/* mycélium, corps, filet à papillons, coiffe ROUGE) — mais SANS aucun */
-/* trait de visage : figure allégorique lisse, intemporelle.           */
-/* Emplacement réservé : déposer public/marcheuse-hero.png recouvre    */
-/* automatiquement ce placeholder (calque background-image, aucun      */
-/* icône « image cassée » si le fichier est absent).                    */
+/* L'illustration de la Marcheuse — boucle vidéo en fond du héros.      */
+/* Le titre « LA MARCHEUSE » est déjà incrusté dans la vidéo et le      */
+/* poster ; aucun titre HTML n'est ajouté par-dessus.                   */
+/* Poster/repli : version .jpg compressée (< 500 Ko) ; le .mp4 sert de  */
+/* boucle ; le .png original (~7 Mo) reste en réserve dans public/.     */
 /* ------------------------------------------------------------------ */
 function MarcheuseHero() {
   const alt =
@@ -107,108 +105,31 @@ function MarcheuseHero() {
     <figure
       role="img"
       aria-label={alt}
-      className="relative mx-auto w-full max-w-[300px]"
+      className="relative mx-auto aspect-[2/3] w-full max-w-[300px] overflow-hidden rounded"
     >
-      <svg
-        viewBox="0 0 320 480"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-auto w-full"
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        poster="/marcheuse-hero-poster.jpg"
         aria-hidden="true"
+        className="absolute inset-0 h-full w-full object-cover"
       >
-        {/* Fond parchemin + bordures herbier */}
-        <rect width="320" height="480" rx="4" fill="#f4ecd2" />
-        <rect x="10" y="10" width="300" height="460" rx="2" stroke="#bf8d2c" strokeWidth="0.8" opacity="0.4" />
-        <rect x="14" y="14" width="292" height="452" rx="2" stroke="#bf8d2c" strokeWidth="0.4" opacity="0.2" />
+        <source src="/marcheuse-hero.mp4" type="video/mp4" />
+        {/* Repli si la vidéo n'est pas lisible : image compressée. */}
+        <img
+          src="/marcheuse-hero-poster.jpg"
+          alt="La Marcheuse, naturaliste au filet à papillons dans un cimetière reverdi"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      </video>
 
-        {/* Sol & végétation */}
-        <ellipse cx="160" cy="430" rx="110" ry="18" fill="#304527" opacity="0.08" />
-        <path d="M60 435 Q80 420 100 430 Q120 440 140 428 Q160 416 180 430 Q200 444 220 430 Q240 416 260 428" stroke="#496c39" strokeWidth="1.2" fill="none" opacity="0.35" />
-        <path d="M75 440 Q85 428 95 435 Q105 442 115 435" stroke="#5f874c" strokeWidth="0.8" fill="none" opacity="0.3" />
-        <path d="M195 438 Q210 426 225 433 Q240 440 255 432" stroke="#5f874c" strokeWidth="0.8" fill="none" opacity="0.3" />
-
-        {/* Filaments mycélium */}
-        <path d="M50 445 Q90 430 120 440 Q150 450 180 438 Q210 426 250 442" stroke="#bf8d2c" strokeWidth="0.6" fill="none" strokeLinecap="round" opacity="0.22" />
-        <path d="M80 450 Q110 436 140 445" stroke="#bf8d2c" strokeWidth="0.5" fill="none" strokeLinecap="round" opacity="0.18" />
-        <path d="M170 448 Q200 438 230 448" stroke="#bf8d2c" strokeWidth="0.5" fill="none" strokeLinecap="round" opacity="0.18" />
-        <circle cx="120" cy="440" r="2" fill="#bf8d2c" opacity="0.2" />
-        <circle cx="180" cy="438" r="1.5" fill="#bf8d2c" opacity="0.18" />
-        <circle cx="220" cy="444" r="1.8" fill="#bf8d2c" opacity="0.2" />
-
-        {/* Fleurs pâles */}
-        <g transform="translate(100,420)" opacity="0.5">
-          <ellipse cx="5" cy="0" rx="3" ry="1.5" fill="#f4ecd2" stroke="#bf8d2c" strokeWidth="0.5" />
-          <ellipse cx="-5" cy="0" rx="3" ry="1.5" fill="#f4ecd2" stroke="#bf8d2c" strokeWidth="0.5" />
-          <ellipse cx="2.5" cy="4.3" rx="3" ry="1.5" transform="rotate(60 2.5 4.3)" fill="#f4ecd2" stroke="#bf8d2c" strokeWidth="0.5" />
-          <ellipse cx="-2.5" cy="4.3" rx="3" ry="1.5" transform="rotate(-60 -2.5 4.3)" fill="#f4ecd2" stroke="#bf8d2c" strokeWidth="0.5" />
-          <circle cx="0" cy="0" r="2" fill="#d4a747" opacity="0.7" />
-        </g>
-        <g transform="translate(160,418)" opacity="0.5">
-          <ellipse cx="5" cy="0" rx="3" ry="1.5" fill="#f4ecd2" stroke="#bf8d2c" strokeWidth="0.5" />
-          <ellipse cx="-5" cy="0" rx="3" ry="1.5" fill="#f4ecd2" stroke="#bf8d2c" strokeWidth="0.5" />
-          <ellipse cx="2.5" cy="4.3" rx="3" ry="1.5" transform="rotate(60 2.5 4.3)" fill="#f4ecd2" stroke="#bf8d2c" strokeWidth="0.5" />
-          <circle cx="0" cy="0" r="2" fill="#d4a747" opacity="0.7" />
-        </g>
-        <g transform="translate(222,421)" opacity="0.45">
-          <ellipse cx="5" cy="0" rx="3" ry="1.5" fill="#f4ecd2" stroke="#bf8d2c" strokeWidth="0.5" />
-          <ellipse cx="-5" cy="0" rx="3" ry="1.5" fill="#f4ecd2" stroke="#bf8d2c" strokeWidth="0.5" />
-          <circle cx="0" cy="0" r="2" fill="#d4a747" opacity="0.7" />
-        </g>
-
-        {/* Stèles */}
-        <rect x="55" y="330" width="22" height="70" rx="2" fill="#e8dfc8" stroke="#653b28" strokeWidth="0.7" opacity="0.45" />
-        <rect x="55" y="324" width="22" height="10" rx="11" fill="#e8dfc8" stroke="#653b28" strokeWidth="0.7" opacity="0.45" />
-        <rect x="245" y="340" width="20" height="60" rx="2" fill="#e8dfc8" stroke="#653b28" strokeWidth="0.7" opacity="0.45" />
-        <rect x="245" y="334" width="20" height="10" rx="10" fill="#e8dfc8" stroke="#653b28" strokeWidth="0.7" opacity="0.45" />
-
-        {/* Corps — robe longue */}
-        <path d="M160 140 C152 160 144 200 140 240 C136 280 134 320 136 380 C138 400 142 415 160 415 C178 415 182 400 184 380 C186 320 184 280 180 240 C176 200 168 160 160 140 Z" fill="#304527" opacity="0.72" />
-        <path d="M135 190 C128 195 122 210 120 230 C126 228 132 220 140 215" fill="#304527" opacity="0.6" />
-        <path d="M185 190 C192 195 198 210 200 230 C194 228 188 220 180 215" fill="#304527" opacity="0.6" />
-
-        {/* Bras gauche + filet à papillons */}
-        <path d="M135 195 Q118 220 108 250 Q100 275 105 285" stroke="#304527" strokeWidth="10" strokeLinecap="round" fill="none" opacity="0.65" />
-        <circle cx="105" cy="287" r="6" fill="#304527" opacity="0.6" />
-        <line x1="105" y1="287" x2="92" y2="340" stroke="#653b28" strokeWidth="1.2" opacity="0.55" />
-        <ellipse cx="92" cy="355" rx="14" ry="18" stroke="#653b28" strokeWidth="1" fill="none" opacity="0.45" />
-        <path d="M78 348 Q92 365 106 348" stroke="#653b28" strokeWidth="0.8" fill="none" opacity="0.3" />
-        <path d="M80 350 L104 350 M82 356 L102 356 M84 362 L100 362" stroke="#653b28" strokeWidth="0.5" opacity="0.25" />
-
-        {/* Bras droit */}
-        <path d="M185 195 Q200 225 202 265" stroke="#304527" strokeWidth="9" strokeLinecap="round" fill="none" opacity="0.55" />
-
-        {/* Cou */}
-        <path d="M152 126 L150 148 Q155 151 160 151 Q165 148 163 126 Q158 123 152 126 Z" fill="#dab890" opacity="0.88" />
-
-        {/* Cheveux — masse gauche */}
-        <path d="M126 86 Q118 105 115 132 Q111 160 116 185 Q120 205 130 220 L140 212 Q140 188 140 165 Q140 142 144 120 Q148 102 155 92 Q147 82 138 76 Q131 72 126 86 Z" fill="#b87c38" opacity="0.78" />
-        <path d="M130 84 Q124 104 122 130 Q120 155 124 178" stroke="#d4a850" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.42" />
-        <path d="M135 78 Q129 98 128 124 Q127 145 130 165" stroke="#e2be68" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.32" />
-
-        {/* Cheveux — masse droite */}
-        <path d="M194 84 Q202 100 204 124 Q206 152 200 176 Q194 198 185 214 L176 206 Q179 182 179 160 Q178 138 175 118 Q171 100 168 88 Q175 78 185 76 Q190 76 194 84 Z" fill="#c48a40" opacity="0.72" />
-        <path d="M190 86 Q196 106 196 132 Q195 158 190 180" stroke="#deb858" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.38" />
-
-        {/* Visage — forme 3/4 LISSE, sans aucun trait (allégorie intemporelle) */}
-        <path d="M128 92 Q126 106 127 120 Q130 134 138 142 Q147 150 159 150 Q172 150 179 141 Q187 131 187 116 Q188 100 184 87 Q178 68 166 62 Q155 56 143 59 Q132 63 128 78 Q126 85 128 92 Z" fill="#e0bc96" />
-        <path d="M128 92 Q126 106 127 120 Q130 134 138 142 Q143 147 150 149" stroke="#c4906a" strokeWidth="5" fill="none" opacity="0.18" strokeLinecap="round" />
-
-        {/* Mèches qui s'envolent sur le visage */}
-        <path d="M170 68 Q174 84 168 100 Q163 115 161 128 Q160 134 161 140" stroke="#c49848" strokeWidth="1.6" fill="none" strokeLinecap="round" opacity="0.58" />
-        <path d="M173 66 Q178 84 173 102 Q169 118 167 132" stroke="#b88838" strokeWidth="1.1" fill="none" strokeLinecap="round" opacity="0.44" />
-        <path d="M167 64 Q170 80 166 96 Q163 110 164 124" stroke="#d4b058" strokeWidth="0.9" fill="none" strokeLinecap="round" opacity="0.38" />
-
-        {/* COIFFE ROUGE — bonnet phrygien (seul accent vif de la page) */}
-        <path d="M132 90 Q135 62 152 47 Q159 40 165 42 Q178 46 180 64 Q182 78 176 88 Q170 96 161 98 L145 101 Q136 99 132 90 Z" fill="#b5331f" opacity="0.93" />
-        <path d="M134 92 Q137 70 150 54 Q157 46 164 48 Q173 52 174 67" stroke="#8a2515" strokeWidth="0.8" fill="none" opacity="0.4" />
-        <path d="M132 90 Q130 96 134 102 Q140 106 147 104 Q154 102 159 98" fill="#8a2515" opacity="0.3" />
-      </svg>
-
-      {/* Vraie illustration en calque : recouvre le placeholder si présente. */}
+      {/* Voile dégradé sombre discret par-dessus, pour la lisibilité. */}
       <div
         aria-hidden
-        className="absolute inset-0 rounded bg-cover bg-center"
-        style={{ backgroundImage: "url('/marcheuse-hero.png')" }}
+        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-mousse-950/40 via-transparent to-transparent"
       />
     </figure>
   );
