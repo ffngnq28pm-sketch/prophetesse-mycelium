@@ -18,9 +18,14 @@
   --line: 99 81 41;
 }
 
-html,
-body {
+/* Le fond OPAQUE est porté par <html> seul (la couche racine). Le <body> reste
+   TRANSPARENT → un calque <FondPeint> en `fixed inset-0 -z-10` n'est plus
+   recouvert par le fond du body (sinon invisible partout). Les pages sans
+   FondPeint gardent un rendu identique : html fournit le même parchemin. */
+html {
   background-color: rgb(var(--bg));
+}
+body {
   color: rgb(var(--fg));
   min-height: 100vh;
   /* Safe area iOS standalone */
@@ -42,7 +47,9 @@ body {
   }
 }
 
-body {
+/* Texture/gradients d'ambiance : sur <html> (la couche racine), donc DERRIÈRE
+   un éventuel FondPeint et jamais par-dessus. */
+html {
   background-image:
     radial-gradient(ellipse at 10% 0%, rgba(94, 134, 76, 0.12), transparent 50%),
     radial-gradient(ellipse at 90% 100%, rgba(154, 103, 58, 0.10), transparent 50%),
@@ -50,7 +57,7 @@ body {
   background-attachment: fixed;
 }
 
-.dark body {
+html.dark {
   background-image:
     radial-gradient(ellipse at 10% 0%, rgba(74, 108, 57, 0.25), transparent 55%),
     radial-gradient(ellipse at 90% 100%, rgba(101, 59, 40, 0.20), transparent 55%),
