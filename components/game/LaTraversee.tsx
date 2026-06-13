@@ -1740,12 +1740,18 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   const headY = -H * 0.95 - breath;
   const hemW = 11; // demi-largeur du bas de cape (évasé)
 
-  // Bas de cape : ondulation (brise idle) + balancement piloté par la vitesse,
-  // et traîne horizontale derrière le sens de marche (la cape suit le mouvement).
-  const capeAmp = 1.3 * M.IDLE_DRIFT + speed * 5 * M.CAPE_SWAY;
+  const swinging = netIsActiveLocal(o, time);
+  // Billow de saut : la cape gonfle vers le haut/arrière en l'air (extension),
+  // streame en chute ; elle retombe à la réception (le squash gère l'absorption).
+  const vfrac = airborne ? Math.min(1, Math.abs(o.vy) / 700) : 0;
+
+  // Bas de cape : ondulation (brise idle) + balancement piloté par la vitesse +
+  // gonflement au swing ; traîne horizontale derrière le sens de marche et en l'air.
+  const capeAmp = 1.3 * M.IDLE_DRIFT + speed * 5 * M.CAPE_SWAY + (swinging ? 3 : 0);
   const hemY = (t: number) =>
-    Math.sin(time * 0.0022 + t * 3.4 + o.walkPhase * 0.5) * capeAmp * (0.35 + t * 0.65);
-  const hemX = (t: number) => -speed * 6 * M.CAPE_SWAY * t; // traîne vers l'arrière
+    Math.sin(time * 0.0022 + t * 3.4 + o.walkPhase * 0.5) * capeAmp * (0.35 + t * 0.65) -
+    vfrac * 6 * (0.3 + t * 0.7);
+  const hemX = (t: number) => -(speed * 6 * M.CAPE_SWAY + vfrac * 5) * t;
 
   // ════════ 1. CAPE (arrière, longue, évasée, feutrée) ════════
   ctx.save();
@@ -1835,7 +1841,6 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   ctx.fill();
 
   // ════════ 3. BRAS + FILET tenu en bâton de marche ════════
-  const swinging = netIsActiveLocal(o, time);
   const handX = 7.5;
   const handY = -H * 0.46;
   // bras
@@ -1845,9 +1850,16 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   ctx.moveTo(2.5, -H * 0.66);
   ctx.quadraticCurveTo(6, -H * 0.56, handX, handY);
   ctx.stroke();
-  // FILET-BÂTON : manche pâle + cerceau ; en marche, il se lève/pose subtilement.
-  const filetWalk = moving && !airborne ? Math.sin(o.walkPhase) * 0.05 : 0;
-  drawFilet(ctx, handX, handY, H, swinging, swinging, filetWalk);
+  // FILET-BÂTON : bâton de marche par défaut. Au swing (input net), arc gracieux ;
+  // en marche, il se lève/pose ; à l'arrêt, lente dérive (regard au loin).
+  const NET_MS = 260; // durée visuelle du balayage (approx., non couplée au moteur)
+  const swingProg = swinging ? Math.min(1, Math.max(0, (time - (o.netUntil - NET_MS)) / NET_MS)) : 0;
+  const filetAngle = swinging
+    ? Math.sin(swingProg * Math.PI) * 1.15
+    : moving && !airborne
+    ? Math.sin(o.walkPhase) * 0.05
+    : Math.sin(time * 0.0006) * 0.05;
+  drawFilet(ctx, handX, handY, H, swinging, swinging, filetAngle);
 
   // ════════ 4. TÊTE + CASQUETTE ROUGE (focale) ════════
   // cou
