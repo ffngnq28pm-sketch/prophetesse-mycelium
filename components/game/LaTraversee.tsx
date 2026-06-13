@@ -18,6 +18,7 @@ import {
 } from "@/lib/traversee-engine";
 import { Button } from "@/components/ui/Button";
 import { useStore } from "@/lib/store";
+import { PeintureDecor } from "@/lib/traversee-peinture";
 
 export interface TraverseeResult {
   tempsMs: number;
@@ -109,138 +110,6 @@ class TraverseeAudio {
   }
 }
 
-// ============ DÉCOR (généré une fois, déterministe) ============
-function mulberry32(seed: number) {
-  let a = seed;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-interface FarTree {
-  x: number;
-  h: number;
-  w: number;
-  cypres: boolean;
-  shade: number;
-}
-interface Mausolee {
-  x: number;
-  w: number;
-  h: number;
-  kind: "chapelle" | "obelisque" | "urne";
-  shade: number;
-}
-type MidKind = "stele" | "steleRonde" | "croix" | "caveau" | "obelisque";
-interface MidProp {
-  x: number;
-  kind: MidKind;
-  h: number;
-  w: number;
-  lean: number;
-  moss: number; // 0..1 niveau de reverdissement
-  lichen: number; // graine pour les taches de lichen
-}
-interface Grass {
-  x: number;
-  h: number;
-  blades: number;
-  hue: number;
-}
-// Couche de cimetière de fond : pierres tombales universellement reconnaissables.
-type BackdropGraveKind = "celtique" | "rip" | "croix" | "arche";
-interface BackdropGrave {
-  x: number;
-  h: number;
-  w: number;
-  lean: number;
-  moss: number;
-  lichen: number;
-  kind: BackdropGraveKind;
-}
-
-interface Decor {
-  farTrees: FarTree[];
-  mausolees: Mausolee[];
-  graves: BackdropGrave[];
-  mid: MidProp[];
-  grass: Grass[];
-}
-
-function buildDecor(worldW: number): Decor {
-  const r = mulberry32(20260602);
-  const farTrees: FarTree[] = [];
-  for (let x = 0; x < worldW; x += 90 + r() * 70) {
-    farTrees.push({
-      x,
-      h: 130 + r() * 160,
-      w: 26 + r() * 26,
-      cypres: r() > 0.45,
-      shade: r(),
-    });
-  }
-  // Mausolées / chapelles funéraires lointains, dans la brume (Père-Lachaise).
-  const mausolees: Mausolee[] = [];
-  for (let x = 120; x < worldW; x += 280 + r() * 260) {
-    const roll = r();
-    mausolees.push({
-      x,
-      w: 40 + r() * 36,
-      h: 70 + r() * 80,
-      kind: roll > 0.62 ? "chapelle" : roll > 0.3 ? "obelisque" : "urne",
-      shade: r(),
-    });
-  }
-  // Couche moyenne : tombes archétypales, TRAPUES et claires (on doit lire
-  // « pierre tombale » au premier regard). Moins nombreuses mais plus grosses.
-  const mid: MidProp[] = [];
-  for (let x = 70; x < worldW; x += 120 + r() * 120) {
-    const roll = r();
-    // stèle à sommet arrondi majoritaire = LA pierre tombale de l'imaginaire
-    const kind: MidKind =
-      roll < 0.46 ? "steleRonde" : roll < 0.62 ? "stele" : roll < 0.8 ? "croix" : roll < 0.92 ? "caveau" : "obelisque";
-    const isCaveau = kind === "caveau";
-    const isCroix = kind === "croix";
-    mid.push({
-      x,
-      kind,
-      h: isCaveau ? 32 + r() * 16 : isCroix ? 58 + r() * 28 : 52 + r() * 30,
-      w: isCaveau ? 66 + r() * 36 : 38 + r() * 22, // grosses et trapues
-      lean: (r() - 0.5) * (isCroix ? 0.5 : 0.14),
-      moss: r(),
-      lichen: r() * 1000,
-    });
-  }
-  // Cimetière de fond : pierres tombales reconnaissables (croix celtique à
-  // anneau, stèle arrondie RIP, croix, arche). Couche dédiée, en retrait.
-  const graves: BackdropGrave[] = [];
-  for (let x = 110; x < worldW; x += 90 + r() * 70) {
-    const roll = r();
-    const kind: BackdropGraveKind =
-      roll < 0.3 ? "celtique" : roll < 0.65 ? "rip" : roll < 0.85 ? "croix" : "arche";
-    const wide = kind === "rip" || kind === "arche";
-    graves.push({
-      x,
-      h: 50 + r() * 40,
-      w: wide ? 30 + r() * 16 : 22 + r() * 12,
-      lean: (r() - 0.5) * (kind === "croix" ? 0.18 : 0.08),
-      moss: r(),
-      lichen: r() * 1000,
-      kind,
-    });
-  }
-  // Herbes de premier plan : rares et courtes (touffes au sol, pas une prairie).
-  const grass: Grass[] = [];
-  for (let x = 0; x < worldW; x += 52 + r() * 60) {
-    grass.push({ x, h: 6 + r() * 9, blades: 2 + Math.floor(r() * 3), hue: r() });
-  }
-  return { farTrees, mausolees, graves, mid, grass };
-}
-
 // ============ PARTICULES & FLEURS (rendu seulement) ============
 interface Flower {
   x: number;
@@ -277,7 +146,7 @@ export function LaTraversee({ onWin }: Props) {
   const lastTimeRef = useRef<number>(0);
   const inputRef = useRef<Input>({ left: false, right: false, jump: false, net: false });
   const audioRef = useRef<TraverseeAudio>(new TraverseeAudio());
-  const decorRef = useRef<Decor | null>(null);
+  const peintureRef = useRef<PeintureDecor | null>(null);
   const flowersRef = useRef<Flower[]>([]);
   const particlesRef = useRef<Particle[]>([]);
   const butterfliesRef = useRef<ButterflyFx[]>([]);
@@ -293,12 +162,22 @@ export function LaTraversee({ onWin }: Props) {
   const setAudioOn = useStore((s) => s.setAudioActif);
   const meilleurScore = useStore((s) => s.meilleurScoreTraversee);
 
-  // Init état + décor au montage (le décor est visible sous l'overlay d'intro).
+  // Init état + décor peint au montage (visible sous l'overlay d'intro).
   useEffect(() => {
     if (!stateRef.current) {
       stateRef.current = createInitialState(performance.now());
-      decorRef.current = buildDecor(stateRef.current.worldW);
     }
+    if (!peintureRef.current) {
+      peintureRef.current = new PeintureDecor();
+      peintureRef.current.preload(); // charge la set « porche » (repli universel)
+    }
+    const onResize = () => peintureRef.current?.refreshQuality();
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
   }, []);
 
   // prefers-reduced-motion : on coupe particules et envol décoratif.
@@ -405,22 +284,29 @@ export function LaTraversee({ onWin }: Props) {
       const dt = Math.min(0.05, (t - last) / 1000);
       lastTimeRef.current = t;
 
-      if (s && canvas) {
+      if (s && canvas && peintureRef.current) {
         const aspect = canvas.clientWidth / Math.max(1, canvas.clientHeight);
         const { viewW, viewH } = step(s, dt, inputRef.current, t, aspect);
         viewRef.current = { w: viewW, h: viewH };
 
+        const peinture = peintureRef.current;
+        const reduce = reducedMotionRef.current;
+        peinture.setActe(s.acte);
+        const scaleNow = (canvas.height || 1) / Math.max(1, viewH);
+        peinture.update(dt, t, s.cam.x, scaleNow, reduce);
+
         drainEvents(s, t);
         render(
           canvas,
+          peinture,
           s,
-          decorRef.current,
           flowersRef.current,
           particlesRef.current,
           butterfliesRef.current,
           t,
           viewW,
-          viewH
+          viewH,
+          reduce
         );
       }
       rafRef.current = requestAnimationFrame(loop);
@@ -774,17 +660,18 @@ function burst(arr: Particle[], x: number, y: number, t: number, color: string, 
 // ============ RENDER ============
 function render(
   canvas: HTMLCanvasElement,
+  peinture: PeintureDecor,
   s: TraverseeState,
-  decor: Decor | null,
   flowers: Flower[],
   particles: Particle[],
   butterflies: ButterflyFx[],
   time: number,
   viewW: number,
-  viewH: number
+  viewH: number,
+  reduce: boolean
 ) {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+  const visible = canvas.getContext("2d");
+  if (!visible) return;
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const cssW = canvas.clientWidth || 800;
@@ -795,100 +682,19 @@ function render(
     canvas.width = tw;
     canvas.height = th;
   }
-  const scale = canvas.height / viewH; // px appareil par unité monde
+  const cw = canvas.width;
+  const ch = canvas.height;
+  const scale = ch / viewH; // px appareil par unité monde
   const cam = s.cam;
 
+  // ══ Scène hors-écran : fond peint (couches + god rays + spores) DERRIÈRE
+  //    le gameplay, puis le gameplay par-dessus. Le post s'applique au tout. ══
+  const ctx = peinture.beginScene(cw, ch);
+  peinture.drawBackdrop(ctx, cam.x, cam.y, scale, cw, ch, time, reduce);
+
+  // Plan de jeu (parallaxe 1) — inchangé fonctionnellement.
   const layer = (px: number, py: number) =>
     ctx.setTransform(scale, 0, 0, scale, -cam.x * px * scale, -cam.y * py * scale);
-
-  // —— 1. Ciel (fixe) ——
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  sky.addColorStop(0, "#3a562f"); // mousse en haut
-  sky.addColorStop(0.42, "#6f6a3e");
-  sky.addColorStop(0.7, "#b89a5a"); // ocre voilé
-  sky.addColorStop(1, "#e9d8ad"); // parchemin bas, brume
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Soleil voilé (léger parallaxe horizontal)
-  const sunX = canvas.width * 0.74 - cam.x * 0.04 * scale;
-  const sunY = canvas.height * 0.26;
-  const sunR = canvas.height * 0.13;
-  const halo = ctx.createRadialGradient(sunX, sunY, sunR * 0.2, sunX, sunY, sunR * 3);
-  halo.addColorStop(0, "rgba(255,244,210,0.85)");
-  halo.addColorStop(0.3, "rgba(244,222,160,0.35)");
-  halo.addColorStop(1, "rgba(244,222,160,0)");
-  ctx.fillStyle = halo;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // —— 1bis. Rayons obliques (god rays) — atmosphère confinée à la bande haute,
-  // dessinés AVANT le décor pour ne pas laver les pierres au sol. ——
-  drawGodRays(ctx, canvas, time, cam.x / s.worldW);
-
-  // —— 2. Arbres lointains (parallaxe 0.22) ——
-  if (decor) {
-    layer(0.22, 0.5);
-    const camLx = cam.x * 0.22;
-    for (const tr of decor.farTrees) {
-      if (tr.x < camLx - 120 || tr.x > camLx + viewW + 120) continue;
-      drawFarTree(ctx, tr);
-    }
-  }
-
-  // —— 2bis. Mausolées lointains (parallaxe 0.32), avalés par la brume ——
-  if (decor) {
-    layer(0.32, 0.6);
-    const camLx = cam.x * 0.32;
-    for (const ma of decor.mausolees) {
-      if (ma.x < camLx - 140 || ma.x > camLx + viewW + 140) continue;
-      drawMausolee(ctx, ma);
-    }
-  }
-
-  // —— 3. Brume basse (parallaxe 0.32) ——
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  const mistY = canvas.height * 0.52;
-  const mist = ctx.createLinearGradient(0, mistY, 0, canvas.height);
-  mist.addColorStop(0, "rgba(233,216,173,0)");
-  mist.addColorStop(0.5, "rgba(224,212,180,0.32)");
-  mist.addColorStop(1, "rgba(214,205,180,0.55)");
-  ctx.fillStyle = mist;
-  ctx.fillRect(0, mistY, canvas.width, canvas.height - mistY);
-
-  // —— 3bis. Voile d'atmosphère sourd DERRIÈRE les tombes (taupe désaturé, pas
-  // vert) : donne un fond contrastant aux pierres, fait reculer le vert. ——
-  const bandTop = canvas.height * 0.4;
-  const bandBot = canvas.height * 0.74;
-  const band = ctx.createLinearGradient(0, bandTop, 0, bandBot);
-  band.addColorStop(0, "rgba(150,140,120,0)");
-  band.addColorStop(0.5, "rgba(150,140,120,0.13)");
-  band.addColorStop(1, "rgba(150,140,120,0)");
-  ctx.fillStyle = band;
-  ctx.fillRect(0, bandTop, canvas.width, bandBot - bandTop);
-
-  // —— 3ter. Cimetière de fond : pierres tombales reconnaissables (parallaxe 0.45),
-  // en retrait derrière le plan moyen mais devant les arbres lointains. ——
-  if (decor) {
-    layer(0.45, 0.72);
-    const camLx = cam.x * 0.45;
-    for (const g of decor.graves) {
-      if (g.x < camLx - 120 || g.x > camLx + viewW + 120) continue;
-      drawBackdropGrave(ctx, g);
-    }
-  }
-
-  // —— 4. Décor moyen : tombes, croix, murs (parallaxe 0.55) ——
-  if (decor) {
-    layer(0.55, 0.78);
-    const camLx = cam.x * 0.55;
-    for (const m of decor.mid) {
-      if (m.x < camLx - 100 || m.x > camLx + viewW + 100) continue;
-      drawMidProp(ctx, m);
-    }
-  }
-
-  // —— 5. Plan de jeu (parallaxe 1) ——
   layer(1, 1);
 
   for (const p of s.platforms) {
@@ -917,371 +723,51 @@ function render(
   }
 
   drawParticles(ctx, particles, time);
-
   drawButterflies(ctx, butterflies, time);
 
+  // Halo de lisibilité sous la Marcheuse : la détache du fond peint plus riche.
+  drawWalkerBacking(ctx, s.olivia);
   drawOlivia(ctx, s.olivia, time);
 
-  // —— 6. Herbes de premier plan (parallaxe 1.25) ——
-  if (decor) {
-    layer(1.25, 1.08);
-    const camLx = cam.x * 1.25;
-    for (const g of decor.grass) {
-      if (g.x < camLx - 60 || g.x > camLx + viewW + 60) continue;
-      drawGrass(ctx, g, time);
-    }
-  }
+  // ══ Composite vers le canvas visible + post (bloom, grade, vignette, grain) ══
+  peinture.present(visible, cw, ch, time, reduce);
 
-  // —— 8. HUD ——
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  drawHUD(ctx, s, cssW);
+  // ══ HUD crisp (au-dessus du post) ══
+  visible.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawHUD(visible, s, cssW);
 
   // Message bienveillant (réapparition)
   if (s.message && time < s.messageUntil) {
     const alpha = Math.min(1, (s.messageUntil - time) / 400);
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = "rgba(19,32,15,0.7)";
-    ctx.font = "italic 15px Georgia, serif";
-    const tw2 = ctx.measureText(s.message).width;
+    visible.globalAlpha = alpha;
+    visible.fillStyle = "rgba(19,32,15,0.7)";
+    visible.font = "italic 15px Georgia, serif";
+    const tw2 = visible.measureText(s.message).width;
     const bx = cssW / 2 - tw2 / 2 - 12;
-    ctx.fillRect(bx, 46, tw2 + 24, 28);
-    ctx.fillStyle = "#f4ecd2";
-    ctx.fillText(s.message, cssW / 2 - tw2 / 2, 65);
-    ctx.globalAlpha = 1;
+    visible.fillRect(bx, 46, tw2 + 24, 28);
+    visible.fillStyle = "#f4ecd2";
+    visible.fillText(s.message, cssW / 2 - tw2 / 2, 65);
+    visible.globalAlpha = 1;
   }
 
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  visible.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+// Halo sombre doux derrière la Marcheuse : sépare sa silhouette du décor peint
+// sans l'alourdir. Dessiné en coords monde (le contexte est déjà en layer(1,1)).
+function drawWalkerBacking(ctx: CanvasRenderingContext2D, o: Olivia) {
+  const cx = o.x + o.w / 2;
+  const cy = o.y + o.h * 0.45;
+  const r = o.h * 0.9;
+  const g = ctx.createRadialGradient(cx, cy, 2, cx, cy, r);
+  g.addColorStop(0, "rgba(16,24,12,0.34)");
+  g.addColorStop(0.6, "rgba(16,24,12,0.16)");
+  g.addColorStop(1, "rgba(16,24,12,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
 }
 
 // ====== Sous-fonctions de rendu (coordonnées monde) ======
-
-function drawFarTree(ctx: CanvasRenderingContext2D, tr: FarTree) {
-  const groundY = 600;
-  const baseShade = 30 + Math.floor(tr.shade * 26);
-  ctx.fillStyle = `rgb(${baseShade - 8}, ${baseShade + 18}, ${baseShade - 4})`;
-  if (tr.cypres) {
-    // Cyprès : colonne fuselée
-    ctx.beginPath();
-    ctx.moveTo(tr.x, groundY);
-    ctx.quadraticCurveTo(tr.x - tr.w * 0.55, groundY - tr.h * 0.5, tr.x, groundY - tr.h);
-    ctx.quadraticCurveTo(tr.x + tr.w * 0.55, groundY - tr.h * 0.5, tr.x, groundY);
-    ctx.fill();
-  } else {
-    // If : touffe arrondie sur tronc court
-    ctx.fillRect(tr.x - 3, groundY - tr.h * 0.4, 6, tr.h * 0.4);
-    ctx.beginPath();
-    ctx.ellipse(tr.x, groundY - tr.h * 0.55, tr.w * 0.8, tr.h * 0.42, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-function drawMausolee(ctx: CanvasRenderingContext2D, ma: Mausolee) {
-  const groundY = 600;
-  // Pierre PÂLE dans la brume : assez claire pour lire « petit édifice funéraire »,
-  // l'alpha + le brouillard (dessiné par-dessus) l'enfoncent dans le lointain.
-  const v = 152 + Math.floor(ma.shade * 38);
-  const stone = `rgba(${v}, ${v - 5}, ${v - 24}, 0.72)`;
-  const dark = "rgba(74,66,52,0.55)";
-  const x = ma.x;
-  if (ma.kind === "chapelle") {
-    const bw = ma.w;
-    const bh = ma.h * 0.6;
-    ctx.fillStyle = stone;
-    ctx.fillRect(x - bw / 2, groundY - bh, bw, bh);
-    // toit pointu
-    ctx.beginPath();
-    ctx.moveTo(x - bw / 2 - 4, groundY - bh);
-    ctx.lineTo(x, groundY - ma.h);
-    ctx.lineTo(x + bw / 2 + 4, groundY - bh);
-    ctx.closePath();
-    ctx.fill();
-    // croix au faîte
-    ctx.fillRect(x - 1.5, groundY - ma.h - 9, 3, 10);
-    ctx.fillRect(x - 4, groundY - ma.h - 6, 9, 3);
-    // porte sombre encadrée
-    ctx.fillStyle = dark;
-    ctx.fillRect(x - bw * 0.15, groundY - bh * 0.72, bw * 0.3, bh * 0.72);
-  } else if (ma.kind === "obelisque") {
-    ctx.fillStyle = stone;
-    ctx.beginPath();
-    ctx.moveTo(x - ma.w * 0.16, groundY);
-    ctx.lineTo(x - ma.w * 0.09, groundY - ma.h * 0.86);
-    ctx.lineTo(x, groundY - ma.h);
-    ctx.lineTo(x + ma.w * 0.09, groundY - ma.h * 0.86);
-    ctx.lineTo(x + ma.w * 0.16, groundY);
-    ctx.closePath();
-    ctx.fill();
-  } else {
-    // colonne surmontée d'une urne
-    const cw = ma.w * 0.42;
-    ctx.fillStyle = stone;
-    ctx.fillRect(x - cw / 2, groundY - ma.h * 0.78, cw, ma.h * 0.78);
-    ctx.beginPath();
-    ctx.ellipse(x, groundY - ma.h * 0.82, cw * 0.8, ma.h * 0.15, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-function drawBackdropGrave(ctx: CanvasRenderingContext2D, g: BackdropGrave) {
-  // Relevées au-dessus de la ligne de sol pour rester visibles en permanence
-  // (pas seulement quand Olivia saute). Décor de fond, posé sur un talus.
-  const groundY = 600 - 90;
-  const hw = g.w / 2;
-  ctx.save();
-  ctx.translate(g.x, groundY);
-
-  // ombre portée au sol
-  ctx.fillStyle = "rgba(40,34,24,0.22)";
-  ctx.beginPath();
-  ctx.ellipse(-g.w * 0.18, 1, g.w * 0.7, 4, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.rotate(g.lean * 0.16);
-
-  const stone = ctx.createLinearGradient(-hw, 0, hw, 0);
-  stone.addColorStop(0, "#e6dec5");
-  stone.addColorStop(1, "#bcb088");
-  ctx.fillStyle = stone;
-  ctx.strokeStyle = "#5a523c"; // contour foncé épais = ce qui rend lisible sur le vert
-  ctx.lineWidth = 2;
-  ctx.lineJoin = "round";
-
-  // socle bas commun
-  const baseW = g.w * 1.18;
-  const baseH = 7;
-  ctx.fillRect(-baseW / 2, -baseH, baseW, baseH);
-  ctx.strokeRect(-baseW / 2, -baseH, baseW, baseH);
-
-  const top = -g.h;
-
-  if (g.kind === "celtique") {
-    const shaftW = Math.max(7, g.w * 0.34);
-    ctx.fillRect(-shaftW / 2, top, shaftW, g.h - baseH);
-    ctx.strokeRect(-shaftW / 2, top, shaftW, g.h - baseH);
-    const crossY = top + g.h * 0.3; // traverse à ~70 % de hauteur depuis le sol
-    const armW = g.w * 1.05;
-    ctx.fillRect(-armW / 2, crossY - shaftW / 2, armW, shaftW);
-    ctx.strokeRect(-armW / 2, crossY - shaftW / 2, armW, shaftW);
-    // ANNEAU centré sur le croisement (la signature celtique)
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(0, crossY, g.w * 0.5, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.lineWidth = 2;
-  } else if (g.kind === "croix") {
-    const shaftW = Math.max(6, g.w * 0.32);
-    ctx.fillRect(-shaftW / 2, top, shaftW, g.h - baseH);
-    ctx.strokeRect(-shaftW / 2, top, shaftW, g.h - baseH);
-    const crossY = top + g.h * 0.28;
-    const armW = g.w * 0.95;
-    ctx.fillRect(-armW / 2, crossY - shaftW / 2, armW, shaftW);
-    ctx.strokeRect(-armW / 2, crossY - shaftW / 2, armW, shaftW);
-  } else if (g.kind === "rip") {
-    // corps rectangulaire + sommet en demi-cercle (la pierre tombale universelle)
-    ctx.beginPath();
-    ctx.moveTo(-hw, -baseH);
-    ctx.lineTo(-hw, top + hw);
-    ctx.arc(0, top + hw, hw, Math.PI, 0);
-    ctx.lineTo(hw, -baseH);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    // croix incisée (emblème générique, aucun nom)
-    ctx.strokeStyle = "rgba(90,82,60,0.5)";
-    ctx.lineWidth = 1.4;
-    const ey = top + hw + 5;
-    ctx.beginPath();
-    ctx.moveTo(0, ey - 6);
-    ctx.lineTo(0, ey + 10);
-    ctx.moveTo(-5.5, ey);
-    ctx.lineTo(5.5, ey);
-    ctx.stroke();
-    ctx.strokeStyle = "#5a523c";
-    ctx.lineWidth = 2;
-  } else {
-    // arche : corps + sommet épaulé en arc
-    ctx.beginPath();
-    ctx.moveTo(-hw, -baseH);
-    ctx.lineTo(-hw, top + hw * 1.2);
-    ctx.quadraticCurveTo(-hw, top, 0, top);
-    ctx.quadraticCurveTo(hw, top, hw, top + hw * 1.2);
-    ctx.lineTo(hw, -baseH);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }
-
-  // accent reverdi sobre : touffe de mousse au pied
-  ctx.fillStyle = `rgba(95,135,76,${0.4 + g.moss * 0.3})`;
-  ctx.beginPath();
-  ctx.ellipse(-hw * 0.4, -2, g.w * 0.32, 4, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // mini-fleur pâle éventuelle
-  if (g.moss > 0.72) {
-    ctx.fillStyle = "#f4ecd2";
-    ctx.beginPath();
-    ctx.arc(hw * 0.5, -4, 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#c9a227";
-    ctx.beginPath();
-    ctx.arc(hw * 0.5, -4, 0.9, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.restore();
-}
-
-function drawMidProp(ctx: CanvasRenderingContext2D, m: MidProp) {
-  const groundY = 600;
-  const hw = m.w / 2;
-  ctx.save();
-  ctx.translate(m.x, groundY);
-
-  // Ombre portée au sol (vers la gauche, opposé au soleil en haut-droite) :
-  // signale « objet posé sur le sol » → empêche de lire « herbe ».
-  ctx.fillStyle = "rgba(40,34,24,0.22)";
-  ctx.beginPath();
-  ctx.ellipse(-m.w * 0.2, 1, m.w * 0.62, 4.5, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.rotate(m.lean * 0.16);
-
-  // Pierre calcaire CLAIRE, léger volume gauche→droite (pas de rayures verticales).
-  const stone = ctx.createLinearGradient(-hw, 0, hw, 0);
-  stone.addColorStop(0, "#e6dec5");
-  stone.addColorStop(0.55, "#d6cca9");
-  stone.addColorStop(1, "#bcb088");
-  const edge = "#8a7e5e";
-  ctx.strokeStyle = edge;
-  ctx.lineWidth = 1.6;
-
-  if (m.kind === "croix") {
-    // croix épaisse, plantée
-    ctx.fillStyle = stone;
-    ctx.fillRect(-5, -m.h, 10, m.h);
-    ctx.fillRect(-15, -m.h + m.h * 0.24, 30, 9);
-    ctx.strokeRect(-5, -m.h, 10, m.h);
-    // lierre, accent vert sur un bras
-    ctx.strokeStyle = `rgba(95,135,76,${0.45 + m.moss * 0.3})`;
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.moveTo(2, 0);
-    ctx.quadraticCurveTo(-3, -m.h * 0.45, 3, -m.h * 0.8);
-    ctx.stroke();
-  } else if (m.kind === "caveau") {
-    // tombeau-coffre bas + dalle débordante (plus large que haut)
-    ctx.fillStyle = stone;
-    roundRectPath(ctx, -hw, -m.h, m.w, m.h, 3);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = "#e6dec5";
-    ctx.fillRect(-hw - 4, -m.h - 7, m.w + 8, 8);
-    ctx.strokeRect(-hw - 4, -m.h - 7, m.w + 8, 8);
-    // gravure érodée suggérée (aucun nom)
-    ctx.strokeStyle = "rgba(120,110,82,0.4)";
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 2; i++) {
-      const ly = -m.h + 9 + i * 7;
-      ctx.beginPath();
-      ctx.moveTo(-hw + 6, ly);
-      ctx.lineTo(hw - 6 - i * 8, ly);
-      ctx.stroke();
-    }
-  } else if (m.kind === "obelisque") {
-    ctx.fillStyle = stone;
-    ctx.beginPath();
-    ctx.moveTo(-hw * 0.58, 0);
-    ctx.lineTo(-hw * 0.4, -m.h * 0.84);
-    ctx.lineTo(0, -m.h);
-    ctx.lineTo(hw * 0.4, -m.h * 0.84);
-    ctx.lineTo(hw * 0.58, 0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  } else {
-    // STÈLE : sommet arrondi (la pierre tombale archétypale) ou plat
-    ctx.fillStyle = stone;
-    ctx.beginPath();
-    if (m.kind === "steleRonde") {
-      ctx.moveTo(-hw, 0);
-      ctx.lineTo(-hw, -m.h + hw);
-      ctx.arc(0, -m.h + hw, hw, Math.PI, 0);
-      ctx.lineTo(hw, 0);
-      ctx.closePath();
-    } else {
-      roundRectPath(ctx, -hw, -m.h, m.w, m.h, 3);
-    }
-    ctx.fill();
-    ctx.stroke();
-    if (m.kind === "steleRonde") {
-      // petite croix incisée sur la face → emblème funéraire (aucun nom)
-      ctx.strokeStyle = "rgba(120,110,82,0.5)";
-      ctx.lineWidth = 1.4;
-      const ey = -m.h + hw + 3;
-      ctx.beginPath();
-      ctx.moveTo(0, ey - 7);
-      ctx.lineTo(0, ey + 9);
-      ctx.moveTo(-5.5, ey - 1);
-      ctx.lineTo(5.5, ey - 1);
-      ctx.stroke();
-    } else {
-      // gravure érodée suggérée
-      ctx.strokeStyle = "rgba(120,110,82,0.38)";
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 2; i++) {
-        const ly = -m.h * 0.5 + i * 6;
-        ctx.beginPath();
-        ctx.moveTo(-hw + 5, ly);
-        ctx.lineTo(hw - 5 - i * 5, ly);
-        ctx.stroke();
-      }
-    }
-  }
-
-  // —— Verdure en ACCENT (~20 %) : coiffe de mousse au sommet + quelques drips ——
-  if (m.kind !== "croix" && m.kind !== "obelisque") {
-    const topY = m.kind === "caveau" ? -m.h - 7 : -m.h;
-    ctx.fillStyle = `rgba(95,135,76,${0.5 + m.moss * 0.35})`;
-    ctx.beginPath();
-    ctx.ellipse(0, topY + 2, hw * 0.88, 3 + m.moss * 3, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // 1-2 coulées de mousse
-    ctx.fillRect(-hw * 0.5, topY + 2, 2.4, 4 + m.moss * 6);
-    ctx.fillRect(hw * 0.45, topY + 2, 2.2, 3 + m.moss * 5);
-  }
-  // taches de lichen (ocre clair, pas vert) — petit accent
-  ctx.fillStyle = "rgba(201,162,39,0.26)";
-  const lr = mulberry32(Math.floor(m.lichen));
-  const spots = 1 + Math.floor(lr() * 2);
-  for (let i = 0; i < spots; i++) {
-    ctx.beginPath();
-    ctx.arc((lr() - 0.5) * m.w * 0.7, -m.h * (0.2 + lr() * 0.5), 1.5 + lr() * 1.3, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.restore();
-}
-
-function drawGrass(ctx: CanvasRenderingContext2D, g: Grass, time: number) {
-  const groundY = 604;
-  const sway = Math.sin(time / 900 + g.x) * 2;
-  ctx.strokeStyle = g.hue > 0.5 ? "rgba(58,86,47,0.9)" : "rgba(74,108,57,0.85)";
-  ctx.lineWidth = 2;
-  for (let i = 0; i < g.blades; i++) {
-    const bx = g.x + (i - g.blades / 2) * 3;
-    ctx.beginPath();
-    ctx.moveTo(bx, groundY);
-    ctx.quadraticCurveTo(bx + sway, groundY - g.h * 0.6, bx + sway * 1.8, groundY - g.h);
-    ctx.stroke();
-  }
-  // ombellifère occasionnelle
-  if (g.hue > 0.82) {
-    ctx.fillStyle = "rgba(244,236,210,0.8)";
-    ctx.beginPath();
-    ctx.arc(g.x + sway * 1.8, groundY - g.h, 4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
 
 function drawPlatform(ctx: CanvasRenderingContext2D, p: Platform, time: number) {
   if (p.kind === "tremplin") {
@@ -2141,33 +1627,6 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
 
 function netIsActiveLocal(o: Olivia, time: number): boolean {
   return time < o.netUntil;
-}
-
-function drawGodRays(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, time: number, progress: number) {
-  const intensity = 0.04 + progress * 0.08;
-  ctx.globalCompositeOperation = "lighter";
-  // Dégradé vertical : plein en haut, éteint avant la ligne de sol → les pierres
-  // restent propres.
-  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  grad.addColorStop(0, `rgba(255,240,200,${intensity})`);
-  grad.addColorStop(0.42, `rgba(255,240,200,${intensity * 0.45})`);
-  grad.addColorStop(0.6, "rgba(255,240,200,0)");
-  grad.addColorStop(1, "rgba(255,240,200,0)");
-  ctx.fillStyle = grad;
-  const rays = 4;
-  for (let i = 0; i < rays; i++) {
-    const drift = Math.sin(time / 4000 + i) * 30;
-    const x = canvas.width * (0.2 + i * 0.22) + drift;
-    const w = canvas.width * 0.12;
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x + w, 0);
-    ctx.lineTo(x + w * 2.4, canvas.height * 0.62);
-    ctx.lineTo(x + w * 1.2, canvas.height * 0.62);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.globalCompositeOperation = "source-over";
 }
 
 function drawHUD(ctx: CanvasRenderingContext2D, s: TraverseeState, cssW: number) {
