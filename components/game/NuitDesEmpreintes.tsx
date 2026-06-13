@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Grille,
@@ -30,15 +30,18 @@ interface JournalEntry {
   fauneMax: number;
 }
 
+// Palette nocturne SOURDE (DA : pas de néons) : sauge → ocre → terre cuite,
+// graduée en chaleur ET en valeur. La graisse + la taille portent aussi
+// l'information — jamais la couleur seule.
 const NUM_COLOR: Record<number, string> = {
-  1: "#6db3e8",
-  2: "#82c878",
-  3: "#e88d6b",
-  4: "#b79ce0",
-  5: "#e0b84a",
-  6: "#57c4c4",
-  7: "#cfcfcf",
-  8: "#9a9a9a",
+  1: "#a8b890",
+  2: "#c9b178",
+  3: "#d49a5e",
+  4: "#c98a6a",
+  5: "#d4b04a",
+  6: "#9ab0a0",
+  7: "#cfc8b0",
+  8: "#a89a88",
 };
 
 export function NuitDesEmpreintes({
@@ -80,24 +83,33 @@ export function NuitDesEmpreintes({
     installerNuit(0);
   };
 
-  const onCell = (x: number, y: number) => {
+  // Bascule un drapeau (mode marquer, clic droit ou appui long).
+  const basculerMarque = (x: number, y: number) => {
     if (phase !== "jeu" || fin) return;
-    const cell = grille[y][x];
+    if (grille[y][x].revelee) return;
+    const g = clonerGrille(grille);
+    g[y][x].marquee = !g[y][x].marquee;
+    setGrille(g);
+  };
 
-    if (mode === "marquer") {
-      if (cell.revelee) return;
-      const g = clonerGrille(grille);
-      g[y][x].marquee = !g[y][x].marquee;
+  // Applique le résultat d'une ou plusieurs sondes sur une grille clonée.
+  const conclureSonde = (g: Grille, gain: number, faune: number, chatDerange: boolean) => {
+    if (chatDerange) {
+      g.forEach((row) => row.forEach((c) => (c.revelee = true)));
       setGrille(g);
+      setFin("chat");
       return;
     }
+    const gagne = nuitGagnee(g);
+    if (gagne) g.forEach((row) => row.forEach((c) => (c.revelee = true)));
+    setGrille(g);
+    setScore((s) => s + gain + (gagne ? BONUS_NUIT : 0));
+    setMammiferes((m) => m + faune);
+    setNuitFaune((n) => n + faune);
+    if (gagne) setFin("clear");
+  };
 
-    // mode sonder
-    if (cell.revelee || cell.marquee) return;
-    const g = boardPlaced ? clonerGrille(grille) : genererGrille(cfg, x, y);
-    if (!boardPlaced) setBoardPlaced(true);
-
-    const revelees = revelerCellule(g, x, y);
+  const compterGains = (g: Grille, revelees: { x: number; y: number }[]) => {
     let gain = 0;
     let faune = 0;
     for (const { x: rx, y: ry } of revelees) {
@@ -107,21 +119,60 @@ export function NuitDesEmpreintes({
         faune += 1;
       }
     }
+    return { gain, faune };
+  };
 
-    if (g[y][x].contenu === "chat") {
-      g.forEach((row) => row.forEach((c) => (c.revelee = true)));
-      setGrille(g);
-      setFin("chat");
+  const onCell = (x: number, y: number) => {
+    if (phase !== "jeu" || fin) return;
+    const cell = grille[y][x];
+
+    if (mode === "marquer") {
+      basculerMarque(x, y);
       return;
     }
 
-    const gagne = nuitGagnee(g);
-    if (gagne) g.forEach((row) => row.forEach((c) => (c.revelee = true)));
-    setGrille(g);
-    setScore((s) => s + gain + (gagne ? BONUS_NUIT : 0));
-    setMammiferes((m) => m + faune);
-    setNuitFaune((n) => n + faune);
-    if (gagne) setFin("clear");
+    // ACCORD (chord) : sonder un chiffre révélé dont les drapeaux voisins
+    // satisfont le compte ouvre d'un coup toutes les voisines non marquées.
+    // Le réflexe des habitué·es du démineur — et un vrai gain de confort.
+    if (cell.revelee) {
+      if (cell.chatsVoisins === 0) return;
+      const rows = grille.length;
+      const cols = grille[0].length;
+      let drapeaux = 0;
+      const cibles: [number, number][] = [];
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx;
+          const ny = y + dy;
+          if (ny < 0 || ny >= rows || nx < 0 || nx >= cols) continue;
+          const v = grille[ny][nx];
+          if (v.marquee) drapeaux++;
+          else if (!v.revelee) cibles.push([nx, ny]);
+        }
+      if (drapeaux !== cell.chatsVoisins || cibles.length === 0) return;
+      const g = clonerGrille(grille);
+      let gain = 0;
+      let faune = 0;
+      let chatDerange = false;
+      for (const [nx, ny] of cibles) {
+        if (g[ny][nx].revelee) continue; // déjà ouverte par un flot précédent
+        const r = compterGains(g, revelerCellule(g, nx, ny));
+        gain += r.gain;
+        faune += r.faune;
+        if (g[ny][nx].contenu === "chat") chatDerange = true;
+      }
+      conclureSonde(g, gain, faune, chatDerange);
+      return;
+    }
+
+    // sonde normale
+    if (cell.marquee) return;
+    const g = boardPlaced ? clonerGrille(grille) : genererGrille(cfg, x, y);
+    if (!boardPlaced) setBoardPlaced(true);
+
+    const { gain, faune } = compterGains(g, revelerCellule(g, x, y));
+    conclureSonde(g, gain, faune, g[y][x].contenu === "chat");
   };
 
   const refermer = () => {
@@ -183,13 +234,17 @@ export function NuitDesEmpreintes({
           <motion.div key="jeu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 font-serif text-xs">
               <span className="text-parchemin-200/75">
-                🐈 chats marqués : {marques}/{cfg.chats} · 🐾 faune : {nuitFaune}/{cfg.faune}
+                🐈 marqués : {marques}/{cfg.chats} (reste {Math.max(0, cfg.chats - marques)}) · 🐾 faune :{" "}
+                {nuitFaune}/{cfg.faune}
               </span>
               <div className="flex gap-1">
                 <ModeBtn actif={mode === "sonder"} onClick={() => setMode("sonder")} label="🔦 Sonder" />
                 <ModeBtn actif={mode === "marquer"} onClick={() => setMode("marquer")} label="🚩 Marquer" />
               </div>
             </div>
+            <p className="mb-2 text-center font-serif text-[11px] italic text-parchemin-200/55">
+              Appui long ou clic droit : marquer. Toucher un chiffre satisfait : ouvrir ses voisines d'un coup.
+            </p>
 
             <div className="mx-auto w-full" style={{ maxWidth: cfg.cols * 52 }}>
               <div
@@ -198,7 +253,13 @@ export function NuitDesEmpreintes({
               >
                 {grille.flatMap((row, y) =>
                   row.map((c, x) => (
-                    <CelluleBtn key={`${x}-${y}`} c={c} fige={!!fin} onClick={() => onCell(x, y)} />
+                    <CelluleBtn
+                      key={`${x}-${y}`}
+                      c={c}
+                      fige={!!fin}
+                      onClick={() => onCell(x, y)}
+                      onFlag={() => basculerMarque(x, y)}
+                    />
                   ))
                 )}
               </div>
@@ -396,11 +457,40 @@ function CelluleBtn({
   c,
   fige,
   onClick,
+  onFlag,
 }: {
   c: { contenu: string; chatsVoisins: number; revelee: boolean; marquee: boolean };
   fige: boolean;
   onClick: () => void;
+  onFlag: () => void;
 }) {
+  // Appui long (~420 ms) = marquer, sans changer de mode. Le clic qui suit un
+  // appui long est avalé. Clic droit = marquer aussi (desktop).
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressed = useRef(false);
+
+  const startPress = () => {
+    if (fige || c.revelee) return;
+    longPressed.current = false;
+    pressTimer.current = setTimeout(() => {
+      longPressed.current = true;
+      onFlag();
+    }, 420);
+  };
+  const cancelPress = () => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  };
+  const handleClick = () => {
+    if (longPressed.current) {
+      longPressed.current = false;
+      return;
+    }
+    onClick();
+  };
+
   const estFaune = c.contenu === "herisson" || c.contenu === "micromammifere" || c.contenu === "fouine";
 
   let contenu: React.ReactNode = null;
@@ -424,7 +514,15 @@ function CelluleBtn({
     border = "1px solid rgba(255,255,255,0.04)";
     if (c.chatsVoisins > 0) {
       contenu = (
-        <span style={{ color: NUM_COLOR[c.chatsVoisins] ?? "#cfcfcf", fontWeight: 700 }}>
+        <span
+          style={{
+            color: NUM_COLOR[c.chatsVoisins] ?? "#cfc8b0",
+            fontWeight: 700,
+            // les grands chiffres pèsent plus lourd à l'œil (info ≠ couleur seule)
+            fontSize: c.chatsVoisins >= 4 ? "1.06em" : "1em",
+            textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+          }}
+        >
           {c.chatsVoisins}
         </span>
       );
@@ -433,15 +531,25 @@ function CelluleBtn({
 
   return (
     <button
-      onClick={onClick}
+      onClick={handleClick}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        if (!fige && !c.revelee) onFlag();
+      }}
+      onPointerDown={startPress}
+      onPointerUp={cancelPress}
+      onPointerLeave={cancelPress}
+      onPointerCancel={cancelPress}
       disabled={fige}
       aria-label={c.revelee ? "case révélée" : c.marquee ? "case marquée" : "case à sonder"}
-      className="flex aspect-square items-center justify-center rounded-[3px] font-serif transition"
+      className="flex aspect-square select-none items-center justify-center rounded-[3px] font-serif transition"
       style={{
         background: bg,
         border,
         fontSize: "min(4.2vw, 1.05rem)",
-        cursor: fige || c.revelee ? "default" : "pointer",
+        cursor: fige ? "default" : "pointer",
+        touchAction: "manipulation",
+        WebkitTouchCallout: "none",
       }}
     >
       {contenu}
