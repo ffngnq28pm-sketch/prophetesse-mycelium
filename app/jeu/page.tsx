@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Ornement } from "@/components/liturgical/Ornement";
 import { Hydrated } from "@/components/liturgical/Hydrated";
 import { HelpButton } from "@/components/liturgical/HelpButton";
-import { Trees, Gamepad2 } from "lucide-react";
+import { JeuIllustration } from "@/components/game/JeuIllustration";
+import { Trees } from "lucide-react";
 
 export default function HubJeux() {
   return (
@@ -31,6 +32,55 @@ export default function HubJeux() {
   );
 }
 
+// Carte commune du hub : illustration en tête, contenu, badges, appel.
+function CarteJeu({
+  href,
+  segment,
+  embleme,
+  numero,
+  titre,
+  desc,
+  badges,
+  note,
+  appel,
+}: {
+  href: string;
+  segment: string;
+  embleme: string;
+  numero: string;
+  titre: string;
+  desc: string;
+  badges: { label: string; grace?: boolean }[];
+  note: string;
+  appel: string;
+}) {
+  return (
+    <Link href={href} className="group">
+      <Card className="h-full overflow-hidden transition hover:border-ocre-500/60 hover:bg-mousse-100/50 dark:hover:bg-mousse-900/40">
+        <JeuIllustration segment={segment} embleme={embleme} alt={`Illustration — ${titre}`} />
+        <CardSubtitle>{numero}</CardSubtitle>
+        <div className="flex items-baseline gap-3">
+          <span className="text-2xl" aria-hidden>
+            {embleme}
+          </span>
+          <CardTitle>{titre}</CardTitle>
+        </div>
+        <p className="mt-2 font-serif text-sm italic text-mousse-700 dark:text-parchemin-200/80">{desc}</p>
+        <Ornement />
+        <div className="flex flex-wrap gap-2">
+          {badges.map((b) => (
+            <Badge key={b.label} variant={b.grace ? "grace" : "outline"}>
+              {b.label}
+            </Badge>
+          ))}
+        </div>
+        <p className="mt-3 font-serif text-xs italic text-mousse-700 dark:text-parchemin-200/70">{note}</p>
+        <p className="mt-2 font-serif text-xs text-ocre-700 group-hover:underline dark:text-ocre-400">{appel}</p>
+      </Card>
+    </Link>
+  );
+}
+
 function Contenu() {
   const meilleurTetris = useStore((s) => s.meilleurScoreTetris);
   const partiesTetris = useStore((s) => s.partiesTetris);
@@ -44,7 +94,7 @@ function Contenu() {
   const partiesEmpreintes = useStore((s) => s.partiesEmpreintes);
   const mammiferes = useStore((s) => s.mammiferesRecenses);
   const meilleurTempsTraversee = useStore((s) => s.meilleurTempsTraversee);
-  const meilleursPollTraversee = useStore((s) => s.meilleursPollinisateursTraversee);
+  const meilleurScoreTraversee = useStore((s) => s.meilleurScoreTraversee);
   const partiesTraversee = useStore((s) => s.partiesTraversee);
   const graines = useStore((s) => s.graines);
   const verbeParties = useStore((s) => s.verbeParties);
@@ -78,132 +128,87 @@ function Contenu() {
         </div>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Link href="/jeu/compost" className="group">
-          <Card className="h-full transition hover:border-ocre-500/60 hover:bg-mousse-100/50 dark:hover:bg-mousse-900/40">
-            <CardSubtitle>Jeu I</CardSubtitle>
-            <div className="flex items-baseline gap-3">
-              <span className="text-3xl">🧱</span>
-              <CardTitle>La Chute du Compost</CardTitle>
-            </div>
-            <p className="mt-2 font-serif text-sm italic text-mousse-700 dark:text-parchemin-200/80">
-              Trie tes déchets en empilant des pièces. Une ligne 100% compost te vaut une bénédiction du Mycélium. Une dosette en ligne te vaut une malédiction — proportionnée mais sentie.
-            </p>
-            <Ornement />
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="grace">Meilleur : {meilleurTetris}</Badge>
-              <Badge variant="outline">Parties : {partiesTetris}</Badge>
-              <Badge variant="outline">{lignesCompostees * 2} kg compostés</Badge>
-            </div>
-            <p className="mt-3 font-serif text-xs italic text-mousse-700 dark:text-parchemin-200/70">
-              Score ÷ 50 = Graines à planter.
-            </p>
-            <p className="mt-2 font-serif text-xs text-ocre-700 group-hover:underline dark:text-ocre-400">
-              Entrer dans la Chute →
-            </p>
-          </Card>
-        </Link>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <CarteJeu
+          href="/jeu/compost"
+          segment="compost"
+          embleme="🧱"
+          numero="Jeu I"
+          titre="La Chute du Compost"
+          desc="Trie tes déchets en empilant des pièces. Une ligne 100% compost te vaut une bénédiction du Mycélium. Une dosette en ligne te vaut une malédiction — proportionnée mais sentie."
+          badges={[
+            { label: `Meilleur : ${meilleurTetris}`, grace: true },
+            { label: `Parties : ${partiesTetris}` },
+            { label: `${lignesCompostees * 2} kg compostés` },
+          ]}
+          note="Score ÷ 50 = Graines à planter."
+          appel="Entrer dans la Chute →"
+        />
 
-        <Link href="/jeu/pac-marcheuse" className="group">
-          <Card className="h-full transition hover:border-ocre-500/60 hover:bg-mousse-100/50 dark:hover:bg-mousse-900/40">
-            <CardSubtitle>Jeu II</CardSubtitle>
-            <div className="flex items-baseline gap-3">
-              <span className="text-3xl">🦔</span>
-              <CardTitle>La Chasse aux Pollinisateurs</CardTitle>
-            </div>
-            <p className="mt-2 font-serif text-sm italic text-mousse-700 dark:text-parchemin-200/80">
-              Une disciple (blonde, casquette rouge, filet à insectes) court dans les cimetières d'Île-de-France pour recenser tous les pollinisateurs. Quatre fantômes la poursuivent. Une gorgée de café filtre lui donne la Sainte Colère.
-            </p>
-            <Ornement />
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="grace">Meilleur : {meilleurPac}</Badge>
-              <Badge variant="outline">Niveau max : {niveauMaxPac}/5</Badge>
-              <Badge variant="outline">Parties : {partiesPac}</Badge>
-              <Badge variant="outline">{pollinisateurs} recensés</Badge>
-              <Badge variant="outline">{fantomesTabasses} fantômes tabassés</Badge>
-            </div>
-            <p className="mt-3 font-serif text-xs italic text-mousse-700 dark:text-parchemin-200/70">
-              Score ÷ 80 = Graines à planter.
-            </p>
-            <p className="mt-2 font-serif text-xs text-ocre-700 group-hover:underline dark:text-ocre-400">
-              Entrer dans le cimetière →
-            </p>
-          </Card>
-        </Link>
+        <CarteJeu
+          href="/jeu/pac-marcheuse"
+          segment="pac-marcheuse"
+          embleme="🦔"
+          numero="Jeu II"
+          titre="La Chasse aux Pollinisateurs"
+          desc="La Marcheuse (casquette rouge, filet à insectes) court dans les cimetières d'Île-de-France pour recenser tous les pollinisateurs. Quatre fantômes la poursuivent. Une gorgée de café filtre lui donne la Sainte Colère."
+          badges={[
+            { label: `Meilleur : ${meilleurPac}`, grace: true },
+            { label: `Niveau max : ${niveauMaxPac}/5` },
+            { label: `Parties : ${partiesPac}` },
+            { label: `${pollinisateurs} recensés` },
+            { label: `${fantomesTabasses} fantômes tabassés` },
+          ]}
+          note="Score ÷ 80 = Graines à planter."
+          appel="Entrer dans le cimetière →"
+        />
 
-        <Link href="/jeu/nuit-des-empreintes" className="group">
-          <Card className="h-full transition hover:border-ocre-500/60 hover:bg-mousse-100/50 dark:hover:bg-mousse-900/40">
-            <CardSubtitle>Jeu III</CardSubtitle>
-            <div className="flex items-baseline gap-3">
-              <span className="text-3xl">🐾</span>
-              <CardTitle>La Nuit des Empreintes</CardTitle>
-            </div>
-            <p className="mt-2 font-serif text-sm italic text-mousse-700 dark:text-parchemin-200/80">
-              Une grille de cimetière, la nuit. Déduis où dorment les chats à partir des empreintes voisines, dégage le terrain sûr et recense la faune cachée — sans en déranger un seul. Un puzzle de logique.
-            </p>
-            <Ornement />
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="grace">Meilleur : {meilleurEmpreintes}</Badge>
-              <Badge variant="outline">Parties : {partiesEmpreintes}</Badge>
-              <Badge variant="outline">{mammiferes} mammifères recensés</Badge>
-            </div>
-            <p className="mt-3 font-serif text-xs italic text-mousse-700 dark:text-parchemin-200/70">
-              Score ÷ 50 = Graines à planter.
-            </p>
-            <p className="mt-2 font-serif text-xs text-ocre-700 group-hover:underline dark:text-ocre-400">
-              Entrer dans la nuit →
-            </p>
-          </Card>
-        </Link>
+        <CarteJeu
+          href="/jeu/nuit-des-empreintes"
+          segment="nuit-des-empreintes"
+          embleme="🐾"
+          numero="Jeu III"
+          titre="La Nuit des Empreintes"
+          desc="Une grille de cimetière, la nuit. Déduis où dorment les chats à partir des empreintes voisines, dégage le terrain sûr et recense la faune cachée — sans en déranger un seul. Un puzzle de logique."
+          badges={[
+            { label: `Meilleur : ${meilleurEmpreintes}`, grace: true },
+            { label: `Parties : ${partiesEmpreintes}` },
+            { label: `${mammiferes} mammifères recensés` },
+          ]}
+          note="Score ÷ 50 = Graines à planter."
+          appel="Entrer dans la nuit →"
+        />
 
-        <Link href="/jeu/traversee" className="group">
-          <Card className="h-full transition hover:border-ocre-500/60 hover:bg-mousse-100/50 dark:hover:bg-mousse-900/40">
-            <CardSubtitle>Jeu IV</CardSubtitle>
-            <div className="flex items-baseline gap-3">
-              <span className="text-3xl">🍄</span>
-              <CardTitle>Le Sentier des Spores</CardTitle>
-            </div>
-            <p className="mt-2 font-serif text-sm italic text-mousse-700 dark:text-parchemin-200/80">
-              Un platformer. La Marcheuse, casquette rouge et filet à la main, traverse un cimetière reverdi : elle saute par-dessus dosettes et tondeuses, attrape les pollinisateurs au filet, et rejoint le grand If sacré. Une fleur pousse sous chacun de ses pas.
-            </p>
-            <Ornement />
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="grace">Meilleur temps : {tempsTraverseeLabel}</Badge>
-              <Badge variant="outline">Pollinisateurs : {meilleursPollTraversee}/10</Badge>
-              <Badge variant="outline">Traversées : {partiesTraversee}</Badge>
-            </div>
-            <p className="mt-3 font-serif text-xs italic text-mousse-700 dark:text-parchemin-200/70">
-              Pollinisateurs + graines = Graines à planter.
-            </p>
-            <p className="mt-2 font-serif text-xs text-ocre-700 group-hover:underline dark:text-ocre-400">
-              Entrer sur le sentier →
-            </p>
-          </Card>
-        </Link>
+        <CarteJeu
+          href="/jeu/traversee"
+          segment="traversee"
+          embleme="🍄"
+          numero="Jeu IV"
+          titre="Le Sentier des Spores"
+          desc="Un platformer en trois actes. La Marcheuse traverse un cimetière reverdi : champignons-tremplins, plateformes friables, lanternes-refuges — jusqu'au grand If sacré. Une fleur pousse sous chacun de ses pas."
+          badges={[
+            { label: `Meilleur score : ${meilleurScoreTraversee || "—"}`, grace: true },
+            { label: `Meilleur temps : ${tempsTraverseeLabel}` },
+            { label: `Traversées : ${partiesTraversee}` },
+          ]}
+          note="Pollinisateurs + spores = Graines à planter."
+          appel="Entrer sur le sentier →"
+        />
 
-        <Link href="/jeu/verbe" className="group">
-          <Card className="h-full transition hover:border-ocre-500/60 hover:bg-mousse-100/50 dark:hover:bg-mousse-900/40">
-            <CardSubtitle>Jeu V</CardSubtitle>
-            <div className="flex items-baseline gap-3">
-              <span className="text-3xl">📜</span>
-              <CardTitle>Le Verbe du Jour</CardTitle>
-            </div>
-            <p className="mt-2 font-serif text-sm italic text-mousse-700 dark:text-parchemin-200/80">
-              Devine le Verbe du Jour. Un seul mot, six tentatives, une révélation à la clé. Le même pour tout l'Ordre, qui change à minuit — et l'on ne prononce que les paroles du canon.
-            </p>
-            <Ornement />
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="grace">Meilleure série : {verbeMeilleurStreak}</Badge>
-              <Badge variant="outline">{verbesTrouves} Verbe{verbesTrouves > 1 ? "s" : ""} trouvé{verbesTrouves > 1 ? "s" : ""}</Badge>
-            </div>
-            <p className="mt-3 font-serif text-xs italic text-mousse-700 dark:text-parchemin-200/70">
-              Un Verbe par jour. La série récompense l'assiduité.
-            </p>
-            <p className="mt-2 font-serif text-xs text-ocre-700 group-hover:underline dark:text-ocre-400">
-              Prononcer le Verbe →
-            </p>
-          </Card>
-        </Link>
+        <CarteJeu
+          href="/jeu/verbe"
+          segment="verbe"
+          embleme="📜"
+          numero="Jeu V · Office quotidien"
+          titre="Le Verbe du Jour"
+          desc="Devine le Verbe du Jour. Un seul mot, six tentatives, une révélation à la clé. Le même pour tout l'Ordre, qui change à minuit — et l'on ne prononce que les paroles du canon."
+          badges={[
+            { label: `Meilleure série : ${verbeMeilleurStreak}`, grace: true },
+            { label: `${verbesTrouves} Verbe${verbesTrouves > 1 ? "s" : ""} trouvé${verbesTrouves > 1 ? "s" : ""}` },
+          ]}
+          note="Un Verbe par jour. La série récompense l'assiduité."
+          appel="Prononcer le Verbe →"
+        />
       </div>
 
       <Card>

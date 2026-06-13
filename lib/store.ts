@@ -109,6 +109,7 @@ export interface ProphetesseData {
   historiqueEmpreintes: PartieEmpreintes[];
   tutoEmpreintesFait: boolean;
   // Jeu IV — Le Sentier des Spores (platformer)
+  meilleurScoreTraversee: number; // score composite V6 (pollinisateurs + spores + temps)
   meilleurTempsTraversee: number; // ms, 0 = jamais terminé
   meilleursPollinisateursTraversee: number; // record en une traversée
   partiesTraversee: number;
@@ -199,6 +200,7 @@ const initialState: ProphetesseData = {
   mammiferesRecenses: 0,
   historiqueEmpreintes: [] as PartieEmpreintes[],
   tutoEmpreintesFait: false,
+  meilleurScoreTraversee: 0,
   meilleurTempsTraversee: 0,
   meilleursPollinisateursTraversee: 0,
   partiesTraversee: 0,
