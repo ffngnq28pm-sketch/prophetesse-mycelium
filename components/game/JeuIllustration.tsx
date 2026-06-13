@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 
 // En-tête illustré d'une carte du hub des jeux.
-// L'image vit dans public/jeux/<segment>.png (source 2:3, cadrée 3:2 sur le
-// tiers supérieur). Elle est posée en background-image CSS et n'est rendue
+// La vignette peinte vit dans public/banque/jeux/<segment>.webp (optimisée par
+// npm run banque). Elle est posée en background-image CSS et n'est rendue
 // qu'une fois sa présence confirmée par une sonde → JAMAIS d'icône « image
-// cassée », même un instant ; sinon placeholder parchemin texturé.
+// cassée », même un instant ; sinon placeholder parchemin texturé (l'emoji ne
+// reste qu'en repli quand le fichier manque).
 export function JeuIllustration({
   segment,
   embleme,
@@ -16,7 +17,7 @@ export function JeuIllustration({
   embleme: string;
   alt: string;
 }) {
-  const url = `/jeux/${segment}.png`;
+  const url = `/banque/jeux/${segment}.webp`;
   const [statut, setStatut] = useState<"loading" | "ok" | "absent">("loading");
   useEffect(() => {
     let vivant = true;

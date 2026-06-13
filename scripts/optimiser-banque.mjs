@@ -21,6 +21,7 @@ const ROLES = {
   fonds: { maxW: 2000, quality: 72 }, // fonds d'écran ambiants (< 320 Ko visés)
   illustrations: { maxW: 1280, quality: 75 },
   textures: { maxW: 1280, quality: 68 },
+  jeux: { maxW: 1024, quality: 72 }, // vignettes des cartes du hub (< 250 Ko visés)
 };
 
 // Décors peints des jeux : mêmes règles, par acte. (cf. docs/PORT-TRAVERSEE.md)
