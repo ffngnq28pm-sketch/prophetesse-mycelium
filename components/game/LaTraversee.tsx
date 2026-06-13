@@ -1726,15 +1726,26 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   ctx.scale(M.ECHELLE, M.ECHELLE);
 
   const H = o.h; // unité de proportion (38)
+  const speed = Math.min(1, Math.abs(o.vx) / 160);
+
+  // Inclinaison avant du torse en marche : cisaillement unifié (le haut penche
+  // vers l'avant, le bas de cape reste planté). Bob vertical minimal, élégant.
+  const lean = moving && !airborne ? speed * 0.12 : 0;
+  if (lean) ctx.transform(1, 0, -lean, 1, 0, 0);
+  const bob = moving && !airborne ? -Math.abs(Math.sin(o.walkPhase)) * 0.8 : 0;
+  if (bob) ctx.translate(0, bob);
+
   const breath = o.onGround && !moving ? Math.sin(time / 900) * 0.5 : 0;
   const neckY = -H * 0.82 - breath;
   const headY = -H * 0.95 - breath;
   const hemW = 11; // demi-largeur du bas de cape (évasé)
 
-  // Bas de cape : points ondulants (Phase 1 = brise douce). Amplitude étendue
-  // en Phase 2 (marche) et Phase 3 (idle/saut).
-  const capeAmp = 1.3 * M.IDLE_DRIFT;
-  const hemY = (t: number) => Math.sin(time * 0.0022 + t * 3.4) * capeAmp * (0.35 + t * 0.65);
+  // Bas de cape : ondulation (brise idle) + balancement piloté par la vitesse,
+  // et traîne horizontale derrière le sens de marche (la cape suit le mouvement).
+  const capeAmp = 1.3 * M.IDLE_DRIFT + speed * 5 * M.CAPE_SWAY;
+  const hemY = (t: number) =>
+    Math.sin(time * 0.0022 + t * 3.4 + o.walkPhase * 0.5) * capeAmp * (0.35 + t * 0.65);
+  const hemX = (t: number) => -speed * 6 * M.CAPE_SWAY * t; // traîne vers l'arrière
 
   // ════════ 1. CAPE (arrière, longue, évasée, feutrée) ════════
   ctx.save();
@@ -1747,10 +1758,10 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   ctx.fillStyle = capeGrad;
   ctx.beginPath();
   ctx.moveTo(-4, neckY); // épaule arrière
-  ctx.quadraticCurveTo(-hemW - 2, -H * 0.45, -hemW, hemY(0)); // descente gauche
+  ctx.quadraticCurveTo(-hemW - 2, -H * 0.45, -hemW + hemX(0), hemY(0)); // descente gauche
   for (let i = 1; i <= 5; i++) {
     const t = i / 5;
-    ctx.lineTo(-hemW + 2 * hemW * t, hemY(t)); // ourlet ondulant
+    ctx.lineTo(-hemW + 2 * hemW * t + hemX(t), hemY(t)); // ourlet ondulant + traîne
   }
   ctx.quadraticCurveTo(hemW + 2, -H * 0.45, 4, neckY); // remontée droite
   ctx.closePath();
@@ -1779,12 +1790,14 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
     ctx.lineTo(6, -7);
     ctx.stroke();
   } else if (moving) {
-    const sw = Math.sin(o.walkPhase) * 5;
+    // foulée allongée (pèlerine), pas une trottinette
+    const sw = Math.sin(o.walkPhase) * 6.5;
+    const lift = Math.max(0, Math.sin(o.walkPhase)) * 2;
     ctx.beginPath();
     ctx.moveTo(-2, -H * 0.3);
-    ctx.lineTo(-2 + sw, -1);
+    ctx.lineTo(-2 + sw, -1 - lift);
     ctx.moveTo(2, -H * 0.3);
-    ctx.lineTo(2 - sw, -1);
+    ctx.lineTo(2 - sw, -1 - Math.max(0, -Math.sin(o.walkPhase)) * 2);
     ctx.stroke();
   } else {
     ctx.beginPath();
@@ -1832,8 +1845,9 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   ctx.moveTo(2.5, -H * 0.66);
   ctx.quadraticCurveTo(6, -H * 0.56, handX, handY);
   ctx.stroke();
-  // FILET-BÂTON : manche vertical pâle, cerceau + maille translucide en haut.
-  drawFilet(ctx, handX, handY, H, swinging, false, 0);
+  // FILET-BÂTON : manche pâle + cerceau ; en marche, il se lève/pose subtilement.
+  const filetWalk = moving && !airborne ? Math.sin(o.walkPhase) * 0.05 : 0;
+  drawFilet(ctx, handX, handY, H, swinging, swinging, filetWalk);
 
   // ════════ 4. TÊTE + CASQUETTE ROUGE (focale) ════════
   // cou
@@ -1880,7 +1894,7 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   ctx.strokeStyle = "rgba(255,228,150,0.5)";
   ctx.lineWidth = 1.2;
   ctx.beginPath();
-  ctx.moveTo(hemW, hemY(1));
+  ctx.moveTo(hemW + hemX(1), hemY(1));
   ctx.quadraticCurveTo(hemW + 2, -H * 0.45, 4, neckY);
   ctx.stroke();
   // touche de rim sur l'épaule/tête avant
