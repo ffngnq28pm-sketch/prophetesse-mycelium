@@ -39,6 +39,28 @@ interface Props {
 // ============ PALETTE ============
 // (Les couleurs de la Marcheuse vivent dans le bloc MARCHEUSE, plus bas.)
 
+// Texte de jeu (HUD, messages, titres d'acte) : vert très foncé + halo clair
+// qui SUIT les glyphes → lisible sur fond clair cramé comme sur feuillage
+// sombre, jamais de boîte/scrim à aligner. HALO dial-able.
+const TEXTE = { COULEUR: "#16271a", HALO: 0.92, HALO_BLUR: 4 };
+
+// Dessine un texte lisible : remplit en vert foncé avec un halo pâle (ombre qui
+// colle aux lettres, doublée pour porter sur fond sombre) + fin liseré clair.
+// La police, l'alignement et le baseline sont ceux déjà posés sur ctx.
+function drawTexteLisible(ctx: CanvasRenderingContext2D, txt: string, x: number, y: number) {
+  ctx.save();
+  ctx.shadowColor = `rgba(244,240,222,${TEXTE.HALO})`;
+  ctx.shadowBlur = TEXTE.HALO_BLUR;
+  ctx.fillStyle = TEXTE.COULEUR;
+  ctx.fillText(txt, x, y);
+  ctx.fillText(txt, x, y); // halo doublé (ombre cumulée) pour les fonds sombres
+  ctx.shadowBlur = 0;
+  ctx.lineWidth = 0.6;
+  ctx.strokeStyle = "rgba(244,240,222,0.35)";
+  ctx.strokeText(txt, x, y);
+  ctx.restore();
+}
+
 // ============ AUDIO (procédural, WebAudio) ============
 class TraverseeAudio {
   ctx: AudioContext | null = null;
@@ -767,17 +789,16 @@ function render(
   visible.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawHUD(visible, s, cssW);
 
-  // Message bienveillant (réapparition)
+  // Message bienveillant (réapparition / titre d'acte / lanterne) — vert foncé
+  // + halo qui suit les lettres, plus de panneau vert à aligner.
   if (s.message && time < s.messageUntil) {
     const alpha = Math.min(1, (s.messageUntil - time) / 400);
     visible.globalAlpha = alpha;
-    visible.fillStyle = "rgba(19,32,15,0.7)";
     visible.font = "italic 15px Georgia, serif";
-    const tw2 = visible.measureText(s.message).width;
-    const bx = cssW / 2 - tw2 / 2 - 12;
-    visible.fillRect(bx, 46, tw2 + 24, 28);
-    visible.fillStyle = "#f4ecd2";
-    visible.fillText(s.message, cssW / 2 - tw2 / 2, 65);
+    visible.textAlign = "center";
+    visible.textBaseline = "alphabetic";
+    drawTexteLisible(visible, s.message, cssW / 2, 64);
+    visible.textAlign = "left";
     visible.globalAlpha = 1;
   }
 
@@ -2069,8 +2090,9 @@ function netIsActiveLocal(o: Olivia, time: number): boolean {
 function drawHUD(ctx: CanvasRenderingContext2D, s: TraverseeState, cssW: number) {
   const pad = 10;
   ctx.font = "600 14px Georgia, serif";
+  ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  // fond léger
+  // Vert foncé + halo qui suit les glyphes — plus de pastilles vertes.
   const items = [
     `⏱ ${formatTime(s.stats.elapsedMs)}`,
     `🦋 ${s.stats.pollinisateursCaught}/${s.stats.pollinisateursTotal}`,
@@ -2079,13 +2101,8 @@ function drawHUD(ctx: CanvasRenderingContext2D, s: TraverseeState, cssW: number)
   ];
   let x = pad;
   for (const it of items) {
-    const w = ctx.measureText(it).width + 16;
-    ctx.fillStyle = "rgba(19,32,15,0.45)";
-    roundRectPath(ctx, x, pad, w, 24, 12);
-    ctx.fill();
-    ctx.fillStyle = "#f4ecd2";
-    ctx.fillText(it, x + 8, pad + 5);
-    x += w + 6;
+    drawTexteLisible(ctx, it, x, pad);
+    x += ctx.measureText(it).width + 16;
   }
   void cssW;
 }
