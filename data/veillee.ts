@@ -40,7 +40,7 @@ export const SCEAUX: Sceau[] = [
     numero: "III",
     titre: "Chaque Fleur, son Pollinisateur",
     fond: "mur-fleurs",
-    actif: false,
+    actif: true,
     resume:
       "Un mur de fleurs et, figés, leurs visiteurs. Relier chaque pollinisateur à sa fleur — le mutualisme a ses affinités.",
     defunt: "Petit Marcel trouve les papillons rigolos et propose une aide à moitié fausse.",

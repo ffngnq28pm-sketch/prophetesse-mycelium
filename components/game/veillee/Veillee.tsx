@@ -7,6 +7,7 @@ import { SCEAUX, SCEAUX_ACTIFS, getSceau } from "@/data/veillee";
 import { SceneFond } from "./SceneFond";
 import { CadranLichen } from "./CadranLichen";
 import { HorlogeFlorale } from "./HorlogeFlorale";
+import { Pollinisateurs } from "./Pollinisateurs";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { BookOpen, X, ChevronLeft, Lock, Check } from "lucide-react";
@@ -217,6 +218,8 @@ function InteractionSceau({ id, onResolu }: { id: string; onResolu: () => void }
       return <CadranLichen onResolu={onResolu} />;
     case "horloge":
       return <HorlogeFlorale onResolu={onResolu} />;
+    case "pollinisateurs":
+      return <Pollinisateurs onResolu={onResolu} />;
     default:
       return null;
   }
