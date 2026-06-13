@@ -28,9 +28,16 @@ export const PEINTURE = {
   SPORES_FAR: 46,
   SPORE_RISE: 15,
   SPORE_DRIFT: 11,
-  // Couture fondue au bake (fraction de largeur), sans flip miroir.
-  SEAM_FRAC: 0.1,
+  // Couture fondue au bake (fraction de largeur de tuile), sans flip miroir.
+  // Cross-dissolve large + fondu des bords vers la couleur atmosphérique de la
+  // couche → aucune ligne verticale visible quelle que soit la position caméra.
+  couture: 0.3,
 } as const;
+
+// Couleur atmosphérique par couche (vers laquelle on fond les bords pour assurer
+// la continuité de valeur au raccord). c0 = ciel/brume chaude, c1 = brume verte
+// sourde, c2 = premier plan sombre.
+const ATMO = ["230,216,182", "150,160,128", "26,32,18"];
 
 export type ActeNom = "porche" | "allees" | "ascension";
 const ACTES: ActeNom[] = ["porche", "allees", "ascension"];
@@ -68,9 +75,13 @@ function rngFrom(seed: number) {
 }
 
 // Bake une image source en canvas prêt à tiler : fondu du sommet (couches 1/2)
-// + couture cousue (bord gauche rabattu sur le bord droit en dégradé d'alpha,
-// JAMAIS de flip) → répétition horizontale sans symétrie ni ligne nette.
-function bakeLayer(source: HTMLImageElement, fadeTop: boolean): HTMLCanvasElement {
+// + couture cousue SANS flip. Deux passes :
+//   1) cross-dissolve large : bord gauche rabattu sur le bord droit (le contenu
+//      du raccord devient identique des deux côtés) ;
+//   2) fondu des deux bords vers la couleur atmosphérique de la couche (en
+//      source-atop pour préserver le sommet transparent) → continuité de valeur,
+//      aucune ligne verticale même si la peinture est plus claire d'un côté.
+function bakeLayer(source: HTMLImageElement, fadeTop: boolean, atmo: string): HTMLCanvasElement {
   const w = source.naturalWidth || 1920;
   const h = source.naturalHeight || 819;
   const cv = document.createElement("canvas");
@@ -89,12 +100,14 @@ function bakeLayer(source: HTMLImageElement, fadeTop: boolean): HTMLCanvasElemen
     c.globalCompositeOperation = "source-over";
   }
 
-  const b = Math.max(2, Math.round(w * PEINTURE.SEAM_FRAC));
+  const b = Math.max(2, Math.round(w * PEINTURE.couture));
+
+  // 1) Cross-dissolve : bord gauche fondu sur le bord droit.
   const strip = document.createElement("canvas");
   strip.width = b;
   strip.height = h;
   const sc = strip.getContext("2d")!;
-  sc.drawImage(cv, 0, 0, b, h, 0, 0, b, h); // bord gauche
+  sc.drawImage(cv, 0, 0, b, h, 0, 0, b, h);
   sc.globalCompositeOperation = "destination-in";
   const gg = sc.createLinearGradient(0, 0, b, 0);
   gg.addColorStop(0, "rgba(0,0,0,0)");
@@ -102,7 +115,22 @@ function bakeLayer(source: HTMLImageElement, fadeTop: boolean): HTMLCanvasElemen
   sc.fillStyle = gg;
   sc.fillRect(0, 0, b, h);
   sc.globalCompositeOperation = "source-over";
-  c.drawImage(strip, w - b, 0); // fondu sur le bord droit
+  c.drawImage(strip, w - b, 0);
+
+  // 2) Fondu des deux bords vers la couleur atmosphérique (continuité de valeur).
+  c.globalCompositeOperation = "source-atop"; // ne touche pas le sommet transparent
+  const A = 0.5;
+  const gl = c.createLinearGradient(0, 0, b, 0);
+  gl.addColorStop(0, `rgba(${atmo},${A})`);
+  gl.addColorStop(1, `rgba(${atmo},0)`);
+  c.fillStyle = gl;
+  c.fillRect(0, 0, b, h);
+  const gr = c.createLinearGradient(w - b, 0, w, 0);
+  gr.addColorStop(0, `rgba(${atmo},0)`);
+  gr.addColorStop(1, `rgba(${atmo},${A})`);
+  c.fillStyle = gr;
+  c.fillRect(w - b, 0, b, h);
+  c.globalCompositeOperation = "source-over";
   return cv;
 }
 
@@ -233,7 +261,7 @@ export class PeintureDecor {
     const present = imgs.filter((x): x is HTMLImageElement => !!x);
     if (present.length === 0) return null;
     const chosen = present[Math.floor(Math.random() * present.length)];
-    return bakeLayer(chosen, n > 0);
+    return bakeLayer(chosen, n > 0, ATMO[n] ?? ATMO[0]);
   }
 
   // Précharge porche au démarrage (set par défaut + repli universel).
