@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Volume2, VolumeX, RotateCcw, Smartphone } from "lucide-react";
+import { Volume2, VolumeX, RotateCcw, Smartphone, Maximize2, Minimize2, X } from "lucide-react";
 import {
   TraverseeState,
   Input,
@@ -160,6 +160,16 @@ interface ButterflyFx {
   phase: number;
 }
 
+// Types minimaux pour l'API Fullscreen préfixée (Safari) — évite tout `any`.
+interface FsDocument extends Document {
+  webkitFullscreenEnabled?: boolean;
+  webkitFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => void;
+}
+interface FsElement extends HTMLElement {
+  webkitRequestFullscreen?: () => void;
+}
+
 // ============ COMPOSANT ============
 export function LaTraversee({ onWin }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -176,10 +186,14 @@ export function LaTraversee({ onWin }: Props) {
   const wonHandledRef = useRef(false);
   const reducedMotionRef = useRef(false);
   const viewRef = useRef({ w: 800, h: 460 });
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   const [showIntro, setShowIntro] = useState(true);
   const [won, setWon] = useState<TraverseeResult | null>(null);
   const [showRotateHint, setShowRotateHint] = useState(false);
+  const [canFullscreen, setCanFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showIosHint, setShowIosHint] = useState(false);
 
   const audioOn = useStore((s) => s.audioActif);
   const setAudioOn = useStore((s) => s.setAudioActif);
@@ -348,6 +362,58 @@ export function LaTraversee({ onWin }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ====== Plein écran (feature-detect ; repli iPhone via PWA) ======
+  useEffect(() => {
+    const doc = document as FsDocument;
+    const enabled = document.fullscreenEnabled || doc.webkitFullscreenEnabled || false;
+    setCanFullscreen(enabled);
+    if (!enabled) {
+      // iPhone Safari : API absente. Si pas déjà lancé en standalone (icône
+      // d'accueil), proposer une fois l'ajout à l'écran d'accueil.
+      const nav = navigator as Navigator & { standalone?: boolean };
+      const standalone = window.matchMedia?.("(display-mode: standalone)").matches || nav.standalone === true;
+      let dismissed = false;
+      try {
+        dismissed = localStorage.getItem("traversee-fs-hint") === "1";
+      } catch {
+        /* localStorage indisponible : on montre quand même le conseil */
+      }
+      if (!standalone && !dismissed) setShowIosHint(true);
+    }
+    const onFsChange = () => {
+      const fsEl = document.fullscreenElement || doc.webkitFullscreenElement;
+      setIsFullscreen(!!fsEl);
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    document.addEventListener("webkitfullscreenchange", onFsChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener("webkitfullscreenchange", onFsChange);
+    };
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    const doc = document as FsDocument;
+    const el = wrapRef.current as FsElement | null;
+    const fsEl = document.fullscreenElement || doc.webkitFullscreenElement;
+    if (!fsEl) {
+      if (el?.requestFullscreen) el.requestFullscreen();
+      else el?.webkitRequestFullscreen?.();
+    } else {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else doc.webkitExitFullscreen?.();
+    }
+  }, []);
+
+  const dismissIosHint = useCallback(() => {
+    setShowIosHint(false);
+    try {
+      localStorage.setItem("traversee-fs-hint", "1");
+    } catch {
+      /* ignoré */
+    }
+  }, []);
+
   const drainEvents = useCallback(
     (s: TraverseeState, t: number) => {
       const ev = s.events;
@@ -441,6 +507,7 @@ export function LaTraversee({ onWin }: Props) {
   return (
     <div className="relative mx-auto w-full max-w-3xl">
       <div
+        ref={wrapRef}
         className="relative w-full overflow-hidden rounded-xl border-2 border-ocre-500/50 shadow-2xl"
         style={{ aspectRatio: "16 / 10", touchAction: "none" }}
       >
@@ -455,6 +522,15 @@ export function LaTraversee({ onWin }: Props) {
           >
             {audioOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
           </button>
+          {canFullscreen && (
+            <button
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? "Quitter le plein écran" : "Plein écran"}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-ocre-400/50 bg-mousse-950/50 text-parchemin-50 backdrop-blur-sm"
+            >
+              {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+          )}
           {!showIntro && !won && (
             <button
               onClick={restart}
@@ -465,6 +541,17 @@ export function LaTraversee({ onWin }: Props) {
             </button>
           )}
         </div>
+
+        {/* Repli iPhone (API Fullscreen absente) : conseil PWA discret, dismissable */}
+        {showIosHint && (
+          <div className="absolute bottom-3 left-1/2 z-20 flex max-w-[92%] -translate-x-1/2 items-center gap-2 rounded-full border border-ocre-400/40 bg-mousse-950/70 px-3 py-1.5 text-[11px] text-parchemin-100 backdrop-blur-sm">
+            <Smartphone size={13} className="shrink-0 text-ocre-300" />
+            <span>Ajouter à l&apos;écran d&apos;accueil pour le plein écran.</span>
+            <button onClick={dismissIosHint} aria-label="Fermer le conseil" className="shrink-0 opacity-80 hover:opacity-100">
+              <X size={13} />
+            </button>
+          </div>
+        )}
 
         {/* Hint orientation */}
         <AnimatePresence>
