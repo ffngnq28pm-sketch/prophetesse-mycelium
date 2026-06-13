@@ -37,8 +37,7 @@ interface Props {
 }
 
 // ============ PALETTE ============
-const RED_CAP = "#c0392b";
-const RED_CAP_DARK = "#8e2820";
+// (Les couleurs de la Marcheuse vivent dans le bloc MARCHEUSE, plus bas.)
 
 // ============ AUDIO (procédural, WebAudio) ============
 class TraverseeAudio {
@@ -1681,24 +1680,34 @@ function drawParticles(ctx: CanvasRenderingContext2D, particles: Particle[], tim
 // ════════════ Config dial-able de la Marcheuse ════════════
 const MARCHEUSE = {
   ECHELLE: 1.5, // échelle VISUELLE vs hitbox, ancrée aux pieds (le visuel déborde, voulu)
-  CAPE_SWAY: 1.0, // amplitude de balancement de cape en marche
-  IDLE_DRIFT: 1.0, // dérive de cape à l'arrêt (brise)
-  CAPE_LIT: "#3c5430", // cape extérieure, côté éclairé (vert sourd, sous la saturation du rouge)
-  CAPE_MID: "#2a3f24",
-  CAPE_SHADE: "#1b2b17", // côté ombre
-  CAPE_DOUBLURE: "#8a9356", // doublure plus claire et chaude (ouverture + col)
+  LISSAGE: 0.18, // facteur de lerp de l'anim amortie (Phase 2)
+  // Tenue naturaliste casual : tee rouge vif (grande masse de couleur), casquette
+  // rouge FONCÉ, le reste sourd pour que le rouge ressorte.
+  TEE: "#d23a26",
+  TEE_OMBRE: "#a32a18",
+  TEE_LUM: "#ef5a3e",
+  CASQUETTE: "#7c1d12",
+  CASQUETTE_OMBRE: "#561109",
+  PANTALON: "#3b4250",
+  PANTALON_OMBRE: "#272c37",
+  CHAUSSURE: "#241f19",
   PEAU: "#e3c79e",
-  CHEVEUX: "#caa45a",
+  PEAU_OMBRE: "#c2965f",
+  CHEVEUX: "#c8a24c",
+  MAILLE: 0.55, // opacité de la poche de maille du filet
 };
 
-// Marcheuse — pèlerine élancée peinte. Construite en formes superposées
-// (cape arrière → corps/jambes → bras+filet → tête+casquette → liserés), à
-// l'échelle MARCHEUSE.ECHELLE ancrée aux pieds. La HITBOX (o.w/o.h) n'est
-// jamais modifiée : seul le dessin est agrandi.
+// Marcheuse — naturaliste casual peinte : tee rouge vif, casquette rouge foncé,
+// vrai filet à papillons (poche de maille). Formes superposées à l'échelle
+// MARCHEUSE.ECHELLE ancrée aux pieds. La HITBOX (o.w/o.h) n'est jamais modifiée :
+// le visuel déborde vers le haut, c'est voulu.
 function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   const M = MARCHEUSE;
   const moving = Math.abs(o.vx) > 12;
   const airborne = !o.onGround;
+  const swinging = netIsActiveLocal(o, time);
+  const speed = Math.min(1, Math.abs(o.vx) / 160);
+
   const squashY = 1 - 0.2 * o.squash;
   const squashX = 1 + 0.14 * o.squash;
   let stretch = 1;
@@ -1714,269 +1723,270 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   ctx.scale(o.facing * sx, sy);
 
   // —— Ombre de contact (au sol, NON agrandie par l'échelle visuelle) ——
-  const csh = ctx.createRadialGradient(0, 2, 1, 0, 2, 15);
+  const csh = ctx.createRadialGradient(0, 2, 1, 0, 2, 14);
   csh.addColorStop(0, "rgba(12,20,10,0.42)");
   csh.addColorStop(1, "rgba(12,20,10,0)");
   ctx.fillStyle = csh;
   ctx.beginPath();
-  ctx.ellipse(0, 2, 15, 4.6, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 2, 14, 4.4, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // —— Échelle visuelle, ancrée aux pieds (origine) ; on dessine vers le haut ——
+  // —— Échelle visuelle, ancrée aux pieds ; on dessine vers le haut ——
   ctx.scale(M.ECHELLE, M.ECHELLE);
+  const H = o.h;
 
-  const H = o.h; // unité de proportion (38)
-  const speed = Math.min(1, Math.abs(o.vx) / 160);
-
-  // Inclinaison avant du torse en marche : cisaillement unifié (le haut penche
-  // vers l'avant, le bas de cape reste planté). Bob vertical minimal, élégant.
+  // Inclinaison avant + bob (amortis proprement en Phase 2).
   const lean = moving && !airborne ? speed * 0.12 : 0;
   if (lean) ctx.transform(1, 0, -lean, 1, 0, 0);
-  const bob = moving && !airborne ? -Math.abs(Math.sin(o.walkPhase)) * 0.8 : 0;
+  const bob = moving && !airborne ? -Math.abs(Math.sin(o.walkPhase)) * 0.7 : 0;
   if (bob) ctx.translate(0, bob);
 
-  const breath = o.onGround && !moving ? Math.sin(time / 900) * 0.5 : 0;
-  const neckY = -H * 0.82 - breath;
-  const headY = -H * 0.95 - breath;
-  const hemW = 11; // demi-largeur du bas de cape (évasé)
+  const breath = !moving && o.onGround ? Math.sin(time / 900) * 0.4 : 0;
+  const hipY = -H * 0.42;
+  const shoulderY = -H * 0.7 - breath;
+  const neckY = -H * 0.74 - breath;
+  const headY = -H * 0.9 - breath;
+  const headR = H * 0.155;
+  const wp = o.walkPhase;
+  const stride = moving ? 6 : 0;
+  const armAmp = moving ? 4 : 0;
 
-  const swinging = netIsActiveLocal(o, time);
-  // Billow de saut : la cape gonfle vers le haut/arrière en l'air (extension),
-  // streame en chute ; elle retombe à la réception (le squash gère l'absorption).
-  const vfrac = airborne ? Math.min(1, Math.abs(o.vy) / 700) : 0;
+  // ════════ JAMBES (pantalon) + chaussures ════════
+  const drawLeg = (phase: number, col: string) => {
+    let fx: number;
+    let footY2: number;
+    if (airborne) {
+      fx = phase > 0 ? 3 : -2;
+      footY2 = -H * 0.12;
+    } else {
+      fx = Math.sin(phase) * stride;
+      footY2 = -1 - Math.max(0, Math.sin(phase)) * 2.5;
+    }
+    const kneeX = (0 + fx) / 2 + 1.4;
+    const kneeY = (hipY + footY2) / 2 + 1;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 4.2;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(0, hipY);
+    ctx.quadraticCurveTo(kneeX, kneeY, fx, footY2);
+    ctx.stroke();
+    ctx.fillStyle = M.CHAUSSURE; // chaussure
+    ctx.beginPath();
+    ctx.ellipse(fx + 1.2, footY2 + 0.3, 3, 1.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  drawLeg(airborne ? -1 : wp + Math.PI, M.PANTALON_OMBRE); // jambe arrière
+  drawLeg(airborne ? 1 : wp, M.PANTALON); // jambe avant
 
-  // Bas de cape : ondulation (brise idle) + balancement piloté par la vitesse +
-  // gonflement au swing ; traîne horizontale derrière le sens de marche et en l'air.
-  const capeAmp = 1.3 * M.IDLE_DRIFT + speed * 5 * M.CAPE_SWAY + (swinging ? 3 : 0);
-  const hemY = (t: number) =>
-    Math.sin(time * 0.0022 + t * 3.4 + o.walkPhase * 0.5) * capeAmp * (0.35 + t * 0.65) -
-    vfrac * 6 * (0.3 + t * 0.7);
-  const hemX = (t: number) => -(speed * 6 * M.CAPE_SWAY + vfrac * 5) * t;
-
-  // ════════ 1. CAPE (arrière, longue, évasée, feutrée) ════════
-  ctx.save();
-  ctx.shadowColor = "rgba(8,14,6,0.5)";
-  ctx.shadowBlur = 4;
-  const capeGrad = ctx.createLinearGradient(-hemW, 0, hemW, 0);
-  capeGrad.addColorStop(0, M.CAPE_SHADE);
-  capeGrad.addColorStop(0.6, M.CAPE_MID);
-  capeGrad.addColorStop(1, M.CAPE_LIT);
-  ctx.fillStyle = capeGrad;
+  // ════════ BRAS ARRIÈRE (peau, balance opposé à la marche) ════════
+  const backHandX = -3 - Math.sin(wp) * armAmp;
+  ctx.strokeStyle = M.PEAU_OMBRE;
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(-4, neckY); // épaule arrière
-  ctx.quadraticCurveTo(-hemW - 2, -H * 0.45, -hemW + hemX(0), hemY(0)); // descente gauche
-  for (let i = 1; i <= 5; i++) {
-    const t = i / 5;
-    ctx.lineTo(-hemW + 2 * hemW * t + hemX(t), hemY(t)); // ourlet ondulant + traîne
-  }
-  ctx.quadraticCurveTo(hemW + 2, -H * 0.45, 4, neckY); // remontée droite
+  ctx.moveTo(-3, shoulderY + 2);
+  ctx.quadraticCurveTo(-5, hipY, backHandX, hipY + 3);
+  ctx.stroke();
+
+  // ════════ TORSE (tee rouge — la grande masse de couleur) ════════
+  const teeGrad = ctx.createLinearGradient(-5, 0, 5, 0);
+  teeGrad.addColorStop(0, M.TEE_OMBRE);
+  teeGrad.addColorStop(0.55, M.TEE);
+  teeGrad.addColorStop(1, M.TEE_LUM);
+  ctx.save();
+  ctx.shadowColor = "rgba(60,10,4,0.4)";
+  ctx.shadowBlur = 2.5;
+  ctx.fillStyle = teeGrad;
+  ctx.beginPath();
+  ctx.moveTo(-3.6, hipY + 1);
+  ctx.lineTo(-4.8, shoulderY + 1.5);
+  ctx.quadraticCurveTo(-5, shoulderY - 1.5, -2.8, shoulderY - 2);
+  ctx.lineTo(2.8, shoulderY - 2);
+  ctx.quadraticCurveTo(5, shoulderY - 1.5, 4.8, shoulderY + 1.5);
+  ctx.lineTo(3.6, hipY + 1);
+  ctx.quadraticCurveTo(0, hipY + 2.5, -3.6, hipY + 1);
   ctx.closePath();
   ctx.fill();
   ctx.restore();
-
-  // AO doux dans les plis internes de la cape
-  ctx.fillStyle = "rgba(8,14,6,0.22)";
+  // manches courtes
+  ctx.fillStyle = M.TEE_OMBRE;
   ctx.beginPath();
-  ctx.moveTo(-2, neckY);
-  ctx.quadraticCurveTo(-5, -H * 0.4, -hemW * 0.5, hemY(0.5));
-  ctx.lineTo(0, hemY(0.5) - 2);
-  ctx.closePath();
+  ctx.ellipse(-4.4, shoulderY + 2, 2, 2.4, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = M.TEE_LUM;
+  ctx.beginPath();
+  ctx.ellipse(4.4, shoulderY + 2, 2, 2.4, -0.2, 0, Math.PI * 2);
   ctx.fill();
 
-  // ════════ 2. CORPS — jambes + torse fin sous la cape ════════
-  // jambes longues et fines (le bas dépasse de la cape)
-  ctx.strokeStyle = "#2b2218";
-  ctx.lineWidth = 3.4;
-  ctx.lineCap = "round";
-  if (airborne) {
-    ctx.beginPath();
-    ctx.moveTo(-2.5, -H * 0.28);
-    ctx.lineTo(-5, -2);
-    ctx.moveTo(2.5, -H * 0.28);
-    ctx.lineTo(6, -7);
-    ctx.stroke();
-  } else if (moving) {
-    // foulée allongée (pèlerine), pas une trottinette
-    const sw = Math.sin(o.walkPhase) * 6.5;
-    const lift = Math.max(0, Math.sin(o.walkPhase)) * 2;
-    ctx.beginPath();
-    ctx.moveTo(-2, -H * 0.3);
-    ctx.lineTo(-2 + sw, -1 - lift);
-    ctx.moveTo(2, -H * 0.3);
-    ctx.lineTo(2 - sw, -1 - Math.max(0, -Math.sin(o.walkPhase)) * 2);
-    ctx.stroke();
-  } else {
-    ctx.beginPath();
-    ctx.moveTo(-2.5, -H * 0.3);
-    ctx.lineTo(-2.5, -1);
-    ctx.moveTo(2.5, -H * 0.3);
-    ctx.lineTo(2.5, -1);
-    ctx.stroke();
-  }
-  // torse fin (cou gracile → hanches), majoritairement couvert par la cape
-  ctx.fillStyle = M.CAPE_MID;
-  ctx.beginPath();
-  ctx.moveTo(-4, -H * 0.3);
-  ctx.quadraticCurveTo(-4.6, -H * 0.6, -3, neckY);
-  ctx.lineTo(3, neckY);
-  ctx.quadraticCurveTo(4.6, -H * 0.6, 4, -H * 0.3);
-  ctx.closePath();
-  ctx.fill();
-
-  // ════════ Doublure (ouverture avant + col) — plus claire et chaude ════════
-  ctx.fillStyle = M.CAPE_DOUBLURE;
-  ctx.beginPath();
-  ctx.moveTo(-2.4, neckY + 1);
-  ctx.lineTo(2.4, neckY + 1);
-  ctx.lineTo(hemW * 0.34, hemY(0.5) - 1);
-  ctx.quadraticCurveTo(0, hemY(0.5) + 1, -hemW * 0.34, hemY(0.5) - 1);
-  ctx.closePath();
-  ctx.fill();
-  // col
-  ctx.fillStyle = M.CAPE_DOUBLURE;
-  ctx.beginPath();
-  ctx.moveTo(-4, neckY);
-  ctx.quadraticCurveTo(0, neckY + 3, 4, neckY);
-  ctx.quadraticCurveTo(0, neckY - 1.5, -4, neckY);
-  ctx.fill();
-
-  // ════════ 3. BRAS + FILET tenu en bâton de marche ════════
-  const handX = 7.5;
-  const handY = -H * 0.46;
-  // bras
-  ctx.strokeStyle = M.CAPE_SHADE;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(2.5, -H * 0.66);
-  ctx.quadraticCurveTo(6, -H * 0.56, handX, handY);
-  ctx.stroke();
-  // FILET-BÂTON : bâton de marche par défaut. Au swing (input net), arc gracieux ;
-  // en marche, il se lève/pose ; à l'arrêt, lente dérive (regard au loin).
-  const NET_MS = 260; // durée visuelle du balayage (approx., non couplée au moteur)
-  const swingProg = swinging ? Math.min(1, Math.max(0, (time - (o.netUntil - NET_MS)) / NET_MS)) : 0;
-  const filetAngle = swinging
-    ? Math.sin(swingProg * Math.PI) * 1.15
-    : moving && !airborne
-    ? Math.sin(o.walkPhase) * 0.05
-    : Math.sin(time * 0.0006) * 0.05;
-  drawFilet(ctx, handX, handY, H, swinging, swinging, filetAngle);
-
-  // ════════ 4. TÊTE + CASQUETTE ROUGE (focale) ════════
-  // cou
+  // ════════ BRAS AVANT (peau) tenant le filet ════════
+  const handX = 5.6 + Math.sin(wp) * armAmp * 0.3;
+  const handY = -H * 0.52;
   ctx.strokeStyle = M.PEAU;
-  ctx.lineWidth = 2.6;
+  ctx.lineWidth = 2.7;
   ctx.beginPath();
-  ctx.moveTo(0.5, neckY + 1);
-  ctx.lineTo(0.8, headY + 5);
+  ctx.moveTo(3.4, shoulderY + 2);
+  ctx.quadraticCurveTo(5.6, -H * 0.62, handX, handY);
   ctx.stroke();
-  // tête (volume doux : éclairée à l'avant)
-  const headGrad = ctx.createRadialGradient(2.5, headY - 1.5, 1, 1, headY, 6.4);
+  ctx.fillStyle = M.PEAU; // main
+  ctx.beginPath();
+  ctx.arc(handX, handY, 1.7, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ════════ FILET à poche de maille (devant) ════════
+  const NET_MS = 260;
+  const swingProg = swinging ? Math.min(1, Math.max(0, (time - (o.netUntil - NET_MS)) / NET_MS)) : 0;
+  const swingAngle = swinging
+    ? Math.sin(swingProg * Math.PI) * 1.1
+    : moving && !airborne
+    ? Math.sin(wp) * 0.06
+    : Math.sin(time * 0.0006) * 0.05;
+  drawFilet(ctx, handX, handY, H, swingAngle, time, M.MAILLE);
+
+  // ════════ COU + TÊTE + CASQUETTE rouge foncé ════════
+  ctx.strokeStyle = M.PEAU;
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(0.4, neckY + 1);
+  ctx.lineTo(0.7, headY + headR * 0.6);
+  ctx.stroke();
+  // tête (volume doux, éclairée à l'avant)
+  const headGrad = ctx.createRadialGradient(headR * 0.4, headY - headR * 0.3, 1, 0.6, headY, headR + 1);
   headGrad.addColorStop(0, "#efd9b2");
-  headGrad.addColorStop(1, "#cda36e");
+  headGrad.addColorStop(1, M.PEAU_OMBRE);
   ctx.fillStyle = headGrad;
   ctx.beginPath();
-  ctx.arc(1, headY, 6, 0, Math.PI * 2);
+  ctx.arc(0.6, headY, headR, 0, Math.PI * 2);
   ctx.fill();
-  // mèche
+  // mèche de cheveux (arrière)
   ctx.fillStyle = M.CHEVEUX;
   ctx.beginPath();
-  ctx.ellipse(-3.4, headY + 1.5, 2.6, 4.4, 0.3, 0, Math.PI * 2);
+  ctx.ellipse(-headR * 0.7, headY + 1.4, 2.3, 4, 0.3, 0, Math.PI * 2);
   ctx.fill();
-  // casquette rouge — point focal, nette
-  ctx.fillStyle = RED_CAP;
+  // queue-de-cheval qui dépasse derrière la casquette
   ctx.beginPath();
-  ctx.arc(1, headY - 1, 6.8, Math.PI, Math.PI * 2);
+  ctx.moveTo(-headR * 0.8, headY - 1);
+  ctx.quadraticCurveTo(-headR * 2.1, headY + 1, -headR * 1.6 - Math.sin(time * 0.003) * 0.6, headY + 5);
+  ctx.quadraticCurveTo(-headR * 1.2, headY + 2, -headR * 0.6, headY + 1);
+  ctx.fill();
+  // CASQUETTE rouge foncé : calotte + visière nette
+  ctx.fillStyle = M.CASQUETTE;
+  ctx.beginPath();
+  ctx.arc(0.6, headY - 1, headR + 0.6, Math.PI * 1.02, Math.PI * 1.98);
+  ctx.closePath();
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(1, headY - 7.2, 6.2, 2.9, 0, 0, Math.PI * 2);
+  ctx.ellipse(0.6, headY - headR - 0.4, headR * 0.92, headR * 0.42, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = RED_CAP_DARK; // visière avant
+  ctx.fillStyle = M.CASQUETTE_OMBRE; // visière avant nette
   ctx.beginPath();
-  ctx.ellipse(6.6, headY - 1, 4.8, 1.9, 0, Math.PI, Math.PI * 2);
+  ctx.ellipse(headR + 0.8, headY - 1, headR * 0.78, 1.8, 0, Math.PI, Math.PI * 2);
   ctx.fill();
   ctx.beginPath(); // bouton
-  ctx.arc(1, headY - 7.6, 1.2, 0, Math.PI * 2);
+  ctx.arc(0.6, headY - headR - 0.6, 1, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.22)"; // reflet calotte
+  ctx.fillStyle = "rgba(255,255,255,0.18)"; // reflet calotte
   ctx.beginPath();
-  ctx.ellipse(-1.4, headY - 3.6, 2, 1, -0.4, 0, Math.PI * 2);
+  ctx.ellipse(-1.4, headY - headR * 0.5, 1.8, 0.9, -0.4, 0, Math.PI * 2);
   ctx.fill();
 
-  // ════════ 5. RIM-LIGHT chaud sur le bord avant (contre-jour de scène) ════════
-  ctx.strokeStyle = "rgba(255,228,150,0.5)";
-  ctx.lineWidth = 1.2;
+  // ════════ RIM-LIGHT chaud sur le bord avant (contre-jour de scène) ════════
+  ctx.strokeStyle = "rgba(255,228,150,0.45)";
+  ctx.lineWidth = 1.1;
   ctx.beginPath();
-  ctx.moveTo(hemW + hemX(1), hemY(1));
-  ctx.quadraticCurveTo(hemW + 2, -H * 0.45, 4, neckY);
+  ctx.moveTo(4.8, shoulderY + 1.2);
+  ctx.lineTo(3.7, hipY + 1);
   ctx.stroke();
-  // touche de rim sur l'épaule/tête avant
   ctx.strokeStyle = "rgba(255,235,180,0.4)";
   ctx.beginPath();
-  ctx.arc(1, headY, 6, -Math.PI * 0.15, Math.PI * 0.35);
+  ctx.arc(0.6, headY, headR, -Math.PI * 0.12, Math.PI * 0.32);
   ctx.stroke();
 
   ctx.restore();
 }
 
-// Filet à papillons, dessiné en repère local de la Marcheuse. `swing` ∈ [-1,1]
-// pilote l'arc du bâton (Phase 3) ; `pose` = bâton de marche par défaut.
+// Vrai filet à papillons en repère local de la main : manche long et fin,
+// cerceau, et surtout une POCHE de maille conique/en goutte translucide qui
+// pend du cerceau et oscille doucement. `swing` pivote le filet autour de la main.
 function drawFilet(
   ctx: CanvasRenderingContext2D,
   handX: number,
   handY: number,
   H: number,
-  active: boolean,
-  swinging: boolean,
-  swing: number
+  swing: number,
+  time: number,
+  maille: number
 ) {
   ctx.save();
   ctx.translate(handX, handY);
-  // angle du bâton : vertical (bâton de marche) → bascule en arc au swing
-  const angle = swing * 1.1 + (swinging ? 0.2 : 0);
-  ctx.rotate(angle);
-  // manche pâle : du bas (vers les pieds) au haut (cerceau au-dessus de la main)
-  const poleBot = H * 0.42;
-  const poleTop = -H * 0.5;
-  ctx.strokeStyle = "#cabf9c";
-  ctx.lineWidth = 2;
+  ctx.rotate(swing);
+
+  // Manche long et fin (bois clair), tenu en avant / légèrement relevé.
+  const ex = H * 0.5; // bout du manche (cerceau) vers l'avant
+  const ey = -H * 0.2; // relevé
+  ctx.strokeStyle = "#cbbf9b";
+  ctx.lineWidth = 1.8;
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(0, poleBot);
-  ctx.lineTo(0, poleTop);
+  ctx.moveTo(-H * 0.04, H * 0.02);
+  ctx.lineTo(ex, ey);
   ctx.stroke();
-  ctx.strokeStyle = "rgba(255,244,210,0.5)"; // reflet
-  ctx.lineWidth = 0.8;
+  ctx.strokeStyle = "rgba(255,246,214,0.5)"; // reflet du manche
+  ctx.lineWidth = 0.7;
   ctx.beginPath();
-  ctx.moveTo(-0.6, poleBot * 0.6);
-  ctx.lineTo(-0.6, poleTop);
+  ctx.moveTo(0, 0);
+  ctx.lineTo(ex * 0.92, ey * 0.92);
   ctx.stroke();
-  // cerceau au sommet
-  const rx = 6;
+
+  // POCHE de maille : goutte translucide pendant du cerceau, avec oscillation.
+  const rx = 6.5;
   const ry = 7.5;
-  const hy = poleTop - ry;
-  ctx.fillStyle = "rgba(245,240,225,0.14)";
+  const sway = Math.sin(time * 0.004) * 1.6;
+  const bagLen = H * 0.5;
+  const tipX = ex + sway * 1.2;
+  const tipY = ey + bagLen;
   ctx.beginPath();
-  ctx.ellipse(0, hy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.moveTo(ex - rx, ey);
+  ctx.quadraticCurveTo(ex - rx * 0.7 + sway, ey + bagLen * 0.6, tipX, tipY);
+  ctx.quadraticCurveTo(ex + rx * 0.7 + sway, ey + bagLen * 0.6, ex + rx, ey);
+  ctx.closePath();
+  ctx.fillStyle = `rgba(244,242,228,${0.12 * (maille / 0.55)})`;
   ctx.fill();
+  // maille suggérée : traits croisés (tulle), bornés à la poche
   ctx.save();
   ctx.clip();
-  ctx.strokeStyle = "rgba(245,240,225,0.26)";
-  ctx.lineWidth = 0.6;
-  for (let i = -2; i <= 2; i++) {
+  ctx.strokeStyle = `rgba(238,236,220,${0.42 * maille})`;
+  ctx.lineWidth = 0.5;
+  for (let i = -3; i <= 3; i++) {
     ctx.beginPath();
-    ctx.moveTo(i * 2.4, hy - ry);
-    ctx.lineTo(i * 2.4, hy + ry);
-    ctx.moveTo(-rx, hy + i * 2.4);
-    ctx.lineTo(rx, hy + i * 2.4);
+    ctx.moveTo(ex + i * 2.2, ey);
+    ctx.lineTo(tipX + i * 0.7, tipY);
+    ctx.stroke();
+  }
+  for (let j = 1; j <= 4; j++) {
+    const t = j / 5;
+    const yy = ey + bagLen * t;
+    const ww = rx * (1 - t * 0.85);
+    ctx.beginPath();
+    ctx.moveTo(ex - ww + sway * t, yy);
+    ctx.quadraticCurveTo(ex + sway * t, yy + 2.5, ex + ww + sway * t, yy);
     ctx.stroke();
   }
   ctx.restore();
-  ctx.strokeStyle = "#cfc7ad";
-  ctx.lineWidth = 1.8;
+
+  // Cerceau (anneau) au sommet de la poche — dessiné par-dessus.
+  ctx.strokeStyle = "#dcd4b8";
+  ctx.lineWidth = 1.7;
   ctx.beginPath();
-  ctx.ellipse(0, hy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.ellipse(ex, ey, rx, ry * 0.5, 0, 0, Math.PI * 2);
   ctx.stroke();
-  void active;
+  ctx.strokeStyle = "rgba(255,248,222,0.6)"; // reflet du cerceau
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.ellipse(ex, ey, rx, ry * 0.5, 0, Math.PI * 1.05, Math.PI * 1.75);
+  ctx.stroke();
+
   ctx.restore();
 }
 
