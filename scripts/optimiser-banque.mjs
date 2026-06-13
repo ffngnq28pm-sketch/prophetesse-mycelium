@@ -29,6 +29,8 @@ const JEUX = {
   "traversee/porche": { maxW: 1920, quality: 72 },
   "traversee/allees": { maxW: 1920, quality: 72 },
   "traversee/ascension": { maxW: 1920, quality: 72 },
+  // Textures de re-skin de la couche de jeu : carrées 1024², tuilables (q74, < 250 Ko).
+  "traversee/skin": { maxW: 1024, quality: 74, square: 1024 },
 };
 
 const EXT_IN = new Set([".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif"]);
@@ -75,12 +77,16 @@ async function processDir(srcDir, outDir, label, cfg) {
     const inSize = (await fs.stat(srcPath)).size;
     const img = sharp(srcPath, { failOn: "none" });
     const meta = await img.metadata();
-    const targetW = Math.min(cfg.maxW, meta.width || cfg.maxW); // jamais d'upscale
+    const srcW = meta.width || cfg.maxW;
 
-    await img
-      .resize({ width: targetW, withoutEnlargement: true })
-      .webp({ quality: cfg.quality })
-      .toFile(outPath);
+    if (cfg.square) {
+      // Texture carrée tuilable : recadrage cover en N×N (jamais d'upscale au-delà de la source).
+      const side = Math.min(cfg.square, srcW, meta.height || cfg.square);
+      await img.resize(side, side, { fit: "cover" }).webp({ quality: cfg.quality }).toFile(outPath);
+    } else {
+      const targetW = Math.min(cfg.maxW, srcW); // jamais d'upscale
+      await img.resize({ width: targetW, withoutEnlargement: true }).webp({ quality: cfg.quality }).toFile(outPath);
+    }
 
     const outStat = await fs.stat(outPath);
     const outMeta = await sharp(outPath).metadata();
