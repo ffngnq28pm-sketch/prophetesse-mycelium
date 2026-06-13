@@ -772,6 +772,10 @@ function render(
   visible.setTransform(1, 0, 0, 1, 0, 0);
 }
 
+// Intensité du halo de lisibilité derrière la Marcheuse (dial-able). Atténué
+// depuis le re-skin (V8) : elle se détache désormais par son propre rendu.
+const WALKER_BACKING = 0.24;
+
 // Halo sombre doux derrière la Marcheuse : sépare sa silhouette du décor peint
 // sans l'alourdir. Dessiné en coords monde (le contexte est déjà en layer(1,1)).
 function drawWalkerBacking(ctx: CanvasRenderingContext2D, o: Olivia) {
@@ -779,8 +783,8 @@ function drawWalkerBacking(ctx: CanvasRenderingContext2D, o: Olivia) {
   const cy = o.y + o.h * 0.45;
   const r = o.h * 0.9;
   const g = ctx.createRadialGradient(cx, cy, 2, cx, cy, r);
-  g.addColorStop(0, "rgba(16,24,12,0.34)");
-  g.addColorStop(0.6, "rgba(16,24,12,0.16)");
+  g.addColorStop(0, `rgba(16,24,12,${WALKER_BACKING})`);
+  g.addColorStop(0.6, `rgba(16,24,12,${WALKER_BACKING * 0.47})`);
   g.addColorStop(1, "rgba(16,24,12,0)");
   ctx.fillStyle = g;
   ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
@@ -1632,10 +1636,13 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
 
   const H = o.h; // 38
 
-  // ombre portée
-  ctx.fillStyle = "rgba(19,32,15,0.25)";
+  // ombre de contact douce (radiale) — suit la Marcheuse, s'élargit au squash
+  const csh = ctx.createRadialGradient(0, 2, 1, 0, 2, 13);
+  csh.addColorStop(0, "rgba(12,20,10,0.42)");
+  csh.addColorStop(1, "rgba(12,20,10,0)");
+  ctx.fillStyle = csh;
   ctx.beginPath();
-  ctx.ellipse(0, 1, 11, 3.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 2, 13, 4.2, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // jambes
@@ -1666,16 +1673,32 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
     ctx.stroke();
   }
 
-  // cape / corps (silhouette mousse foncé)
+  // cape / corps — ombrage doux (ombre → lumière vers l'avant) + bord feutré
   const breath = o.onGround && !moving ? Math.sin(time / 700) * 0.6 : 0;
-  ctx.fillStyle = "#304527";
+  const bodyGrad = ctx.createLinearGradient(-8, 0, 8, 0);
+  bodyGrad.addColorStop(0, "#21331f"); // côté ombre
+  bodyGrad.addColorStop(0.55, "#2f4a2c");
+  bodyGrad.addColorStop(1, "#3d5e34"); // côté éclairé (avant)
+  ctx.save();
+  ctx.shadowColor = "rgba(10,16,8,0.5)";
+  ctx.shadowBlur = 3; // silhouette peinte, bord légèrement adouci
+  ctx.fillStyle = bodyGrad;
   ctx.beginPath();
   ctx.moveTo(-8, -H * 0.3);
   ctx.quadraticCurveTo(-9, -H * 0.62 - breath, -5, -H * 0.74);
   ctx.lineTo(5, -H * 0.74);
   ctx.quadraticCurveTo(9, -H * 0.62 - breath, 8, -H * 0.3);
   ctx.quadraticCurveTo(0, -H * 0.24, -8, -H * 0.3);
+  ctx.closePath();
   ctx.fill();
+  ctx.restore();
+  // rim-light chaud sur le bord avant (contre-jour)
+  ctx.strokeStyle = "rgba(255,228,150,0.5)";
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.moveTo(8, -H * 0.3);
+  ctx.quadraticCurveTo(9, -H * 0.62 - breath, 5, -H * 0.74);
+  ctx.stroke();
   // liseré clair (col)
   ctx.fillStyle = "#496c39";
   ctx.fillRect(-5, -H * 0.74, 10, 3);
