@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { livres } from "@/data/livre-sacre";
+import { FACULTES } from "@/data/friches";
 
 const SITE_URL = "https://mycelium.shadowstepsociety.com";
 
@@ -20,6 +21,7 @@ const ROUTES_STATIQUES = [
   "/jeu/traversee/",
   "/jeu/verbe/",
   "/sanctuaires/",
+  "/universite/",
   "/livre/",
   "/almanach/",
   "/hagiographie/",
@@ -59,5 +61,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
     }
   }
 
-  return [...staticEntries, ...livreEntries];
+  // Université des Friches : facultés + leçons (static export).
+  const frichesEntries: MetadataRoute.Sitemap = [];
+  for (const f of FACULTES) {
+    frichesEntries.push({
+      url: `${SITE_URL}/universite/${f.id}/`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    });
+    for (const l of f.lecons) {
+      frichesEntries.push({
+        url: `${SITE_URL}/universite/${f.id}/${l.id}/`,
+        lastModified: now,
+        changeFrequency: "monthly" as const,
+        priority: 0.5,
+      });
+    }
+  }
+
+  return [...staticEntries, ...livreEntries, ...frichesEntries];
 }

@@ -18,6 +18,7 @@ interface NavGroup {
 }
 
 const HOME: NavLink = { href: "/tableau", label: "Sanctuaire" };
+const UNIVERSITE: NavLink = { href: "/universite", label: "Université" };
 const JEUX: NavLink = { href: "/jeu", label: "Jeux" };
 const PARAMS: NavLink = { href: "/parametres", label: "Paramètres" };
 
@@ -161,6 +162,7 @@ export function Nav() {
               )}
             </div>
           ))}
+          <TopLink link={UNIVERSITE} active={isActive(UNIVERSITE.href)} />
           <TopLink link={JEUX} active={isActive(JEUX.href)} />
           <TopLink link={PARAMS} active={isActive(PARAMS.href)} />
         </nav>
@@ -201,6 +203,7 @@ export function Nav() {
               </div>
             ))}
             <div className="grid grid-cols-2 gap-1">
+              <MobileLink link={UNIVERSITE} active={isActive(UNIVERSITE.href)} />
               <MobileLink link={JEUX} active={isActive(JEUX.href)} />
               <MobileLink link={PARAMS} active={isActive(PARAMS.href)} />
             </div>
