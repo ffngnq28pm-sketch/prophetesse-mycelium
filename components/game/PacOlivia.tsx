@@ -133,6 +133,8 @@ export function PacOlivia({ onLevelComplete, onGameOver }: Props) {
   const lastInsectCountRef = useRef<number>(0);
   const lastTabassesRef = useRef<number>(0);
 
+  const fxRef = useRef<PacFx>({ particles: [], shakeUntil: 0, shakeMag: 0, reduced: false });
+
   const [, forceTick] = useState(0);
   const audioOn = useStore((s) => s.audioActif);
   const setAudioOn = useStore((s) => s.setAudioActif);
@@ -184,6 +186,17 @@ export function PacOlivia({ onLevelComplete, onGameOver }: Props) {
     }
   }, []);
 
+  // prefers-reduced-motion : coupe particules et screenshake.
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => {
+      fxRef.current.reduced = mq.matches;
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
   // RAF loop — démarre au mount et reste actif. La logique de jeu est skippée si non-playing/paused.
   useEffect(() => {
     const loop = (t: number) => {
@@ -192,21 +205,31 @@ export function PacOlivia({ onLevelComplete, onGameOver }: Props) {
       lastTimeRef.current = t;
       animFrameRef.current = t;
       const s = stateRef.current;
+      const fx = fxRef.current;
       if (s && s.status === "playing" && !paused) {
         step(s, dt, t);
         if (s.stats.insectsRemaining < lastInsectCountRef.current) {
           audioRef.current.insect();
           lastInsectCountRef.current = s.stats.insectsRemaining;
+          // petit pop doré à l'endroit de la capture
+          if (!fx.reduced) {
+            spawnBurst(fx.particles, s.olivia.cx * CELL_PX + CELL_PX / 2, s.olivia.cy * CELL_PX + CELL_PX / 2, t, "#e8c25a", 6, 30);
+          }
         }
         if (s.stats.ghostsTabasses > lastTabassesRef.current) {
           audioRef.current.hitGhost();
           lastTabassesRef.current = s.stats.ghostsTabasses;
           setMalediction(MALEDICTIONS[Math.floor(Math.random() * MALEDICTIONS.length)]);
           setTimeout(() => setMalediction(null), 1400);
+          if (!fx.reduced) {
+            spawnBurst(fx.particles, s.olivia.cx * CELL_PX + CELL_PX / 2, s.olivia.cy * CELL_PX + CELL_PX / 2, t, "#cfe9ff", 14, 60);
+            fx.shakeUntil = t + 200;
+            fx.shakeMag = 3; // micro-screenshake, jamais plus de 3 px
+          }
         }
       }
       if (s) {
-        render(canvasRef.current, s, t);
+        render(canvasRef.current, s, t, fx);
       }
       if (s?.status === "levelComplete") {
         audioRef.current.levelComplete();
@@ -488,7 +511,63 @@ export function PacOlivia({ onLevelComplete, onGameOver }: Props) {
 }
 
 // =================== RENDER ===================
-function render(canvas: HTMLCanvasElement | null, state: PacState, time: number) {
+// Direction artistique V6 : nuit chaude de cimetière — haies moussues en
+// volume, nappes de lumière dorée (clair-obscur académique), fantômes
+// spectraux au voile ondulant, vignette douce. Aucune allocation par cellule :
+// les dégradés ne sont créés qu'à l'échelle de la frame.
+
+interface PacParticle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  born: number;
+  life: number;
+  color: string;
+  size: number;
+}
+
+interface PacFx {
+  particles: PacParticle[];
+  shakeUntil: number;
+  shakeMag: number;
+  reduced: boolean;
+}
+
+function spawnBurst(
+  arr: PacParticle[],
+  x: number,
+  y: number,
+  t: number,
+  color: string,
+  n: number,
+  speed: number
+) {
+  for (let i = 0; i < n; i++) {
+    const a = (Math.PI * 2 * i) / n + Math.random() * 0.8;
+    const sp = speed * (0.5 + Math.random());
+    arr.push({
+      x,
+      y,
+      vx: Math.cos(a) * sp,
+      vy: Math.sin(a) * sp - 14,
+      born: t,
+      life: 450 + Math.random() * 350,
+      color,
+      size: 1.4 + Math.random() * 1.6,
+    });
+  }
+  if (arr.length > 160) arr.splice(0, arr.length - 160);
+}
+
+// Hash déterministe (texture des haies, nappes de lumière par niveau).
+function hash2(x: number, y: number): number {
+  let h = x * 374761393 + y * 668265263;
+  h = (h ^ (h >>> 13)) * 1274126177;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+function render(canvas: HTMLCanvasElement | null, state: PacState, time: number, fx: PacFx) {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -503,24 +582,50 @@ function render(canvas: HTMLCanvasElement | null, state: PacState, time: number)
     canvas.height = targetH;
   }
   const scale = targetW / WIDTH;
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
-  ctx.clearRect(0, 0, WIDTH, HEIGHT);
+  // Micro-screenshake (≤ 3 px), coupé par prefers-reduced-motion.
+  let shx = 0;
+  let shy = 0;
+  if (!fx.reduced && time < fx.shakeUntil) {
+    const k = (fx.shakeUntil - time) / 200;
+    shx = (Math.random() - 0.5) * 2 * fx.shakeMag * k;
+    shy = (Math.random() - 0.5) * 2 * fx.shakeMag * k;
+  }
+  ctx.setTransform(scale, 0, 0, scale, shx * scale, shy * scale);
 
-  // Background subtle gradient
-  const bg = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, 50, WIDTH / 2, HEIGHT / 2, WIDTH);
-  bg.addColorStop(0, "#1a2310");
-  bg.addColorStop(1, "#080d04");
+  ctx.clearRect(-4, -4, WIDTH + 8, HEIGHT + 8);
+
+  // —— Fond : nuit végétale profonde ——
+  const bg = ctx.createRadialGradient(WIDTH / 2, HEIGHT * 0.42, 40, WIDTH / 2, HEIGHT / 2, WIDTH * 0.85);
+  bg.addColorStop(0, "#1c2912");
+  bg.addColorStop(0.65, "#101b09");
+  bg.addColorStop(1, "#070c03");
   ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.fillRect(-4, -4, WIDTH + 8, HEIGHT + 8);
 
-  // Draw cells
+  // —— Nappes de lumière chaude (clair-obscur, fixes par niveau) ——
+  const seed = state.stats.niveauIndex + 1;
+  ctx.globalCompositeOperation = "lighter";
+  for (let i = 0; i < 3; i++) {
+    const lx = WIDTH * (0.18 + hash2(seed, i * 7) * 0.64);
+    const ly = HEIGHT * (0.15 + hash2(i * 13, seed) * 0.7);
+    const lr = 90 + hash2(seed * 3, i) * 70;
+    const breathe = 1 + Math.sin(time / 2600 + i * 2.1) * 0.06;
+    const pool = ctx.createRadialGradient(lx, ly, 6, lx, ly, lr * breathe);
+    pool.addColorStop(0, "rgba(244,220,160,0.085)");
+    pool.addColorStop(1, "rgba(244,220,160,0)");
+    ctx.fillStyle = pool;
+    ctx.fillRect(lx - lr, ly - lr, lr * 2, lr * 2);
+  }
+  ctx.globalCompositeOperation = "source-over";
+
+  // —— Cellules ——
   for (let y = 0; y < ROWS; y++) {
     for (let x = 0; x < COLS; x++) {
       const c = state.grid[y][x];
       const px = x * CELL_PX;
       const py = y * CELL_PX;
-      if (c.wall) drawWall(ctx, state, x, y);
+      if (c.wall) drawHedge(ctx, state, x, y);
       else if (c.house) {
         ctx.fillStyle = "rgba(180,140,80,0.06)";
         ctx.fillRect(px, py, CELL_PX, CELL_PX);
@@ -528,60 +633,135 @@ function render(canvas: HTMLCanvasElement | null, state: PacState, time: number)
       if (c.door) {
         ctx.fillStyle = "#c9a227";
         ctx.fillRect(px, py + CELL_PX / 2 - 2, CELL_PX, 4);
+        ctx.fillStyle = "rgba(255,233,176,0.35)";
+        ctx.fillRect(px, py + CELL_PX / 2 - 1, CELL_PX, 1.4);
       }
       if (c.insect) drawInsect(ctx, x, y, time);
       if (c.coffee) drawCoffee(ctx, x, y, time);
     }
   }
 
-  // Draw effect flash on coffee
+  // —— Lucioles ambiantes (déterministes, dérivent lentement) ——
+  if (!fx.reduced) {
+    ctx.fillStyle = "rgba(255,240,190,0.5)";
+    for (let i = 0; i < 5; i++) {
+      const a = time / (2600 + i * 700) + i * 1.7;
+      const lx = WIDTH * (0.5 + 0.42 * Math.sin(a + hash2(i, seed) * 6));
+      const ly = HEIGHT * (0.5 + 0.4 * Math.cos(a * 0.8 + i));
+      const tw = 0.5 + 0.5 * Math.sin(time / 320 + i * 2.3);
+      ctx.globalAlpha = 0.25 + tw * 0.4;
+      ctx.beginPath();
+      ctx.arc(lx, ly, 1.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Flash du café (Sainte Colère)
   if (state.effectFlashUntil > time) {
     ctx.fillStyle = "rgba(201,162,39,0.18)";
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
   }
 
-  // Draw ghosts
+  // —— Fantômes puis Marcheuse ——
   for (const g of state.ghosts) {
     drawGhost(ctx, g, state, time);
   }
-
-  // Draw Olivia
   drawOlivia(ctx, state, time);
+
+  // —— Particules ——
+  drawPacParticles(ctx, fx.particles, time);
+
+  // —— Vignette nocturne ——
+  const vg = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, HEIGHT * 0.38, WIDTH / 2, HEIGHT / 2, HEIGHT * 0.78);
+  vg.addColorStop(0, "rgba(5,10,3,0)");
+  vg.addColorStop(1, "rgba(5,10,3,0.42)");
+  ctx.fillStyle = vg;
+  ctx.fillRect(-4, -4, WIDTH + 8, HEIGHT + 8);
 }
 
-function drawWall(ctx: CanvasRenderingContext2D, state: PacState, x: number, y: number) {
+function drawPacParticles(ctx: CanvasRenderingContext2D, particles: PacParticle[], time: number) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    const age = time - p.born;
+    if (age >= p.life) {
+      particles.splice(i, 1);
+      continue;
+    }
+    const k = age / 1000;
+    ctx.globalAlpha = 1 - age / p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x + p.vx * k, p.y + p.vy * k + 30 * k * k, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// Haie moussue de cimetière : volume simple (face sombre, crête éclairée par
+// la lune côté haut-gauche), feuillage pointilliste déterministe.
+function drawHedge(ctx: CanvasRenderingContext2D, state: PacState, x: number, y: number) {
   const px = x * CELL_PX;
   const py = y * CELL_PX;
-  ctx.fillStyle = "#22361a";
-  ctx.fillRect(px, py, CELL_PX, CELL_PX);
-  ctx.strokeStyle = "#4a6c39";
-  ctx.lineWidth = 1.4;
-
-  // Draw selective edges where neighbor is not wall
   const grid = state.grid;
   const isWall = (xx: number, yy: number) => yy >= 0 && yy < ROWS && xx >= 0 && xx < COLS && grid[yy][xx].wall;
+
+  // masse de base
+  ctx.fillStyle = "#22361a";
+  ctx.fillRect(px, py, CELL_PX, CELL_PX);
+
+  // feuillage : 3 touches déterministes, deux verts
+  const h1 = hash2(x * 3 + 1, y * 5 + 2);
+  const h2 = hash2(x * 7 + 3, y * 11 + 1);
+  const h3 = hash2(x * 13 + 5, y * 17 + 7);
+  ctx.fillStyle = "#2c4421";
+  ctx.beginPath();
+  ctx.arc(px + 4 + h1 * 14, py + 4 + h2 * 14, 2.6 + h3 * 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#1a2a12";
+  ctx.beginPath();
+  ctx.arc(px + 4 + h2 * 14, py + 4 + h3 * 14, 2 + h1 * 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // crête éclairée (bords exposés au chemin) — la lumière vient du haut-gauche
+  ctx.lineWidth = 1.6;
+  ctx.lineCap = "round";
   if (!isWall(x, y - 1)) {
+    ctx.strokeStyle = "#5d7f43";
     ctx.beginPath();
-    ctx.moveTo(px + 2, py + 2);
-    ctx.lineTo(px + CELL_PX - 2, py + 2);
+    ctx.moveTo(px + 2, py + 1.6);
+    ctx.lineTo(px + CELL_PX - 2, py + 1.6);
+    ctx.stroke();
+    // quelques brins qui dépassent
+    if (h1 > 0.55) {
+      ctx.strokeStyle = "#6f8f55";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(px + 5 + h2 * 10, py + 1);
+      ctx.lineTo(px + 4 + h2 * 10, py - 2.5);
+      ctx.stroke();
+      ctx.lineWidth = 1.6;
+    }
+  }
+  if (!isWall(x - 1, y)) {
+    ctx.strokeStyle = "#4a6c39";
+    ctx.beginPath();
+    ctx.moveTo(px + 1.6, py + 2);
+    ctx.lineTo(px + 1.6, py + CELL_PX - 2);
     ctx.stroke();
   }
   if (!isWall(x, y + 1)) {
+    ctx.strokeStyle = "#15230e";
     ctx.beginPath();
-    ctx.moveTo(px + 2, py + CELL_PX - 2);
-    ctx.lineTo(px + CELL_PX - 2, py + CELL_PX - 2);
-    ctx.stroke();
-  }
-  if (!isWall(x - 1, y)) {
-    ctx.beginPath();
-    ctx.moveTo(px + 2, py + 2);
-    ctx.lineTo(px + 2, py + CELL_PX - 2);
+    ctx.moveTo(px + 2, py + CELL_PX - 1.6);
+    ctx.lineTo(px + CELL_PX - 2, py + CELL_PX - 1.6);
     ctx.stroke();
   }
   if (!isWall(x + 1, y)) {
+    ctx.strokeStyle = "#2c4421";
     ctx.beginPath();
-    ctx.moveTo(px + CELL_PX - 2, py + 2);
-    ctx.lineTo(px + CELL_PX - 2, py + CELL_PX - 2);
+    ctx.moveTo(px + CELL_PX - 1.6, py + 2);
+    ctx.lineTo(px + CELL_PX - 1.6, py + CELL_PX - 2);
     ctx.stroke();
   }
 }
@@ -689,12 +869,15 @@ function drawCoffee(ctx: CanvasRenderingContext2D, x: number, y: number, time: n
   ctx.restore();
 }
 
+// Index stable d'un fantôme (anime voile et flottement en décalé).
+const GHOST_PHASE: Record<string, number> = { cendrillon: 0, precieuse: 1.6, marcel: 3.1, innomme: 4.7 };
+
 function drawGhost(ctx: CanvasRenderingContext2D, g: Ghost, state: PacState, time: number) {
+  const phase = GHOST_PHASE[g.id] ?? 0;
+  const bob = Math.sin(time / 340 + phase) * 1.3;
   const px = g.cx * CELL_PX + CELL_PX / 2;
-  const py = g.cy * CELL_PX + CELL_PX / 2;
-  const angry = state.olivia.angryUntil > time;
-  const flicker = (Math.sin(time / 80) > 0) ? 1 : 0.8;
-  const r = CELL_PX * 0.45;
+  const py = g.cy * CELL_PX + CELL_PX / 2 + bob;
+  const r = CELL_PX * 0.46;
 
   ctx.save();
   ctx.translate(px, py);
@@ -703,75 +886,204 @@ function drawGhost(ctx: CanvasRenderingContext2D, g: Ghost, state: PacState, tim
   const isEaten = g.mode === "eaten";
 
   if (isEaten) {
-    // just eyes floating
-    drawGhostEyes(ctx, g.dir, "#cfe9ff");
+    // âme qui rentre : deux lueurs pâles + traîne
+    ctx.fillStyle = "rgba(207,233,255,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(-g.dir.x * 5, -g.dir.y * 5 - 2, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    drawGhostEyes(ctx, g, "#cfe9ff", time, true);
     ctx.restore();
     return;
   }
 
-  // body
+  // —— Couleurs du voile ——
   let body = g.data.couleur;
-  let stroke = g.data.couleurSecondaire;
+  let deep = g.data.couleurSecondaire;
   if (isFrightened) {
-    // tremblotant
     const t = time / 120;
-    const c1 = "#3a4f9a";
-    const c2 = "#7388c6";
-    body = (Math.sin(t) > 0 ? c1 : c2);
-    stroke = "#172456";
-    // last 2s warning
+    body = Math.sin(t) > 0 ? "#3a4f9a" : "#52689e";
+    deep = "#172456";
     const remaining = (state.olivia.angryUntil - time) / 1000;
     if (remaining < 2 && Math.sin(time / 60) > 0) {
       body = "#f4ecd2";
-      stroke = "#9a6a14";
+      deep = "#9a6a14";
     }
   }
-  if (g.data.ai === "patrouille") {
-    // L'Innommé : contour qui clignote
-    ctx.globalAlpha = flicker;
+
+  const isInnomme = g.id === "innomme";
+  if (isInnomme) {
+    // l'Innommé n'est jamais tout à fait là
+    ctx.globalAlpha = 0.82 + Math.sin(time / 90) * 0.12;
   }
 
-  ctx.fillStyle = body;
+  // —— Halo spectral ——
+  const halo = ctx.createRadialGradient(0, -2, 2, 0, -2, r * 2.2);
+  halo.addColorStop(0, `${body}3d`);
+  halo.addColorStop(1, `${body}00`);
+  ctx.fillStyle = halo;
+  ctx.fillRect(-r * 2.2, -2 - r * 2.2, r * 4.4, r * 4.4);
+
+  // —— Voile : dôme + ourlet ondulant (drapé qui flotte) ——
+  const grad = ctx.createLinearGradient(0, -r * 1.2, 0, r);
+  grad.addColorStop(0, body);
+  grad.addColorStop(1, deep);
+  ctx.fillStyle = grad;
   ctx.beginPath();
-  // rounded top + wavy bottom
   ctx.moveTo(-r, 0);
   ctx.lineTo(-r, -r * 0.2);
   ctx.arc(0, -r * 0.2, r, Math.PI, 0, false);
-  ctx.lineTo(r, r * 0.6);
-  // wavy bottom 3 humps
-  const humps = 3;
+  ctx.lineTo(r, r * 0.55);
+  const humps = 4;
+  const w = time / 130 + phase;
   for (let i = humps; i > 0; i--) {
     const x1 = -r + ((i - 0.5) * 2 * r) / humps;
     const x2 = -r + ((i - 1) * 2 * r) / humps;
-    ctx.quadraticCurveTo(x1, r * 0.95, x2, r * 0.6);
+    const lift = Math.sin(w + i * 1.5) * 2.2;
+    ctx.quadraticCurveTo(x1, r * 0.95 + lift, x2, r * 0.55 + Math.sin(w + i * 1.5 - 0.7) * 1.6);
   }
   ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle = stroke;
+
+  // lueur interne (la lanterne de l'âme)
+  const core = ctx.createRadialGradient(0, -r * 0.45, 1, 0, -r * 0.45, r * 0.8);
+  core.addColorStop(0, "rgba(255,255,255,0.22)");
+  core.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = core;
+  ctx.beginPath();
+  ctx.arc(0, -r * 0.3, r * 0.85, 0, Math.PI * 2);
+  ctx.fill();
+
+  // liseré du voile
+  ctx.strokeStyle = deep;
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  drawGhostEyes(ctx, g.dir, isFrightened ? "#ffd0d0" : "#ffffff");
+  // —— Identité (accessoires sobres, lisibles à 22 px) ——
+  if (!isFrightened) {
+    if (g.id === "cendrillon") {
+      // casquette plate de jardinier + brin de balai sur l'épaule
+      ctx.fillStyle = "#5e7591";
+      ctx.beginPath();
+      ctx.ellipse(0, -r - 1.5, r * 0.62, 2.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#46586e";
+      ctx.fillRect(-r * 0.15, -r - 5, r * 0.5, 3);
+      ctx.strokeStyle = "#7a5b30";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(r * 0.7, r * 0.4);
+      ctx.lineTo(r * 1.15, -r * 0.9);
+      ctx.stroke();
+      ctx.strokeStyle = "#c9b178";
+      ctx.lineWidth = 1;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(r * 1.15, -r * 0.9);
+        ctx.lineTo(r * 1.15 + i * 1.6, -r * 1.28);
+        ctx.stroke();
+      }
+    } else if (g.id === "precieuse") {
+      // diadème à trois pointes + collier de perles
+      ctx.fillStyle = "#e0c25e";
+      for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 4 - 2, -r - 1);
+        ctx.lineTo(i * 4, -r - 6 + Math.abs(i));
+        ctx.lineTo(i * 4 + 2, -r - 1);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.fillStyle = "#f2ead8";
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.arc(i * 2.6, r * 0.16 + Math.abs(i) * 0.7, 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (g.id === "marcel") {
+      // épi de cheveux + taches de rousseur
+      ctx.strokeStyle = "#70a070";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(1, -r - 1);
+      ctx.quadraticCurveTo(3, -r - 6, 6, -r - 4);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(60,90,60,0.55)";
+      ctx.beginPath();
+      ctx.arc(-4.6, 1.4, 0.7, 0, Math.PI * 2);
+      ctx.arc(4.6, 1.4, 0.7, 0, Math.PI * 2);
+      ctx.arc(0, 2.4, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (isInnomme) {
+      // volutes de fumée qui montent
+      ctx.fillStyle = "rgba(70,70,70,0.3)";
+      const sphase = time / 700;
+      for (let i = 0; i < 2; i++) {
+        const sy = -r - 4 - ((sphase * 8 + i * 7) % 14);
+        const sx = Math.sin(sphase * 2 + i * 2.4) * 3;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 2.4 - i * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  drawGhostEyes(ctx, g, isFrightened ? "#ffd0d0" : "#ffffff", time, false);
 
   ctx.restore();
   ctx.globalAlpha = 1;
 }
 
-function drawGhostEyes(ctx: CanvasRenderingContext2D, dir: { x: number; y: number }, scleraColor: string) {
-  const r = 2.5;
-  const pupilR = 1.4;
+// Yeux expressifs : chaque défunt a son regard.
+function drawGhostEyes(
+  ctx: CanvasRenderingContext2D,
+  g: Ghost,
+  scleraColor: string,
+  time: number,
+  eatenOnly: boolean
+) {
+  const dir = g.dir;
   const off = 3.4;
+  const dx = dir.x * 1.4;
+  const dy = dir.y * 1.4;
+
+  if (g.id === "innomme" && !eatenOnly) {
+    // pas de sclère : deux lueurs pâles, insondables
+    const tw = 0.7 + 0.3 * Math.sin(time / 280);
+    ctx.fillStyle = `rgba(230,235,240,${tw})`;
+    ctx.beginPath();
+    ctx.arc(-off + dx, -2 + dy, 1.7, 0, Math.PI * 2);
+    ctx.arc(off + dx, -2 + dy, 1.7, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
+  const r = g.id === "marcel" ? 3 : 2.5; // Marcel : grands yeux d'enfant
   ctx.fillStyle = scleraColor;
   ctx.beginPath();
   ctx.arc(-off, -2, r, 0, Math.PI * 2);
   ctx.arc(off, -2, r, 0, Math.PI * 2);
   ctx.fill();
+
+  // paupières : Cendrillon fatigué-tendre, Précieuse hautaine
+  if (!eatenOnly && (g.id === "cendrillon" || g.id === "precieuse")) {
+    ctx.fillStyle = g.id === "cendrillon" ? "#8aa0b8" : "#c8a0e0";
+    const lid = g.id === "cendrillon" ? 0.45 : 0.38;
+    ctx.beginPath();
+    ctx.rect(-off - r, -2 - r, r * 2, r * 2 * lid);
+    ctx.rect(off - r, -2 - r, r * 2, r * 2 * lid);
+    ctx.fill();
+  }
+
   ctx.fillStyle = "#0c1840";
   ctx.beginPath();
-  const dx = dir.x * 1.4;
-  const dy = dir.y * 1.4;
-  ctx.arc(-off + dx, -2 + dy, pupilR, 0, Math.PI * 2);
-  ctx.arc(off + dx, -2 + dy, pupilR, 0, Math.PI * 2);
+  ctx.arc(-off + dx, -2 + dy + (g.id === "marcel" ? 0.4 : 0), 1.4, 0, Math.PI * 2);
+  ctx.arc(off + dx, -2 + dy + (g.id === "marcel" ? 0.4 : 0), 1.4, 0, Math.PI * 2);
+  ctx.fill();
+  // reflet
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.beginPath();
+  ctx.arc(-off + dx - 0.5, -2.6 + dy, 0.5, 0, Math.PI * 2);
+  ctx.arc(off + dx - 0.5, -2.6 + dy, 0.5, 0, Math.PI * 2);
   ctx.fill();
 }
 
@@ -781,6 +1093,18 @@ function drawOlivia(ctx: CanvasRenderingContext2D, state: PacState, time: number
   const py = o.cy * CELL_PX + CELL_PX / 2;
   const angry = o.angryUntil > time;
   const frame = Math.floor(time / 140) % 2;
+
+  // Traîne dorée pendant la Sainte Colère (lisible : « je suis insaisissable »)
+  if (angry && (o.dir.x !== 0 || o.dir.y !== 0)) {
+    for (let i = 1; i <= 3; i++) {
+      const tx = px - o.dir.x * i * 5.5;
+      const ty = py - o.dir.y * i * 5.5;
+      ctx.fillStyle = `rgba(244,211,94,${0.16 - i * 0.04})`;
+      ctx.beginPath();
+      ctx.arc(tx, ty, 7 - i * 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 
   ctx.save();
   ctx.translate(px, py);
@@ -797,6 +1121,14 @@ function drawOlivia(ctx: CanvasRenderingContext2D, state: PacState, time: number
     ctx.strokeStyle = `rgba(255,230,120,${0.85 * pulse})`;
     ctx.lineWidth = 1.4;
     ctx.stroke();
+    // étincelles en orbite
+    for (let i = 0; i < 3; i++) {
+      const a = time / 260 + (i * Math.PI * 2) / 3;
+      ctx.fillStyle = "rgba(255,236,160,0.9)";
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * CELL_PX * 0.62, Math.sin(a) * CELL_PX * 0.62, 1.1, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   // Sprite vu de face, toujours debout (lisibilité à 22 px). Seul le
@@ -834,7 +1166,7 @@ function drawOlivia(ctx: CanvasRenderingContext2D, state: PacState, time: number
   ctx.stroke();
   ctx.restore();
 
-  // Corps (t-shirt vert mousse) avec contour sombre pour détacher du fond
+  // Corps (veste vert mousse) avec contour sombre + reflet d'épaule
   ctx.beginPath();
   ctx.ellipse(0, 3, 5.2, 5.6, 0, 0, Math.PI * 2);
   ctx.fillStyle = "#3f7330";
@@ -842,16 +1174,26 @@ function drawOlivia(ctx: CanvasRenderingContext2D, state: PacState, time: number
   ctx.lineWidth = 1.4;
   ctx.strokeStyle = "#16240f";
   ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,0.14)";
+  ctx.beginPath();
+  ctx.ellipse(-1.6, 0.8, 2.6, 1.6, -0.5, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Cheveux blonds (derrière la tête) + mèches latérales
+  // Cheveux blonds (derrière la tête) + couettes qui suivent le mouvement
+  const hairSway = (o.dir.x !== 0 || o.dir.y !== 0) ? Math.sin(time / 150) * 0.9 : Math.sin(time / 520) * 0.35;
   ctx.fillStyle = "#e7cf6f";
   ctx.beginPath();
   ctx.arc(0, -3.8, 5.4, 0, Math.PI * 2);
   ctx.fill();
-  // mèches longues descendant sous la casquette, le long du buste
   ctx.beginPath();
-  ctx.ellipse(-4.4, 1.4, 1.9, 5.6, 0.12, 0, Math.PI * 2);
-  ctx.ellipse(4.4, 1.4, 1.9, 5.6, -0.12, 0, Math.PI * 2);
+  ctx.ellipse(-4.4 - hairSway, 1.4, 1.9, 5.6, 0.12 + hairSway * 0.05, 0, Math.PI * 2);
+  ctx.ellipse(4.4 - hairSway, 1.4, 1.9, 5.6, -0.12 + hairSway * 0.05, 0, Math.PI * 2);
+  ctx.fill();
+  // reflet doré dans les couettes
+  ctx.fillStyle = "#f2e29a";
+  ctx.beginPath();
+  ctx.ellipse(-4.6 - hairSway, 0.4, 0.7, 2.6, 0.12, 0, Math.PI * 2);
+  ctx.ellipse(4.2 - hairSway, 0.4, 0.7, 2.6, -0.12, 0, Math.PI * 2);
   ctx.fill();
   // élastiques — cheveux attachés
   ctx.fillStyle = "#b8893a";
@@ -868,8 +1210,14 @@ function drawOlivia(ctx: CanvasRenderingContext2D, state: PacState, time: number
   ctx.lineWidth = 1.1;
   ctx.strokeStyle = "#c69b67";
   ctx.stroke();
+  // joues
+  ctx.fillStyle = "rgba(224,140,110,0.35)";
+  ctx.beginPath();
+  ctx.ellipse(-2.6, -1.8, 1.1, 0.7, 0, 0, Math.PI * 2);
+  ctx.ellipse(2.6, -1.8, 1.1, 0.7, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Casquette rouge — élément le plus reconnaissable, fort contraste
+  // Casquette rouge — l'unique accent vif du site, soigné en conséquence
   ctx.beginPath();
   ctx.arc(0, -4, 4.8, Math.PI * 1.03, Math.PI * 1.97, false);
   ctx.closePath();
@@ -878,25 +1226,35 @@ function drawOlivia(ctx: CanvasRenderingContext2D, state: PacState, time: number
   ctx.lineWidth = 1.2;
   ctx.strokeStyle = "#7c1d0e";
   ctx.stroke();
-  // visière
+  // calotte : reflet
+  ctx.fillStyle = "rgba(255,255,255,0.22)";
   ctx.beginPath();
-  ctx.ellipse(0, -5.3, 4.7, 1.7, 0, 0, Math.PI * 2);
+  ctx.ellipse(-1.6, -6.4, 2.2, 1.1, -0.4, 0, Math.PI * 2);
+  ctx.fill();
+  // visière orientée vers la direction de marche (horizontale)
+  const visorShift = o.dir.x !== 0 ? o.dir.x * 1.6 : 0;
+  ctx.beginPath();
+  ctx.ellipse(visorShift, -5.3, 4.7, 1.7, 0, 0, Math.PI * 2);
   ctx.fillStyle = "#bf3019";
   ctx.fill();
+  ctx.strokeStyle = "#7c1d0e";
   ctx.stroke();
 
-  // Sourcils déterminés
+  // Sourcils : déterminés, féroces en Sainte Colère
   ctx.strokeStyle = "#9a7b3a";
   ctx.lineWidth = 1;
   ctx.lineCap = "round";
+  const brow = angry ? 0.9 : 0;
   ctx.beginPath();
-  ctx.moveTo(-3, -4.6);
-  ctx.lineTo(-0.9, -4.1);
-  ctx.moveTo(3, -4.6);
-  ctx.lineTo(0.9, -4.1);
+  ctx.moveTo(-3, -4.6 + brow);
+  ctx.lineTo(-0.9, -4.1 - brow * 0.4);
+  ctx.moveTo(3, -4.6 + brow);
+  ctx.lineTo(0.9, -4.1 - brow * 0.4);
   ctx.stroke();
 
-  // Yeux marron, perçants (blanc + iris bien dimensionnés)
+  // Yeux marron, perçants — pupilles tournées vers la direction
+  const lookX = o.dir.x * 0.5;
+  const lookY = o.dir.y * 0.4;
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
   ctx.ellipse(-1.8, -3, 1.3, 1.6, 0, 0, Math.PI * 2);
@@ -904,8 +1262,14 @@ function drawOlivia(ctx: CanvasRenderingContext2D, state: PacState, time: number
   ctx.fill();
   ctx.fillStyle = "#3a1f0b";
   ctx.beginPath();
-  ctx.arc(-1.8, -2.7, 1, 0, Math.PI * 2);
-  ctx.arc(1.8, -2.7, 1, 0, Math.PI * 2);
+  ctx.arc(-1.8 + lookX, -2.7 + lookY, 1, 0, Math.PI * 2);
+  ctx.arc(1.8 + lookX, -2.7 + lookY, 1, 0, Math.PI * 2);
+  ctx.fill();
+  // reflets
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.beginPath();
+  ctx.arc(-2.1 + lookX, -3.1 + lookY, 0.4, 0, Math.PI * 2);
+  ctx.arc(1.5 + lookX, -3.1 + lookY, 0.4, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();

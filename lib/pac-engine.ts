@@ -44,6 +44,7 @@ export interface Ghost {
   speed: number;
   releaseAt: number; // ms timestamp when allowed to leave house
   justExited: boolean; // true au premier tick chase post-sortie, autorise demi-tour
+  pausedUntil: number; // Petit Marcel s'arrête parfois pour regarder une fleur
 }
 
 export interface Stats {
@@ -154,6 +155,7 @@ export function createInitialState(levelIndex: number, livesCarry?: number, scor
       speed: olivia.speed * niveau.ghostSpeedFactor * 0.97, // -3% sur la vitesse des fantômes
       releaseAt: performance.now() + i * 3500,
       justExited: false,
+      pausedUntil: 0,
     };
   });
 
@@ -388,8 +390,14 @@ function updateGhost(state: PacState, g: Ghost, dt: number, now: number) {
     return;
   }
 
-  // chase / frightened
-  const speed = g.mode === "frightened" ? g.speed * 0.55 : g.speed;
+  // Petit Marcel : s'arrête parfois pour regarder une fleur (lore + lisibilité).
+  if (g.ai === "erratique" && now < g.pausedUntil) return;
+
+  // chase / frightened. La pression monte doucement au fil du recensement :
+  // jusqu'à +8 % de vitesse quand il ne reste presque plus d'insectes.
+  const ratio = 1 - state.stats.insectsRemaining / Math.max(1, state.stats.insectsTotal);
+  const ramp = 1 + ratio * 0.08;
+  const speed = (g.mode === "frightened" ? g.speed * 0.55 : g.speed * ramp);
 
   // Test : la cellule devant nous est-elle franchissable ?
   const aheadX = Math.round(g.cx + g.dir.x * 0.51);
@@ -432,6 +440,10 @@ function updateGhost(state: PacState, g: Ghost, dt: number, now: number) {
     g.cx = Math.round(g.cx);
     g.cy = Math.round(g.cy);
     pickGhostDirection(state, g);
+    // Petit Marcel rêvasse : courte pause occasionnelle aux intersections.
+    if (g.ai === "erratique" && g.mode === "chase" && Math.random() < 0.05) {
+      g.pausedUntil = now + 600 + Math.random() * 400;
+    }
   }
 
   // Tunnel
