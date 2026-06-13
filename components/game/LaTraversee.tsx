@@ -1006,7 +1006,34 @@ function drawPlatform(
     return;
   }
   if (p.kind === "sol") {
-    // Terre + bande de mousse au sommet
+    if (skin.terre) {
+      // Terre peinte tuilée sur la frange visible + assombrissement vers le bas
+      // (on ne tuile pas les 300 u de profondeur, inutiles à l'écran).
+      const topDepth = Math.min(p.h, 200);
+      const T = SKIN.TILE;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(p.x, p.y, p.w, p.h);
+      ctx.clip();
+      ctx.fillStyle = "#241910"; // base sombre du dessous
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+      const ox = (((p.x * 0.37) % T) + T) % T;
+      for (let tx = p.x - ox; tx < p.x + p.w; tx += T) {
+        for (let ty = p.y; ty < p.y + topDepth; ty += T) {
+          ctx.drawImage(skin.terre, tx, ty, T, T);
+        }
+      }
+      const g = ctx.createLinearGradient(0, p.y, 0, p.y + topDepth);
+      g.addColorStop(0, "rgba(20,14,8,0)");
+      g.addColorStop(1, "rgba(20,14,8,0.6)");
+      ctx.fillStyle = g;
+      ctx.fillRect(p.x, p.y, p.w, topDepth);
+      ctx.restore();
+      mossFringe(ctx, p.x, p.w, p.y, skin.mousse, quality);
+      topLight(ctx, p.x, p.y, p.w);
+      return;
+    }
+    // —— repli plat (style d'origine) ——
     const grad = ctx.createLinearGradient(0, p.y, 0, p.y + Math.min(p.h, 200));
     grad.addColorStop(0, "#4c2d23");
     grad.addColorStop(1, "#2f1d16");
