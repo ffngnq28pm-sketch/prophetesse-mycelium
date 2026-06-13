@@ -1697,23 +1697,41 @@ const MARCHEUSE = {
   MAILLE: 0.55, // opacité de la poche de maille du filet
 };
 
+// État visuel AMORTI (module-level, jamais sur l'objet moteur). Chaque valeur
+// est lerpée vers sa cible à chaque frame → plus aucune amplitude ne claque au
+// démarrage/arrêt/demi-tour.
+const marcheuseAnim = { speed: 0, move: 0, swing: 0, facing: 1 };
+
 // Marcheuse — naturaliste casual peinte : tee rouge vif, casquette rouge foncé,
 // vrai filet à papillons (poche de maille). Formes superposées à l'échelle
 // MARCHEUSE.ECHELLE ancrée aux pieds. La HITBOX (o.w/o.h) n'est jamais modifiée :
 // le visuel déborde vers le haut, c'est voulu.
 function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   const M = MARCHEUSE;
+  const A = marcheuseAnim;
   const moving = Math.abs(o.vx) > 12;
   const airborne = !o.onGround;
   const swinging = netIsActiveLocal(o, time);
-  const speed = Math.min(1, Math.abs(o.vx) / 160);
+
+  // —— Lissage : on lerp chaque grandeur vers sa cible (k ≈ LISSAGE) ——
+  const k = M.LISSAGE;
+  const tSpeed = Math.min(1, Math.abs(o.vx) / 160);
+  A.speed += (tSpeed - A.speed) * k;
+  A.move += ((moving && !airborne ? 1 : 0) - A.move) * k; // « marche-itude » 0..1, continue
+  A.facing += (o.facing - A.facing) * k;
+  const NET_MS = 260;
+  const swingProg = swinging ? Math.min(1, Math.max(0, (time - (o.netUntil - NET_MS)) / NET_MS)) : 0;
+  A.swing += ((swinging ? Math.sin(swingProg * Math.PI) : 0) - A.swing) * (k * 1.6);
 
   const squashY = 1 - 0.2 * o.squash;
   const squashX = 1 + 0.14 * o.squash;
   let stretch = 1;
   if (airborne) stretch = 1 + Math.max(-0.12, Math.min(0.16, -o.vy / 4200));
   const sy = squashY * stretch;
-  const sx = squashX / (stretch * 0.5 + 0.5);
+  // Pivot amorti au demi-tour : léger pincement horizontal tant que le sens
+  // dessiné (o.facing, instantané) et le sens amorti diffèrent.
+  const turnT = Math.min(1, Math.abs(o.facing - A.facing));
+  const sx = (squashX / (stretch * 0.5 + 0.5)) * (1 - turnT * 0.22);
 
   const footX = o.x + o.w / 2;
   const footY = o.y + o.h;
@@ -1735,21 +1753,22 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   ctx.scale(M.ECHELLE, M.ECHELLE);
   const H = o.h;
 
-  // Inclinaison avant + bob (amortis proprement en Phase 2).
-  const lean = moving && !airborne ? speed * 0.12 : 0;
+  // Inclinaison avant + bob — amplitudes pilotées par les valeurs AMORTIES
+  // (A.move/A.speed) : elles montent/descendent en douceur, jamais de claquage.
+  const lean = A.move * A.speed * 0.12;
   if (lean) ctx.transform(1, 0, -lean, 1, 0, 0);
-  const bob = moving && !airborne ? -Math.abs(Math.sin(o.walkPhase)) * 0.7 : 0;
+  const bob = -A.move * Math.abs(Math.sin(o.walkPhase)) * 0.7;
   if (bob) ctx.translate(0, bob);
 
-  const breath = !moving && o.onGround ? Math.sin(time / 900) * 0.4 : 0;
+  const breath = (1 - A.move) * (o.onGround ? Math.sin(time / 900) * 0.4 : 0);
   const hipY = -H * 0.42;
   const shoulderY = -H * 0.7 - breath;
   const neckY = -H * 0.74 - breath;
   const headY = -H * 0.9 - breath;
   const headR = H * 0.155;
   const wp = o.walkPhase;
-  const stride = moving ? 6 : 0;
-  const armAmp = moving ? 4 : 0;
+  const stride = A.move * 6; // foulée continue (0 → pleine)
+  const armAmp = A.move * 4;
 
   // ════════ JAMBES (pantalon) + chaussures ════════
   const drawLeg = (phase: number, col: string) => {
@@ -1760,7 +1779,7 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
       footY2 = -H * 0.12;
     } else {
       fx = Math.sin(phase) * stride;
-      footY2 = -1 - Math.max(0, Math.sin(phase)) * 2.5;
+      footY2 = -1 - Math.max(0, Math.sin(phase)) * 2.5 * A.move; // levée ∝ marche-itude
     }
     const kneeX = (0 + fx) / 2 + 1.4;
     const kneeY = (hipY + footY2) / 2 + 1;
@@ -1834,13 +1853,9 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   ctx.fill();
 
   // ════════ FILET à poche de maille (devant) ════════
-  const NET_MS = 260;
-  const swingProg = swinging ? Math.min(1, Math.max(0, (time - (o.netUntil - NET_MS)) / NET_MS)) : 0;
-  const swingAngle = swinging
-    ? Math.sin(swingProg * Math.PI) * 1.1
-    : moving && !airborne
-    ? Math.sin(wp) * 0.06
-    : Math.sin(time * 0.0006) * 0.05;
+  // angle amorti : dérive idle/marche (mélangée par A.move) + arc de swing (A.swing).
+  const idleNet = A.move * Math.sin(wp) * 0.06 + (1 - A.move) * Math.sin(time * 0.0006) * 0.05;
+  const swingAngle = A.swing * 1.1 + idleNet * (1 - Math.abs(A.swing));
   drawFilet(ctx, handX, handY, H, swingAngle, time, M.MAILLE);
 
   // ════════ COU + TÊTE + CASQUETTE rouge foncé ════════
