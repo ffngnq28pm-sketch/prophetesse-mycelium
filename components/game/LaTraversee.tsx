@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { useStore } from "@/lib/store";
 import { PeintureDecor } from "@/lib/traversee-peinture";
+import { Skin, SKIN, noise1 } from "@/lib/traversee-skin";
 
 export interface TraverseeResult {
   tempsMs: number;
@@ -147,6 +148,7 @@ export function LaTraversee({ onWin }: Props) {
   const inputRef = useRef<Input>({ left: false, right: false, jump: false, net: false });
   const audioRef = useRef<TraverseeAudio>(new TraverseeAudio());
   const peintureRef = useRef<PeintureDecor | null>(null);
+  const skinRef = useRef<Skin | null>(null);
   const flowersRef = useRef<Flower[]>([]);
   const particlesRef = useRef<Particle[]>([]);
   const butterfliesRef = useRef<ButterflyFx[]>([]);
@@ -170,6 +172,10 @@ export function LaTraversee({ onWin }: Props) {
     if (!peintureRef.current) {
       peintureRef.current = new PeintureDecor();
       peintureRef.current.preload(); // charge la set « porche » (repli universel)
+    }
+    if (!skinRef.current) {
+      skinRef.current = new Skin();
+      void skinRef.current.load(); // textures de la couche de jeu (repli plat si absentes)
     }
     const onResize = () => peintureRef.current?.refreshQuality();
     window.addEventListener("resize", onResize);
@@ -284,7 +290,7 @@ export function LaTraversee({ onWin }: Props) {
       const dt = Math.min(0.05, (t - last) / 1000);
       lastTimeRef.current = t;
 
-      if (s && canvas && peintureRef.current) {
+      if (s && canvas && peintureRef.current && skinRef.current) {
         const aspect = canvas.clientWidth / Math.max(1, canvas.clientHeight);
         const { viewW, viewH } = step(s, dt, inputRef.current, t, aspect);
         viewRef.current = { w: viewW, h: viewH };
@@ -299,6 +305,7 @@ export function LaTraversee({ onWin }: Props) {
         render(
           canvas,
           peinture,
+          skinRef.current,
           s,
           flowersRef.current,
           particlesRef.current,
@@ -306,7 +313,8 @@ export function LaTraversee({ onWin }: Props) {
           t,
           viewW,
           viewH,
-          reduce
+          reduce,
+          peinture.quality
         );
       }
       rafRef.current = requestAnimationFrame(loop);
@@ -661,6 +669,7 @@ function burst(arr: Particle[], x: number, y: number, t: number, color: string, 
 function render(
   canvas: HTMLCanvasElement,
   peinture: PeintureDecor,
+  skin: Skin,
   s: TraverseeState,
   flowers: Flower[],
   particles: Particle[],
@@ -668,7 +677,8 @@ function render(
   time: number,
   viewW: number,
   viewH: number,
-  reduce: boolean
+  reduce: boolean,
+  quality: number
 ) {
   const visible = canvas.getContext("2d");
   if (!visible) return;
@@ -697,9 +707,10 @@ function render(
     ctx.setTransform(scale, 0, 0, scale, -cam.x * px * scale, -cam.y * py * scale);
   layer(1, 1);
 
-  for (const p of s.platforms) {
+  for (let i = 0; i < s.platforms.length; i++) {
+    const p = s.platforms[i];
     if (p.x + p.w < cam.x - 40 || p.x > cam.x + viewW + 40) continue;
-    drawPlatform(ctx, p, time);
+    drawPlatform(ctx, p, time, skin, i, quality);
   }
 
   drawSanctuaire(ctx, s.sanctuaire, time);
@@ -777,7 +788,113 @@ function drawWalkerBacking(ctx: CanvasRenderingContext2D, o: Olivia) {
 
 // ====== Sous-fonctions de rendu (coordonnées monde) ======
 
-function drawPlatform(ctx: CanvasRenderingContext2D, p: Platform, time: number) {
+type Tex = HTMLCanvasElement | HTMLImageElement;
+
+// Remplit un rect (clippé, coins arrondis) par une texture tuilée — répétition
+// simple, jamais de flip, léger décalage par plateforme pour casser le motif.
+function skinFillRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  tex: Tex,
+  radius: number
+) {
+  ctx.save();
+  roundRectPath(ctx, x, y, w, h, radius);
+  ctx.clip();
+  const T = SKIN.TILE;
+  const ox = (((x * 0.37) % T) + T) % T;
+  const oy = (((y * 0.31) % T) + T) % T;
+  for (let tx = x - ox; tx < x + w; tx += T) {
+    for (let ty = y - oy; ty < y + h; ty += T) {
+      ctx.drawImage(tex, tx, ty, T, T);
+    }
+  }
+  ctx.restore();
+}
+
+// Frange de mousse sur l'arête haute : bande au bord inférieur irrégulier +
+// quelques touffes débordantes. Repli : si pas de texture, on ne dessine rien
+// (l'appelant garde ses touffes « V »).
+function mossFringe(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  w: number,
+  topY: number,
+  mousse: Tex | null,
+  quality: number
+) {
+  if (!mousse) return false;
+  const band = SKIN.FRANGE;
+  const overhang = 4;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x, topY - overhang);
+  ctx.lineTo(x + w, topY - overhang);
+  const stepN = quality < 0.7 ? 16 : 9;
+  for (let gx = x + w; gx >= x; gx -= stepN) {
+    const n = noise1(gx * 0.08);
+    ctx.lineTo(gx, topY + band * (0.4 + n * 0.6));
+  }
+  ctx.closePath();
+  ctx.clip();
+  const T = SKIN.TILE;
+  const ox = (((x * 0.4) % T) + T) % T;
+  for (let tx = x - ox; tx < x + w; tx += T) {
+    ctx.drawImage(mousse, tx, topY - overhang, T, T);
+  }
+  ctx.restore();
+
+  // Quelques touffes débordant au-dessus de l'arête (sobres).
+  if (quality >= 0.6) {
+    for (let gx = x + 8; gx < x + w - 4; gx += 34) {
+      const n = noise1(gx * 0.05);
+      if (n < 0.45) continue;
+      const tw = 7 + n * 6;
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(gx, topY - overhang, tw, 5 + n * 3, 0, Math.PI, 0);
+      ctx.clip();
+      ctx.drawImage(mousse, gx - T / 2, topY - overhang - T + 6, T, T);
+      ctx.restore();
+    }
+  }
+  return true;
+}
+
+// Liseré clair chaud sur l'arête haute (contre-jour de la scène).
+function topLight(ctx: CanvasRenderingContext2D, x: number, topY: number, w: number) {
+  ctx.strokeStyle = "rgba(255,236,190,0.45)";
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(x + 1, topY - 4);
+  ctx.lineTo(x + w - 1, topY - 4);
+  ctx.stroke();
+}
+
+// Ombre portée douce sous la plateforme : la fait lire comme un bloc solide.
+function dropShadow(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  const sh = 11;
+  const g = ctx.createLinearGradient(0, y + h, 0, y + h + sh);
+  g.addColorStop(0, "rgba(8,12,6,0.32)");
+  g.addColorStop(1, "rgba(8,12,6,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(x - 2, y + h, w + 4, sh);
+}
+
+function drawPlatform(
+  ctx: CanvasRenderingContext2D,
+  p: Platform,
+  time: number,
+  skin: Skin,
+  index: number,
+  quality: number
+) {
+  // Ombre portée pour tout ce qui n'est ni le sol ni un champignon-tremplin.
+  if (p.kind !== "sol" && p.kind !== "tremplin") dropShadow(ctx, p.x, p.y, p.w, p.h);
+
   if (p.kind === "tremplin") {
     // Champignon-tremplin : chapeau bombé ocre-cuivré à taches pâles sur pied
     // trapu — bondissant mais sourd (le rouge reste à la casquette).
@@ -944,6 +1061,14 @@ function drawPlatform(ctx: CanvasRenderingContext2D, p: Platform, time: number) 
     return;
   }
   if (p.kind === "muret") {
+    const tex = skin.pierrePour(index);
+    if (tex) {
+      skinFillRect(ctx, p.x, p.y, p.w, p.h, tex, 2);
+      mossFringe(ctx, p.x, p.w, p.y, skin.mousse, quality);
+      topLight(ctx, p.x, p.y, p.w);
+      return;
+    }
+    // —— repli plat ——
     ctx.fillStyle = "#6a6450";
     ctx.fillRect(p.x, p.y, p.w, p.h);
     ctx.fillStyle = "rgba(126,163,106,0.7)";
@@ -956,9 +1081,17 @@ function drawPlatform(ctx: CanvasRenderingContext2D, p: Platform, time: number) 
     }
     return;
   }
-  // tombe JOUABLE : dalle funéraire en pierre parcheminé claire, surface plane
-  // bien marquée + liseré de mousse net = signal « on peut marcher ici »
-  // (volontairement plus claire et nette que les tombes-décor de l'arrière-plan).
+  // tombe JOUABLE : dalle en pierre patinée (texture peinte) + frange de mousse.
+  {
+    const tex = skin.pierrePour(index);
+    if (tex) {
+      skinFillRect(ctx, p.x, p.y, p.w, p.h, tex, 6);
+      mossFringe(ctx, p.x, p.w, p.y, skin.mousse, quality);
+      topLight(ctx, p.x, p.y, p.w);
+      return;
+    }
+  }
+  // —— repli plat (style d'origine) : dalle parcheminé claire + liseré net ——
   const slab = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
   slab.addColorStop(0, "#b7ac8c");
   slab.addColorStop(1, "#8c8268");
