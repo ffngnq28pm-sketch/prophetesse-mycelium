@@ -20,8 +20,8 @@ export const SKIN = {
   FRANGE: 13,
   // Sol en bande fine : une lèvre de chemin sous l'arête, puis la terre se fond
   // pour révéler la parallaxe peinte dessous (le fond possède le cadre).
-  SOL_BANDE: 90, // hauteur visible de terre sous l'arête (unités monde)
-  SOL_FONDU: 0.45, // fraction basse de la bande qui se fond vers la transparence
+  SOL_BANDE: 134, // hauteur visible de terre sous l'arête (unités monde) — descend rejoindre le sol peint
+  SOL_FONDU: 0.5, // fraction basse de la bande qui se fond vers la transparence (raccord doux au décor)
   SOL_ANCRAGE: 0.5, // alpha de l'ombre de contact sous l'arête
 } as const;
 
