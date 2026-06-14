@@ -10,7 +10,7 @@ import { Ornement } from "@/components/liturgical/Ornement";
 import { Hydrated } from "@/components/liturgical/Hydrated";
 import { HelpButton } from "@/components/liturgical/HelpButton";
 import { TutorialOverlay, Etape } from "@/components/game/TutorialOverlay";
-import { FondJeu } from "@/components/banque/FondJeu";
+import { FondJeu, FondJeuAmbiance } from "@/components/banque/FondJeu";
 import { ChevronLeft } from "lucide-react";
 
 const TUTO_PAC: Etape[] = [
@@ -44,6 +44,8 @@ const TUTO_PAC: Etape[] = [
 export default function PacOliviaPage() {
   return (
     <div>
+      {/* Filigrane de poursuite dans les grandes marges (cette page seule). */}
+      <FondJeuAmbiance slug="chasse-fond" />
       <Link
         href="/jeu"
         className="mb-4 inline-flex items-center gap-1 font-serif text-sm text-mousse-700 hover:text-ocre-600 dark:text-parchemin-200/80"

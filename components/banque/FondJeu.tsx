@@ -57,3 +57,56 @@ export function FondJeu({
     </div>
   );
 }
+
+// Calque AMBIANT plein écran (fixe, -z-10) : l'image en filigrane dans les
+// grandes marges autour de la colonne de contenu. Masquée au CENTRE (où vit le
+// contenu → texte parfaitement lisible), visible seulement vers les bords. Très
+// atténuée (voile couleur de page) pour murmurer, jamais distraire. Anti-flash
+// par sonde + repli couleur. Thème détecté au montage (crème clair / nuit).
+export function FondJeuAmbiance({
+  slug,
+  voile = 0.5,
+}: {
+  slug: string;
+  voile?: number;
+}) {
+  const url = `/banque/jeux/${slug}.webp`;
+  const [ok, setOk] = useState(false);
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    setDark(document.documentElement.classList.contains("dark"));
+    let vivant = true;
+    const img = new Image();
+    img.onload = () => vivant && setOk(true);
+    img.onerror = () => vivant && setOk(false);
+    img.src = url;
+    return () => {
+      vivant = false;
+    };
+  }, [url]);
+
+  const pageColor = dark ? "#13200f" : "#f4f0e6";
+  // L'image vit aux bords, s'efface au centre (sous le contenu).
+  const mask = "radial-gradient(72% 82% at 50% 44%, transparent 36%, #000 90%)";
+
+  return (
+    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10" style={{ background: pageColor }}>
+      {ok && (
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `url('${url}')`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            filter: "brightness(0.95) grayscale(0.4) saturate(0.82) blur(1.5px)",
+            transform: "scale(1.06)",
+            WebkitMaskImage: mask,
+            maskImage: mask,
+          }}
+        />
+      )}
+      {/* voile couleur de page : l'image reste présente mais en filigrane */}
+      <div className="absolute inset-0" style={{ background: pageColor, opacity: voile }} />
+    </div>
+  );
+}
