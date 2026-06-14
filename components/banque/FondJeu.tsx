@@ -65,7 +65,7 @@ export function FondJeu({
 // par sonde + repli couleur. Thème détecté au montage (crème clair / nuit).
 export function FondJeuAmbiance({
   slug,
-  voile = 0.3,
+  voile = 0.12,
 }: {
   slug: string;
   voile?: number;
@@ -87,7 +87,7 @@ export function FondJeuAmbiance({
 
   const pageColor = dark ? "#13200f" : "#f4f0e6";
   // L'image vit aux bords, s'efface au centre (sous le contenu).
-  const mask = "radial-gradient(72% 82% at 50% 44%, transparent 36%, #000 90%)";
+  const mask = "radial-gradient(74% 84% at 50% 44%, transparent 30%, #000 78%)";
 
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10" style={{ background: pageColor }}>
@@ -98,7 +98,7 @@ export function FondJeuAmbiance({
             backgroundImage: `url('${url}')`,
             backgroundSize: "cover",
             backgroundPosition: "center",
-            filter: "brightness(0.98) grayscale(0.18) saturate(0.9) blur(1px)",
+            filter: "brightness(1) grayscale(0.06) saturate(1) blur(0.5px)",
             transform: "scale(1.06)",
             WebkitMaskImage: mask,
             maskImage: mask,
