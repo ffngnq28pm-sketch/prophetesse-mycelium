@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/Button";
 import { useStore } from "@/lib/store";
 import { PeintureDecor } from "@/lib/traversee-peinture";
 import { Skin, SKIN, noise1 } from "@/lib/traversee-skin";
+import { Spectres } from "@/lib/traversee-spectres";
 
 export interface TraverseeResult {
   tempsMs: number;
@@ -180,6 +181,7 @@ export function LaTraversee({ onWin }: Props) {
   const audioRef = useRef<TraverseeAudio>(new TraverseeAudio());
   const peintureRef = useRef<PeintureDecor | null>(null);
   const skinRef = useRef<Skin | null>(null);
+  const spectresRef = useRef<Spectres | null>(null);
   const flowersRef = useRef<Flower[]>([]);
   const particlesRef = useRef<Particle[]>([]);
   const butterfliesRef = useRef<ButterflyFx[]>([]);
@@ -211,6 +213,10 @@ export function LaTraversee({ onWin }: Props) {
     if (!skinRef.current) {
       skinRef.current = new Skin();
       void skinRef.current.load(); // textures de la couche de jeu (repli plat si absentes)
+    }
+    if (!spectresRef.current) {
+      spectresRef.current = new Spectres();
+      spectresRef.current.preload(); // spectres décoratifs (rien dessiné si absents)
     }
     const onResize = () => peintureRef.current?.refreshQuality();
     window.addEventListener("resize", onResize);
@@ -336,11 +342,15 @@ export function LaTraversee({ onWin }: Props) {
         const scaleNow = (canvas.height || 1) / Math.max(1, viewH);
         peinture.update(dt, t, s.cam.x, scaleNow, reduce);
 
+        // Spectres décoratifs : lecture seule de la Marcheuse + caméra.
+        spectresRef.current?.update(dt, t, s.olivia, s.cam, reduce);
+
         drainEvents(s, t);
         render(
           canvas,
           peinture,
           skinRef.current,
+          spectresRef.current,
           s,
           flowersRef.current,
           particlesRef.current,
@@ -778,6 +788,7 @@ function render(
   canvas: HTMLCanvasElement,
   peinture: PeintureDecor,
   skin: Skin,
+  spectres: Spectres | null,
   s: TraverseeState,
   flowers: Flower[],
   particles: Particle[],
@@ -809,6 +820,9 @@ function render(
   //    le gameplay, puis le gameplay par-dessus. Le post s'applique au tout. ══
   const ctx = peinture.beginScene(cw, ch);
   peinture.drawBackdrop(ctx, cam.x, cam.y, scale, cw, ch, time, reduce);
+
+  // Spectres décoratifs : devant le fond peint, derrière plateformes/Marcheuse.
+  spectres?.draw(ctx, cam, scale, s.olivia, time, reduce);
 
   // Plan de jeu (parallaxe 1) — inchangé fonctionnellement.
   const layer = (px: number, py: number) =>
