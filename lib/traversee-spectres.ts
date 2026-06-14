@@ -11,8 +11,8 @@ import type { Olivia } from "@/lib/traversee-engine";
 
 // ============ RÉGLAGES GLOBAUX (dial-able) ============
 const REGLAGES = {
-  opacite: 1, // multiplicateur global d'opacité
-  echelle: 0.82, // échelle des spectres vs la Marcheuse (réduite = plus loin)
+  opacite: 0.68, // multiplicateur global d'opacité
+  echelle: 1.55, // échelle des spectres vs la Marcheuse (homothétie, ratio préservé)
   parallaxe: 0.65, // 0..1 — défilent à 0.65x du premier plan (sensation d'éloignement)
   lag: 1, // multiplicateur de la distance de traîne
   flottement: 1, // multiplicateur d'amplitude du flottement vertical
