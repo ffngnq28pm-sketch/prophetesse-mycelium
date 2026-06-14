@@ -14,7 +14,7 @@ export const PEINTURE = {
   // Parallaxe verticale (douce) : le fond dérive un peu quand on grimpe.
   VPARALLAX: 0.12,
   // Post-traitement.
-  BLOOM_STRENGTH: 0.35, // alpha de la passe additive (proto : 0.35)
+  BLOOM_STRENGTH: 0.24, // alpha de la passe additive (baissé : moins de voile blanc central)
   BLOOM_BLUR: 13, // flou px sur le buffer demi-résolution
   BLOOM_SEUIL: 0.8, // ne bloomer que les vraies hautes lumières (plus haut = plus sélectif)
   RAYS_INTENSITY: 0.03, // god rays — baissé pour ne plus cramer le centre clair
@@ -34,8 +34,8 @@ export const PEINTURE = {
   // Re-structuration de la couche lointaine au bake (anti voile blanc / bouillie) :
   // on lui rend du contraste/définition pour qu'elle appartienne à la même
   // peinture que le premier plan. Plein effet sur n===0, moitié sur n===1.
-  FOND_LUM: 0.84, // luminosité couche lointaine — descend le blanc central
-  FOND_CONTRASTE: 1.08, // un peu de structure, sans re-blanchir
+  FOND_LUM: 0.72, // luminosité couche lointaine — descend le blanc central (décor plus lisible)
+  FOND_CONTRASTE: 1.14, // un peu de structure, sans re-blanchir
   FOND_SAT: 1.08,
 } as const;
 
