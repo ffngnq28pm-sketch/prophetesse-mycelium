@@ -11,7 +11,7 @@ import type { Olivia } from "@/lib/traversee-engine";
 
 // ============ RÉGLAGES GLOBAUX (dial-able) ============
 const REGLAGES = {
-  opacite: 0.68, // multiplicateur global d'opacité
+  opacite: 0.95, // multiplicateur global d'opacité
   echelle: 1.55, // échelle des spectres vs la Marcheuse (homothétie, ratio préservé)
   parallaxe: 0.65, // 0..1 — défilent à 0.65x du premier plan (sensation d'éloignement)
   lag: 1, // multiplicateur de la distance de traîne
@@ -38,15 +38,15 @@ interface Temperament {
 const TEMPERAMENTS: Temperament[] = [
   // Cendrillon (gris-bleu) : le plus lent, le plus en retard, peu de flottement,
   // opacité basse et stable.
-  { id: "cendrillon", actif: true, fichier: "cendrillon", trail: 2, suivi: 0.6, echelle: 0.92, opacite: 0.42, flotteAmp: 0.04, flotteVit: 0.5 },
+  { id: "cendrillon", actif: true, fichier: "cendrillon", trail: 2, suivi: 0.6, echelle: 0.92, opacite: 0.66, flotteAmp: 0.04, flotteVit: 0.5 },
   // Précieuse (violet) : glisse régulièrement, port altier, ne flotte presque
   // pas, suit d'un peu plus près.
-  { id: "precieuse", actif: true, fichier: "precieuse", trail: 1.1, suivi: 1.5, echelle: 0.98, opacite: 0.44, flotteAmp: 0.015, flotteVit: 0.6 },
+  { id: "precieuse", actif: true, fichier: "precieuse", trail: 1.1, suivi: 1.5, echelle: 0.98, opacite: 0.7, flotteAmp: 0.015, flotteVit: 0.6 },
   // Marcel (vert) : erratique — pauses puis accélérations, « regarde une fleur ».
-  { id: "marcel", actif: true, fichier: "marcel", trail: 1.6, suivi: 1.1, echelle: 0.9, opacite: 0.42, flotteAmp: 0.12, flotteVit: 1.3, erratique: true },
+  { id: "marcel", actif: true, fichier: "marcel", trail: 1.6, suivi: 1.1, echelle: 0.9, opacite: 0.66, flotteAmp: 0.12, flotteVit: 1.3, erratique: true },
   // L'Innommé (gris sombre) : le plus loin, le plus flou, opacité la plus basse,
   // apparaît/disparaît en fondu lent et dérive latéralement.
-  { id: "innomme", actif: true, fichier: "innomme", trail: 2.6, suivi: 0.5, echelle: 0.86, opacite: 0.3, flotteAmp: 0.08, flotteVit: 0.7, fonduDerive: true, blur: 2 },
+  { id: "innomme", actif: true, fichier: "innomme", trail: 2.6, suivi: 0.5, echelle: 0.86, opacite: 0.46, flotteAmp: 0.08, flotteVit: 0.7, fonduDerive: true, blur: 1 },
 ];
 
 const BASE = "/banque/spectres/";
