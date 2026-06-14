@@ -65,7 +65,7 @@ export function FondJeu({
 // par sonde + repli couleur. Thème détecté au montage (crème clair / nuit).
 export function FondJeuAmbiance({
   slug,
-  voile = 0.5,
+  voile = 0.3,
 }: {
   slug: string;
   voile?: number;
@@ -98,7 +98,7 @@ export function FondJeuAmbiance({
             backgroundImage: `url('${url}')`,
             backgroundSize: "cover",
             backgroundPosition: "center",
-            filter: "brightness(0.95) grayscale(0.4) saturate(0.82) blur(1.5px)",
+            filter: "brightness(0.98) grayscale(0.18) saturate(0.9) blur(1px)",
             transform: "scale(1.06)",
             WebkitMaskImage: mask,
             maskImage: mask,

@@ -4,6 +4,13 @@ export const metadata = {
     "Trois jeux pour s'enraciner : La Chute du Compost, La Chasse aux Pollinisateurs, La Nuit des Empreintes.",
 };
 
+import { FondJeuAuto } from "@/components/banque/FondJeuAuto";
+
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return (
+    <>
+      <FondJeuAuto />
+      {children}
+    </>
+  );
 }
