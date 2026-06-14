@@ -166,13 +166,23 @@ const TUILES = [
   },
   {
     num: "— III",
-    titre: "Les Jeux liturgiques",
-    desc: "Des épreuves d'une solennité parfaitement absurde, récompensant la patience plutôt que la vitesse.",
+    titre: "L'Université des Friches",
+    desc: "On y apprend vraiment l'écologie et le respect du vivant : facultés, leçons et quiz, avec un grade qui monte de la spore à la Marcheuse.",
   },
   {
     num: "— IV",
+    titre: "Les Jeux liturgiques",
+    desc: "Six épreuves d'une solennité parfaitement absurde — dont un escape contemplatif, La Veillée. On y récompense la patience plutôt que la vitesse.",
+  },
+  {
+    num: "— V",
     titre: "Le Livre Sacré",
     desc: "Versets, proverbes et paraboles. Certains sont profonds. D'autres concernent les limaces.",
+  },
+  {
+    num: "— VI",
+    titre: "Les Sanctuaires",
+    desc: "Huit cimetières d'Île-de-France, hauts lieux de biodiversité urbaine — un plan des stations à visiter au fil du pèlerinage.",
   },
 ];
 
