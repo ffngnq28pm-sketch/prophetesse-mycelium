@@ -144,6 +144,16 @@ async function run() {
     await processDir(join(JEU_SRC, rel), join(JEU_OUT, rel), `jeux/${rel}`, cfg);
   }
 
+  // —— Fonds larges posés autour des canvas de jeu ——
+  // Sortent dans public/banque/jeux/ aux côtés des vignettes, mais en pleine
+  // largeur (1920) : source à part pour ne pas être réduits à la taille vignette.
+  await processDir(
+    join(SRC_ROOT, "jeux-decors"),
+    join(OUT_ROOT, "jeux"),
+    "jeux-decors → jeux",
+    { maxW: 1920, quality: 74 }
+  );
+
   console.log(
     `\n  Total : ${stats.total} · optimisées ${stats.done} · sautées ${stats.skipped}` +
     (stats.done ? ` · ${ko(stats.sumIn)} → ${ko(stats.sumOut)}` : "")

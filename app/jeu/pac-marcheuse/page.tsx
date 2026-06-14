@@ -10,6 +10,7 @@ import { Ornement } from "@/components/liturgical/Ornement";
 import { Hydrated } from "@/components/liturgical/Hydrated";
 import { HelpButton } from "@/components/liturgical/HelpButton";
 import { TutorialOverlay, Etape } from "@/components/game/TutorialOverlay";
+import { FondJeu } from "@/components/banque/FondJeu";
 import { ChevronLeft } from "lucide-react";
 
 const TUTO_PAC: Etape[] = [
@@ -134,7 +135,13 @@ function Contenu() {
         </div>
       </div>
 
-      <PacOlivia onGameOver={onGameOver} />
+      {/* Fond peint de poursuite, derrière et autour du canvas (cette page seule). */}
+      <div className="relative overflow-hidden rounded-2xl border border-ocre-500/25">
+        <FondJeu slug="chasse-fond" />
+        <div className="relative z-10 p-3 sm:p-6">
+          <PacOlivia onGameOver={onGameOver} />
+        </div>
+      </div>
 
       <Card>
         <CardSubtitle>Contribution à la biodiversité documentée</CardSubtitle>
