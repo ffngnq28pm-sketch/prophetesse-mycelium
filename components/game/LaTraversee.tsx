@@ -1634,7 +1634,7 @@ function drawCollectible(ctx: CanvasRenderingContext2D, c: Collectible, time: nu
   }
   if (c.espece === "papillon") {
     // ════ Morpho bleu iridescent ════
-    // halo frais, discret (pas plus lumineux que le tee rouge)
+    // halo frais, discret (pas plus lumineux que la casquette rouge)
     const halo = ctx.createRadialGradient(cx, cy, 1, cx, cy, c.w * 1.4);
     halo.addColorStop(0, "rgba(150,200,255,0.4)");
     halo.addColorStop(1, "rgba(150,200,255,0)");
@@ -1856,19 +1856,24 @@ const MARCHEUSE = {
   ECHELLE: 1.5, // échelle VISUELLE vs hitbox, ancrée aux pieds (le visuel déborde, voulu)
   LISSAGE: 0.18, // facteur de lerp de l'anim amortie (Phase 2)
   CADENCE: 0.5, // fréquence VISUELLE du cycle de marche (0.4 = posé, 0.6 = vif)
-  // Tenue naturaliste casual : tee rouge vif (grande masse de couleur), casquette
-  // rouge FONCÉ, le reste sourd pour que le rouge ressorte.
-  TEE: "#d23a26",
-  TEE_OMBRE: "#a32a18",
-  TEE_LUM: "#ef5a3e",
-  CASQUETTE: "#7c1d12",
-  CASQUETTE_OMBRE: "#561109",
-  PANTALON: "#3b4250",
-  PANTALON_OMBRE: "#272c37",
-  CHAUSSURE: "#241f19",
-  PEAU: "#e3c79e",
-  PEAU_OMBRE: "#c2965f",
-  CHEVEUX: "#c8a24c",
+  // Tenue d'après la planche canon : tee GRIS, jean bleu délavé, cheveux blond
+  // doré balayage, peau hâlée, chaussures claires. La casquette rouge est le
+  // SEUL accent saturé (Boussole) — tout le reste reste sourd pour la laisser
+  // chanter. Pas de sac rouge : un second rouge vif violerait la règle d'accent.
+  TEE: "#8d9298", // tee gris (grande masse neutre)
+  TEE_OMBRE: "#676c72",
+  TEE_LUM: "#aab0b5",
+  CASQUETTE: "#d8382b", // unique accent vif
+  CASQUETTE_OMBRE: "#a6261b",
+  CASQUETTE_LUM: "#f15a48",
+  PANTALON: "#5f7896", // jean bleu délavé
+  PANTALON_OMBRE: "#445a78",
+  CHAUSSURE: "#d6cbb2", // chaussures claires
+  CHAUSSURE_OMBRE: "#b3a584",
+  PEAU: "#e2bd8c", // peau hâlée
+  PEAU_OMBRE: "#bd8a55",
+  CHEVEUX: "#caa24e", // blond doré (racine)
+  CHEVEUX_LUM: "#e7c87a", // balayage (pointes plus claires)
   MAILLE: 0.55, // opacité de la poche de maille du filet
 };
 
@@ -1877,8 +1882,10 @@ const MARCHEUSE = {
 // démarrage/arrêt/demi-tour.
 const marcheuseAnim = { speed: 0, move: 0, swing: 0, facing: 1 };
 
-// Marcheuse — naturaliste casual peinte : tee rouge vif, casquette rouge foncé,
-// vrai filet à papillons (poche de maille). Formes superposées à l'échelle
+// Marcheuse — d'après la planche canon : silhouette élancée aux jambes longues,
+// tee gris, jean bleu délavé, longs cheveux blond balayage, casquette rouge
+// (seul accent vif), filet à papillons porté sur l'épaule. Formes superposées
+// à l'échelle
 // MARCHEUSE.ECHELLE ancrée aux pieds. La HITBOX (o.w/o.h) n'est jamais modifiée :
 // le visuel déborde vers le haut, c'est voulu.
 function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
@@ -1930,7 +1937,7 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
 
   // Inclinaison avant + bob — amplitudes pilotées par les valeurs AMORTIES
   // (A.move/A.speed) : elles montent/descendent en douceur, jamais de claquage.
-  const lean = A.move * A.speed * 0.12;
+  const lean = A.move * A.speed * 0.16; // posture penchée en avant à la course
   if (lean) ctx.transform(1, 0, -lean, 1, 0, 0);
   // Phase visuelle RALENTIE du cycle de marche (le moteur n'est pas touché ;
   // o.walkPhase reste lu seul). Une seule phase dérivée, réutilisée partout →
@@ -1940,7 +1947,7 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   if (bob) ctx.translate(0, bob);
 
   const breath = (1 - A.move) * (o.onGround ? Math.sin(time / 900) * 0.4 : 0);
-  const hipY = -H * 0.42;
+  const hipY = -H * 0.46; // hanche remontée → jambes plus longues (silhouette élancée)
   const shoulderY = -H * 0.7 - breath;
   const neckY = -H * 0.74 - breath;
   const headY = -H * 0.9 - breath;
@@ -1963,15 +1970,19 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
     const kneeX = (0 + fx) / 2 + 1.4;
     const kneeY = (hipY + footY2) / 2 + 1;
     ctx.strokeStyle = col;
-    ctx.lineWidth = 4.2;
+    ctx.lineWidth = 3.8; // jambe fine (silhouette élancée)
     ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(0, hipY);
     ctx.quadraticCurveTo(kneeX, kneeY, fx, footY2);
     ctx.stroke();
-    ctx.fillStyle = M.CHAUSSURE; // chaussure
+    ctx.fillStyle = M.CHAUSSURE_OMBRE; // semelle
     ctx.beginPath();
-    ctx.ellipse(fx + 1.2, footY2 + 0.3, 3, 1.8, 0, 0, Math.PI * 2);
+    ctx.ellipse(fx + 1.3, footY2 + 0.9, 3, 1.1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = M.CHAUSSURE; // chaussure claire
+    ctx.beginPath();
+    ctx.ellipse(fx + 1.2, footY2 + 0.2, 3, 1.7, 0, 0, Math.PI * 2);
     ctx.fill();
   };
   drawLeg(airborne ? -1 : wp + Math.PI, M.PANTALON_OMBRE); // jambe arrière
@@ -1987,57 +1998,138 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   ctx.quadraticCurveTo(-5, hipY, backHandX, hipY + 3);
   ctx.stroke();
 
-  // ════════ TORSE (tee rouge — la grande masse de couleur) ════════
+  // Filet en bandoulière : visible au repos (dessiné plus bas, PAR-DESSUS les
+  // cheveux pour rester lisible derrière l'épaule) ; il s'efface au balayage.
+  const sw = Math.min(1, A.swing * 1.3); // 0 = repos · 1 = plein balayage
+  const slung = 1 - 0.85 * sw;
+
+  // ════════ LONGS CHEVEUX blond balayage (masse souple dans le dos) ════════
+  const hairSway =
+    (airborne ? Math.max(-3, Math.min(3, -o.vy / 1400)) : A.move * Math.sin(wp) * 0.5) +
+    Math.sin(time * 0.0015) * 0.7;
+  const hg = ctx.createLinearGradient(0, headY, 0, hipY + 2);
+  hg.addColorStop(0, M.CHEVEUX);
+  hg.addColorStop(0.5, M.CHEVEUX);
+  hg.addColorStop(1, M.CHEVEUX_LUM); // pointes éclaircies (balayage)
+  ctx.fillStyle = hg;
+  ctx.beginPath();
+  ctx.moveTo(headR * 0.1, headY - headR * 0.5);
+  ctx.quadraticCurveTo(-headR * 1.4, headY - headR * 0.2, -headR * 1.5, shoulderY + 2);
+  ctx.quadraticCurveTo(-headR * 2.0 + hairSway, (shoulderY + hipY) / 2, -headR * 1.1 + hairSway, hipY + 2);
+  ctx.quadraticCurveTo(-headR * 0.3 + hairSway * 0.6, (shoulderY + hipY) / 2, -headR * 0.2, shoulderY);
+  ctx.quadraticCurveTo(-headR * 0.1, neckY, headR * 0.1, headY - headR * 0.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = M.CHEVEUX_LUM; // ondulation claire (volume du balayage)
+  ctx.lineWidth = 1.0;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-headR * 1.2, shoulderY);
+  ctx.quadraticCurveTo(-headR * 1.7 + hairSway, (shoulderY + hipY) / 2, -headR * 1.0 + hairSway, hipY + 1);
+  ctx.stroke();
+
+  // ════════ FILET en bandoulière (PAR-DESSUS les cheveux, derrière l'épaule) ════════
+  // Cerceau + pochon de maille qui dépassent derrière l'épaule arrière, manche
+  // en travers du dos. Bois/crème désaturés : aucun accent concurrent du rouge.
+  if (slung > 0.02) {
+    ctx.save();
+    ctx.globalAlpha = slung;
+    const hx = -8.4; // cerceau haut, au-delà de la masse de cheveux
+    const hy = shoulderY - 7;
+    ctx.strokeStyle = "#c7ba93"; // manche bois clair en travers du dos
+    ctx.lineWidth = 1.8;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(2.4, hipY + 2);
+    ctx.lineTo(hx, hy);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(238,235,218,0.16)"; // pochon de maille suspendu derrière
+    ctx.beginPath();
+    ctx.moveTo(hx - 3.8, hy + 0.5);
+    ctx.quadraticCurveTo(hx - 4.8, hy + 9, hx - 1.2, hy + 12.5);
+    ctx.quadraticCurveTo(hx + 2.6, hy + 8.5, hx + 3.6, hy + 0.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "rgba(232,228,205,0.55)"; // mailles suggérées
+    ctx.lineWidth = 0.5;
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(hx + i * 1.7, hy + 1);
+      ctx.lineTo(hx + i * 0.5, hy + 11.5);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#ddd5b9"; // cerceau (anneau)
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(hx, hy, 4.3, 2.1, 0.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ════════ TORSE (tee gris — la grande masse neutre) ════════
   const teeGrad = ctx.createLinearGradient(-5, 0, 5, 0);
   teeGrad.addColorStop(0, M.TEE_OMBRE);
   teeGrad.addColorStop(0.55, M.TEE);
   teeGrad.addColorStop(1, M.TEE_LUM);
   ctx.save();
-  ctx.shadowColor = "rgba(60,10,4,0.4)";
+  ctx.shadowColor = "rgba(20,26,34,0.4)"; // ombre froide neutre (plus de halo rouge)
   ctx.shadowBlur = 2.5;
   ctx.fillStyle = teeGrad;
   ctx.beginPath();
-  ctx.moveTo(-3.6, hipY + 1);
-  ctx.lineTo(-4.8, shoulderY + 1.5);
-  ctx.quadraticCurveTo(-5, shoulderY - 1.5, -2.8, shoulderY - 2);
-  ctx.lineTo(2.8, shoulderY - 2);
-  ctx.quadraticCurveTo(5, shoulderY - 1.5, 4.8, shoulderY + 1.5);
-  ctx.lineTo(3.6, hipY + 1);
-  ctx.quadraticCurveTo(0, hipY + 2.5, -3.6, hipY + 1);
+  ctx.moveTo(-3.2, hipY + 1); // torse resserré (silhouette élancée)
+  ctx.lineTo(-4.3, shoulderY + 1.5);
+  ctx.quadraticCurveTo(-4.6, shoulderY - 1.5, -2.6, shoulderY - 2);
+  ctx.lineTo(2.6, shoulderY - 2);
+  ctx.quadraticCurveTo(4.6, shoulderY - 1.5, 4.3, shoulderY + 1.5);
+  ctx.lineTo(3.2, hipY + 1);
+  ctx.quadraticCurveTo(0, hipY + 2.5, -3.2, hipY + 1);
   ctx.closePath();
   ctx.fill();
   ctx.restore();
   // manches courtes
   ctx.fillStyle = M.TEE_OMBRE;
   ctx.beginPath();
-  ctx.ellipse(-4.4, shoulderY + 2, 2, 2.4, 0.2, 0, Math.PI * 2);
+  ctx.ellipse(-4.0, shoulderY + 2, 1.9, 2.3, 0.2, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = M.TEE_LUM;
   ctx.beginPath();
-  ctx.ellipse(4.4, shoulderY + 2, 2, 2.4, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(4.0, shoulderY + 2, 1.9, 2.3, -0.2, 0, Math.PI * 2);
   ctx.fill();
 
-  // ════════ BRAS AVANT (peau) tenant le filet ════════
-  const handX = 5.6 + Math.sin(wp) * armAmp * 0.3;
-  const handY = -H * 0.52;
+  // ════════ BRAS AVANT (peau) ════════ — au repos il balance le long du corps
+  // (filet en bandoulière) ; il se lève en avant pour le coup de filet (par sw).
+  const restHandX = 3.6 + Math.sin(wp) * armAmp;
+  const restHandY = hipY + 1;
+  const swHandX = 5.6 + Math.sin(wp) * armAmp * 0.3;
+  const swHandY = -H * 0.52;
+  const handX = restHandX + (swHandX - restHandX) * sw;
+  const handY = restHandY + (swHandY - restHandY) * sw;
+  const elbowX = 4.8 + 0.8 * sw;
+  const elbowY = (shoulderY + hipY) / 2 + (-H * 0.62 - (shoulderY + hipY) / 2) * sw;
   ctx.strokeStyle = M.PEAU;
-  ctx.lineWidth = 2.7;
+  ctx.lineWidth = 2.6;
   ctx.beginPath();
-  ctx.moveTo(3.4, shoulderY + 2);
-  ctx.quadraticCurveTo(5.6, -H * 0.62, handX, handY);
+  ctx.moveTo(3.2, shoulderY + 2);
+  ctx.quadraticCurveTo(elbowX, elbowY, handX, handY);
   ctx.stroke();
   ctx.fillStyle = M.PEAU; // main
   ctx.beginPath();
-  ctx.arc(handX, handY, 1.7, 0, Math.PI * 2);
+  ctx.arc(handX, handY, 1.6, 0, Math.PI * 2);
   ctx.fill();
 
-  // ════════ FILET à poche de maille (devant) ════════
-  // angle amorti : dérive idle/marche (mélangée par A.move) + arc de swing (A.swing).
-  const idleNet = A.move * Math.sin(wp) * 0.06 + (1 - A.move) * Math.sin(time * 0.0006) * 0.05;
-  const swingAngle = A.swing * 1.1 + idleNet * (1 - Math.abs(A.swing));
-  drawFilet(ctx, handX, handY, H, swingAngle, time, M.MAILLE);
+  // ════════ FILET ACTIF (devant, seulement pendant le balayage) ════════
+  // Au repos il est rangé en bandoulière (déjà dessiné derrière) ; ici il passe
+  // en main et balaie. Alpha = sw → cross-fade propre avec le filet en bandoulière.
+  if (sw > 0.02) {
+    const idleNet = A.move * Math.sin(wp) * 0.06 + (1 - A.move) * Math.sin(time * 0.0006) * 0.05;
+    const swingAngle = A.swing * 1.1 + idleNet * (1 - Math.abs(A.swing));
+    ctx.save();
+    ctx.globalAlpha = sw;
+    drawFilet(ctx, handX, handY, H, swingAngle, time, M.MAILLE);
+    ctx.restore();
+  }
 
-  // ════════ COU + TÊTE + CASQUETTE rouge foncé ════════
+  // ════════ COU + TÊTE + CASQUETTE rouge (seul accent vif) ════════
   ctx.strokeStyle = M.PEAU;
   ctx.lineWidth = 2.4;
   ctx.lineCap = "round";
@@ -2053,18 +2145,20 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   ctx.beginPath();
   ctx.arc(0.6, headY, headR, 0, Math.PI * 2);
   ctx.fill();
-  // mèche de cheveux (arrière)
+  // mèche d'attache à la nuque (raccorde la longue masse aux cheveux du crâne)
   ctx.fillStyle = M.CHEVEUX;
   ctx.beginPath();
-  ctx.ellipse(-headR * 0.7, headY + 1.4, 2.3, 4, 0.3, 0, Math.PI * 2);
+  ctx.ellipse(-headR * 0.65, headY + 1.2, 2.4, 4.2, 0.3, 0, Math.PI * 2);
   ctx.fill();
-  // queue-de-cheval qui dépasse derrière la casquette
+  // mèche encadrant le visage (devant l'oreille, sous la casquette)
+  ctx.strokeStyle = M.CHEVEUX;
+  ctx.lineWidth = 1.6;
+  ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(-headR * 0.8, headY - 1);
-  ctx.quadraticCurveTo(-headR * 2.1, headY + 1, -headR * 1.6 - Math.sin(time * 0.003) * 0.6, headY + 5);
-  ctx.quadraticCurveTo(-headR * 1.2, headY + 2, -headR * 0.6, headY + 1);
-  ctx.fill();
-  // CASQUETTE rouge foncé : calotte + visière nette
+  ctx.moveTo(headR * 0.55, headY - headR * 0.2);
+  ctx.quadraticCurveTo(headR * 0.9, headY + headR * 0.6, headR * 0.5, headY + headR * 1.05);
+  ctx.stroke();
+  // CASQUETTE rouge vif : calotte + visière nette
   ctx.fillStyle = M.CASQUETTE;
   ctx.beginPath();
   ctx.arc(0.6, headY - 1, headR + 0.6, Math.PI * 1.02, Math.PI * 1.98);
@@ -2077,7 +2171,12 @@ function drawOlivia(ctx: CanvasRenderingContext2D, o: Olivia, time: number) {
   ctx.beginPath();
   ctx.ellipse(headR + 0.8, headY - 1, headR * 0.78, 1.8, 0, Math.PI, Math.PI * 2);
   ctx.fill();
-  ctx.beginPath(); // bouton
+  ctx.fillStyle = M.CASQUETTE_LUM; // facette éclairée de la calotte (volume)
+  ctx.beginPath();
+  ctx.ellipse(headR * 0.55, headY - headR - 0.2, headR * 0.45, headR * 0.3, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = M.CASQUETTE; // bouton
+  ctx.beginPath();
   ctx.arc(0.6, headY - headR - 0.6, 1, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = "rgba(255,255,255,0.18)"; // reflet calotte
